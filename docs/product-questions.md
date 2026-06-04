@@ -15,7 +15,7 @@ Three primitives, parameterised by *scope*, *reference point*, and *filter*.
 
 - **Scope:** whole document or a single clause.
 - **Returns:** timestamp and/or version number.
-- "How long has this been in its current form?" is `today − this answer`.
+- Duration questions ("how long has this clause been in its current form?") fall out of this primitive — subtract the last-changed timestamp from today; no separate query needed.
 
 ## 3. Differential — what changed between two reference points?
 
