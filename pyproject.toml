@@ -1,0 +1,64 @@
+[project]
+name = "horizons-workspace"
+version = "0.0.0"
+description = "Workspace root for the Horizons regulatory-change intelligence service."
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+    "packages/horizons-core",
+    "packages/horizons-ingestion",
+    "packages/horizons-api",
+]
+
+[tool.uv.sources]
+horizons-core = { workspace = true }
+horizons-ingestion = { workspace = true }
+horizons-api = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=5.0",
+    "pyright>=1.1.380",
+    "ruff>=0.9",
+    "horizons-core",
+    "horizons-ingestion",
+    "horizons-api",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = [".claude", "packages/horizons-webapp", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "TC"]
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+include = [
+    "packages/horizons-core/src",
+    "packages/horizons-ingestion/src",
+    "packages/horizons-api/src",
+    "tests",
+]
+exclude = ["**/__pycache__", ".claude", "packages/horizons-webapp"]
+
+[tool.pytest.ini_options]
+# `importlib` import mode lets per-package tests share `test_smoke.py`
+# filenames without colliding (rootdir test-collection conflates same-named
+# modules otherwise).
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
+testpaths = [
+    "packages/horizons-core/tests",
+    "packages/horizons-ingestion/tests",
+    "packages/horizons-api/tests",
+    "tests",
+]
+

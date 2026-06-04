@@ -28,6 +28,12 @@ venv/
 htmlcov/
 .tox/
 
+# Node / webapp build
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
 # IDE / OS
 .vscode/
 .idea/

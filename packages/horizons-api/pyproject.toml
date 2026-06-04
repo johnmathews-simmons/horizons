@@ -1,0 +1,13 @@
+[project]
+name = "horizons-api"
+version = "0.0.0"
+description = "Public REST API: the single HTTP surface the webapp and external clients talk to."
+requires-python = ">=3.13"
+dependencies = ["horizons-core"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/horizons_api"]
