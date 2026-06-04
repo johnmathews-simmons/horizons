@@ -1,0 +1,64 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:37:57Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=AU&portal=www.legislation.gov.au&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=AU&portal=www.legislation.gov.au&limit=1",
+    "portal_name": "Australia Federal Register of Legislation"
+  },
+  "document_id": 2145602,
+  "title": "Social Security (AGDRP\u2014Ex-Tropical Cyclone Alfred\u2014New South Wales) Determination (No. 3) 2025",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Australia",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "2025-03-14T00:00:000Z",
+  "issuing_authority": "Department of Home Affairs",
+  "type_of_authority": "Legislative Instrument",
+  "language": "English",
+  "legal_link": "https://www.legislation.gov.au/F2025L00379/asmade",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "national",
+      "federal",
+      "government",
+      "parliament",
+      "legislative body",
+      "citizens",
+      "legal professionals",
+      "businesses",
+      "policy makers",
+      "public sector entities",
+      "binding law",
+      "regulation",
+      "bill",
+      "amendment",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-26T19:52:01.343Z",
+  "portal": "www.legislation.gov.au",
+  "portal_name": "Australia Federal Register of Legislation",
+  "last_updated": "2026-04-26T19:52:01.343Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

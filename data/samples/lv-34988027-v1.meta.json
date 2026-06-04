@@ -1,0 +1,49 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:38Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=LV&portal=likumi.lv&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=LV&portal=likumi.lv&limit=1",
+    "portal_name": "Latvijas Republikas Ties\u012bbu Akti"
+  },
+  "document_id": 34988027,
+  "title": "Latvijas Atvese\u013co\u0161anas un notur\u012bbas meh\u0101nisma pl\u0101na otr\u0101s komponentes \"Digit\u0101l\u0101 transform\u0101cija\" 2.3. reformu un invest\u012bciju virziena \"Digit\u0101l\u0101s prasmes\" 2.3.2.reformas \"Digit\u0101l\u0101s prasmes sabiedr\u012bbas un p\u0101rvaldes digit\u0101lajai transform\u0101cijai\" 2.3.2.3.i. invest\u012bcijas \"Digit\u0101l\u0101s plaisas mazin\u0101\u0161ana soci\u0101li neaizsarg\u0101taj\u0101m grup\u0101m un izgl\u012bt\u012bbas iest\u0101d\u0113s\"\u012bsteno\u0161anas noteikumi",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Latvia",
+    "state": ""
+  },
+  "publication_date": "2023-04-06T00:00:000Z",
+  "effective_date": "2023-04-07T00:00:000Z",
+  "expiration_date": "",
+  "date_of_enactment": "2023-04-04T00:00:000Z",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Latvijas Republikas Saeima",
+  "type_of_authority": "noteikumi",
+  "language": "Latvian",
+  "legal_link": "https://likumi.lv/ta/id/340881-latvijasatveselosanas-un-noturibas-mehanisma-plana-otras-komponentes-digitala-transformacija-23-reformu-un-investiciju-virziena-digitalas-prasmes-232reformas-digitalas-prasmes-sabiedribas-un-parvaldes-digitalajai-transformacijai-2323i-investicijas-digitalas-plaisas-mazinasana-sociali-neaizsargatajam-grupam-un-izglitibas-iestadesistenosanas-noteikumi?&search=on",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": null
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "168",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": [
+    "Groz\u012bjumi",
+    "Politikas pl\u0101no\u0161anas dokumenti",
+    "Anot\u0101cija / ties\u012bbu akta projekts",
+    "Izdoti saska\u0146\u0101 ar",
+    "Citi saist\u012btie dokumenti"
+  ],
+  "crawling_date": "2026-06-04T13:07:04.348Z",
+  "portal": "likumi.lv",
+  "portal_name": "Latvijas Republikas Ties\u012bbu Akti",
+  "last_updated": "2026-06-04T13:07:04.348Z",
+  "file_data": {}
+}

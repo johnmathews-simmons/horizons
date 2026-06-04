@@ -1,0 +1,56 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:36Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=LU&portal=space-agency.public.lu&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=LU&portal=space-agency.public.lu&limit=1",
+    "portal_name": "Luxembourg Space Agency"
+  },
+  "document_id": 5444178,
+  "title": "TEN GOOD REASONS TO CHOOSE LUXEMBOURG",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Luxembourg",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Luxembourg Space Agency",
+  "type_of_authority": "Publication",
+  "language": "English",
+  "legal_link": "https://space-agency.public.lu/dam-assets/publications/other/10-good-reasons-oct-2020-web.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Aviation and Aerospace",
+      "national",
+      "businesses",
+      "organizations",
+      "international organizations",
+      "policy documents",
+      "announcement",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-24T18:35:23.608Z",
+  "portal": "space-agency.public.lu",
+  "portal_name": "Luxembourg Space Agency",
+  "last_updated": "2026-04-24T18:35:23.608Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

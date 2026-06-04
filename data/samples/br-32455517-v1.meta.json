@@ -1,0 +1,59 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:00Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=BR&portal=www.gov.br&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=BR&portal=www.gov.br&limit=1",
+    "portal_name": "Brazil Receita Federal"
+  },
+  "document_id": 32455517,
+  "title": "Brasil lidera coaliz\u00e3o que acelera metas clim\u00e1ticas nacionais de 140 pa\u00edses e 120 institui\u00e7\u00f5es em reuni\u00e3o na Dinamarca",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Brazil",
+    "state": ""
+  },
+  "publication_date": "2026-05-26T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "2026-05-28T00:00:000Z",
+  "issuing_authority": "Minist\u00e9rio da Fazenda",
+  "type_of_authority": "Noticias",
+  "language": "Portuguese",
+  "legal_link": "https://www.gov.br/fazenda/pt-br/assuntos/noticias/2026/maio/brasil-lidera-coalizao-que-acelera-metas-climaticas-nacionais-de-140-paises-e-120-instituicoes-em-reuniao-na-dinamarca",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "national",
+      "businesses",
+      "regulators",
+      "regulation",
+      "guidelines",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "Parceria completa 10 anos e ganha novo impulso com presid\u00eancia brasileira na COP30 com foco em transi\u00e7\u00e3o ambiental ligada a desenvolvimento econ\u00f4mico e social",
+  "tags": "",
+  "source_keywords": [
+    "TRANSFORMA\u00c7\u00c3O ECOL\u00d3GICA",
+    "EMISS\u00d5ES",
+    "SBCE",
+    "NDCs",
+    "DESENVOLVIMENTO SUSTENT\u00c1VEL",
+    "Finan\u00e7as",
+    "Impostos e Gest\u00e3o P\u00fablica"
+  ],
+  "crawling_date": "2026-06-02T10:30:20.393Z",
+  "portal": "www.gov.br",
+  "portal_name": "Brazil Receita Federal",
+  "last_updated": "2026-06-02T10:30:20.393Z",
+  "file_data": {}
+}

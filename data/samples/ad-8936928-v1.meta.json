@@ -1,0 +1,61 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:37:50Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=AD&portal=bopa.ad&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=AD&portal=bopa.ad&limit=1",
+    "portal_name": "Butllet\u00ed Oficial del Principat d'Andorra (BOPA)"
+  },
+  "document_id": 8936928,
+  "title": "Edicte del 26-8-2020 pel qual es fa p\u00fablica l\u2019adjudicaci\u00f3 definitiva dels treballs de prestaci\u00f3 de serveis per donar suport al control pressupostari del qual \u00e9s titular la Intervenci\u00f3 General",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Andorra",
+    "state": ""
+  },
+  "publication_date": "2020-09-01T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "2020-08-26T00:00:000Z",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Butllet\u00ed Oficial del Principat d'Andorra (BOPA)",
+  "type_of_authority": "Legislaci\u00f3",
+  "language": "Catalan",
+  "legal_link": "https://bopadocuments.blob.core.windows.net/bopa-documents/032104/html/GE20200828_10_59_29.html",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "national",
+      "government",
+      "the general public",
+      "public sector entities",
+      "legal professionals",
+      "businesses",
+      "official commentary",
+      "binding law",
+      "implementation measure",
+      "announcement",
+      "notification",
+      "news and updates",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "Edicte del 26-8-2020",
+  "source_secondary_identifier": "BOPA 104",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": [
+    "Adjudicacions i ampliacions de contractes",
+    "03. Govern"
+  ],
+  "crawling_date": "2026-05-18T20:57:09.478Z",
+  "portal": "bopa.ad",
+  "portal_name": "Butllet\u00ed Oficial del Principat d'Andorra (BOPA)",
+  "last_updated": "2026-05-18T20:57:09.478Z",
+  "file_data": {}
+}

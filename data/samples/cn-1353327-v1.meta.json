@@ -1,0 +1,64 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:04Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=CN&portal=www.cac.gov.cn&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=CN&portal=www.cac.gov.cn&limit=1",
+    "portal_name": "CAC_GOV"
+  },
+  "document_id": 1353327,
+  "title": "\u5173\u4e8e\u52a0\u5f3a\u515a\u653f\u673a\u5173\u7f51\u7ad9\u5b89\u5168\u7ba1\u7406\u7684\u901a\u77e5",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "China",
+    "state": ""
+  },
+  "publication_date": "2014-05-10T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "",
+  "type_of_authority": "Administrative Regulation",
+  "language": "Chinese",
+  "legal_link": "https://www.cac.gov.cn/2014-05/10/c_1112142115.htm",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Cybersecurity Law",
+      "Data Protection and Privacy Law",
+      "Telecommunications and internet",
+      "national",
+      "government agency",
+      "regulatory authority",
+      "businesses",
+      "technology companies",
+      "regulators",
+      "compliance officers",
+      "the general public",
+      "regulation",
+      "guidelines",
+      "policy documents",
+      "announcement",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-24T15:49:19.981Z",
+  "portal": "www.cac.gov.cn",
+  "portal_name": "CAC_GOV",
+  "last_updated": "2026-04-24T15:49:19.981Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

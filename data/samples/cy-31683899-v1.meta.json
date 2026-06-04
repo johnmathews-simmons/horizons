@@ -1,0 +1,60 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:07Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=CY&portal=www.cylaw.org&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=CY&portal=www.cylaw.org&limit=1",
+    "portal_name": "CYPRUS - CYLAW"
+  },
+  "document_id": 31683899,
+  "title": "\u039d. 115(I)/2026 - \u039f \u03c0\u03b5\u03c1\u03af \u03a0\u03c1\u03bf\u03c3\u03c6\u03cd\u03b3\u03c9\u03bd \u039d\u03cc\u03bc\u03bf\u03c2 \u03c4\u03bf\u03c5 2026",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Cyprus",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "\u039a\u03bf\u03b9\u03bd\u03bf\u03b2\u03bf\u03cd\u03bb\u03b9\u03bf \u03c4\u03b7\u03c2 \u039a\u03c5\u03c0\u03c1\u03b9\u03b1\u03ba\u03ae\u03c2 \u0394\u03b7\u03bc\u03bf\u03ba\u03c1\u03b1\u03c4\u03af\u03b1\u03c2 / \u0395\u03c0\u03af\u03c3\u03b7\u03bc\u03b7 \u0395\u03c6\u03b7\u03bc\u03b5\u03c1\u03af\u03b4\u03b1",
+  "type_of_authority": "\u039d\u03bf\u03bc\u03bf\u03b8\u03b5\u03c3\u03af\u03b1 (Legislation)",
+  "language": "Greek",
+  "legal_link": "https://www.cylaw.org/nomoi/arith/2026_1_115.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "General Case Law",
+      "national",
+      "citizens",
+      "legal professionals",
+      "researchers",
+      "businesses",
+      "binding law",
+      "judgment and case law",
+      "summary",
+      "overview",
+      "secondary source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-27T19:18:55.530Z",
+  "portal": "www.cylaw.org",
+  "portal_name": "CYPRUS - CYLAW",
+  "last_updated": "2026-05-27T19:18:55.530Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 1474617,
+    "timestamp": "2026-05-27T08:38:29.766841"
+  }
+}

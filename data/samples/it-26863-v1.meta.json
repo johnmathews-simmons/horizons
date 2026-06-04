@@ -1,0 +1,64 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:28Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=IT&portal=mef.gov.it/en&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=IT&portal=mef.gov.it/en&limit=1",
+    "portal_name": "Italy MEF (English)"
+  },
+  "document_id": 26863,
+  "title": "Update to the Economic and Financial Document 2016",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Italy",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Ministero dell'Economia e delle Finanze",
+  "type_of_authority": "",
+  "language": "English",
+  "legal_link": "https://www.dt.mef.gov.it/modules/documenti_en/analisi_progammazione/documenti_programmatici/Update_of_the_2016_EFD_.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Public Finance and Budget Law",
+      "Tax Law",
+      "Financial Services",
+      "national",
+      "ministry",
+      "government",
+      "public sector entities",
+      "businesses",
+      "financial institutions",
+      "policy makers",
+      "the general public",
+      "overview",
+      "news and updates",
+      "policy documents",
+      "announcement",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-04-29T16:54:07.213Z",
+  "portal": "mef.gov.it/en",
+  "portal_name": "Italy MEF (English)",
+  "last_updated": "2026-04-29T16:54:07.213Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 3395678,
+    "timestamp": "2026-04-29T16:54:06.409060"
+  }
+}

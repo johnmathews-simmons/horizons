@@ -1,0 +1,57 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:08Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=CZ&portal=e-sbirka.gov.cz&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=CZ&portal=e-sbirka.gov.cz&limit=1",
+    "portal_name": "E-Sb\u00edrka"
+  },
+  "document_id": 29662776,
+  "title": "Z\u00e1kon, kter\u00fdm se m\u011bn\u00ed z\u00e1kon \u010d. 361/2000 Sb., o provozu na pozemn\u00edch komunikac\u00edch a o zm\u011bn\u00e1ch n\u011bkter\u00fdch z\u00e1kon\u016f, ve zn\u011bn\u00ed pozd\u011bj\u0161\u00edch p\u0159edpis\u016f, z\u00e1kon \u010d. 200/1990 Sb., o p\u0159estupc\u00edch, ve zn\u011bn\u00ed pozd\u011bj\u0161\u00edch p\u0159edpis\u016f, z\u00e1kon \u010d. 247/2000 Sb., o z\u00edsk\u00e1v\u00e1n\u00ed a zdokonalov\u00e1n\u00ed odborn\u00e9 zp\u016fsobilosti k \u0159\u00edzen\u00ed motorov\u00fdch vozidel a o zm\u011bn\u00e1ch n\u011bkter\u00fdch z\u00e1kon\u016f, ve zn\u011bn\u00ed pozd\u011bj\u0161\u00edch p\u0159edpis\u016f, a n\u011bkter\u00e9 dal\u0161\u00ed z\u00e1kony",
+  "section_title": "Minul\u00e9 zn\u011bn\u00ed \u00fa\u010dinn\u00e9 1. 1. 2010 - 30. 6. 2017",
+  "jurisdiction": {
+    "country": "Czech Republic",
+    "state": ""
+  },
+  "publication_date": "2005-10-16T00:00:000Z",
+  "effective_date": "2010-01-01T00:00:000Z",
+  "expiration_date": "",
+  "date_of_enactment": "2005-09-21T00:00:000Z",
+  "date_of_last_amendment": "",
+  "issuing_authority": "E-Sb\u00edrka",
+  "type_of_authority": "Legislativa",
+  "language": "Czech",
+  "legal_link": "https://e-sbirka.gov.cz/sb/2005/411/2010-01-01?zalozka=text",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "national",
+      "government agency",
+      "the general public",
+      "legal professionals",
+      "public sector entities",
+      "businesses",
+      "binding law",
+      "implementation measure",
+      "amendment",
+      "regulation",
+      "decree",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "411/2005 Sb.",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-22T13:16:58.488Z",
+  "portal": "e-sbirka.gov.cz",
+  "portal_name": "E-Sb\u00edrka",
+  "last_updated": "2026-05-22T13:16:58.488Z",
+  "file_data": {}
+}

@@ -1,0 +1,458 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:40Z",
+    "target_count": 30
+  },
+  "fixtures": [
+    {
+      "iso": "AD",
+      "portal_url": "bopa.ad",
+      "portal_name": "Butllet\u00ed Oficial del Principat d'Andorra (BOPA)",
+      "document_id": "8936928",
+      "version": 1,
+      "title": "Edicte del 26-8-2020 pel qual es fa p\u00fablica l\u2019adjudicaci\u00f3 definitiva dels treballs de prestaci\u00f3 de serveis per donar suport al control pressupostari del qual \u00e9s titular la Intervenci\u00f3 General",
+      "type_of_authority": "Legislaci\u00f3",
+      "language": "Catalan",
+      "markdown_kb": 4.7,
+      "files": {
+        "markdown": "ad-8936928-v1.md",
+        "meta": "ad-8936928-v1.meta.json"
+      }
+    },
+    {
+      "iso": "AE",
+      "portal_url": "bayanat.ae/en",
+      "portal_name": "UAE Open Data Portal (English)",
+      "document_id": "26813422",
+      "version": 1,
+      "title": "Smart Data Strategy",
+      "type_of_authority": "Publication",
+      "language": "English",
+      "markdown_kb": 34.4,
+      "files": {
+        "markdown": "ae-26813422-v1.md",
+        "meta": "ae-26813422-v1.meta.json"
+      }
+    },
+    {
+      "iso": "AL",
+      "portal_url": "qbz.gov.al",
+      "portal_name": "Qendra e Botimeve Zyrtare",
+      "document_id": "31592917",
+      "version": 1,
+      "title": "P\u00ebr miratimin dhe publikimin zyrtar t\u00eb Nomenklatur\u00ebs s\u00eb Kombinuar t\u00eb Mallrave 2024",
+      "type_of_authority": "Akte",
+      "language": "Albanian",
+      "markdown_kb": 3714.8,
+      "files": {
+        "markdown": "al-31592917-v1.md",
+        "meta": "al-31592917-v1.meta.json"
+      }
+    },
+    {
+      "iso": "AT",
+      "portal_url": "www.ris.bka.gv.at",
+      "portal_name": "Rechtsinformationssystem des Bundes (RIS)",
+      "document_id": "32061749",
+      "version": 1,
+      "title": "Bundesverwaltungsgericht (BVwG) 28.07.2025 G307 2312334-1",
+      "type_of_authority": "Entscheidung",
+      "language": "German",
+      "markdown_kb": 14.1,
+      "files": {
+        "markdown": "at-32061749-v1.md",
+        "meta": "at-32061749-v1.meta.json"
+      }
+    },
+    {
+      "iso": "AU",
+      "portal_url": "www.legislation.gov.au",
+      "portal_name": "Australia Federal Register of Legislation",
+      "document_id": "2145602",
+      "version": 1,
+      "title": "Social Security (AGDRP\u2014Ex-Tropical Cyclone Alfred\u2014New South Wales) Determination (No. 3) 2025",
+      "type_of_authority": "Legislative Instrument",
+      "language": "English",
+      "markdown_kb": 5.0,
+      "files": {
+        "markdown": "au-2145602-v1.md",
+        "meta": "au-2145602-v1.meta.json"
+      }
+    },
+    {
+      "iso": "BE",
+      "portal_url": "employment.belgium.be",
+      "portal_name": "Belgium Federal - FPS Labour (English)",
+      "document_id": "19194112",
+      "version": 1,
+      "title": "Analysis of work-related psychosocial risks Questionnaire",
+      "type_of_authority": "guidelines",
+      "language": "English",
+      "markdown_kb": 39.0,
+      "files": {
+        "markdown": "be-19194112-v1.md",
+        "meta": "be-19194112-v1.meta.json"
+      }
+    },
+    {
+      "iso": "BR",
+      "portal_url": "www.gov.br",
+      "portal_name": "Brazil Receita Federal",
+      "document_id": "32455517",
+      "version": 1,
+      "title": "Brasil lidera coaliz\u00e3o que acelera metas clim\u00e1ticas nacionais de 140 pa\u00edses e 120 institui\u00e7\u00f5es em reuni\u00e3o na Dinamarca",
+      "type_of_authority": "Noticias",
+      "language": "Portuguese",
+      "markdown_kb": 4.6,
+      "files": {
+        "markdown": "br-32455517-v1.md",
+        "meta": "br-32455517-v1.meta.json"
+      }
+    },
+    {
+      "iso": "CH",
+      "portal_url": "www.parlament.ch",
+      "portal_name": "Swiss Parliament (English)",
+      "document_id": "20950489",
+      "version": 1,
+      "title": "Keine Abgangsentsch\u00e4digungen mehr f\u00fcr Topkader der Bundesverwaltung und von bundesnahen Betrieben",
+      "type_of_authority": "Medienmitteilung",
+      "language": "German",
+      "markdown_kb": 4.4,
+      "files": {
+        "markdown": "ch-20950489-v1.md",
+        "meta": "ch-20950489-v1.meta.json"
+      }
+    },
+    {
+      "iso": "CN",
+      "portal_url": "www.cac.gov.cn",
+      "portal_name": "CAC_GOV",
+      "document_id": "1353327",
+      "version": 1,
+      "title": "\u5173\u4e8e\u52a0\u5f3a\u515a\u653f\u673a\u5173\u7f51\u7ad9\u5b89\u5168\u7ba1\u7406\u7684\u901a\u77e5",
+      "type_of_authority": "Administrative Regulation",
+      "language": "Chinese",
+      "markdown_kb": 11.5,
+      "files": {
+        "markdown": "cn-1353327-v1.md",
+        "meta": "cn-1353327-v1.meta.json"
+      }
+    },
+    {
+      "iso": "CY",
+      "portal_url": "www.cylaw.org",
+      "portal_name": "CYPRUS - CYLAW",
+      "document_id": "31683899",
+      "version": 1,
+      "title": "\u039d. 115(I)/2026 - \u039f \u03c0\u03b5\u03c1\u03af \u03a0\u03c1\u03bf\u03c3\u03c6\u03cd\u03b3\u03c9\u03bd \u039d\u03cc\u03bc\u03bf\u03c2 \u03c4\u03bf\u03c5 2026",
+      "type_of_authority": "\u039d\u03bf\u03bc\u03bf\u03b8\u03b5\u03c3\u03af\u03b1 (Legislation)",
+      "language": "Greek",
+      "markdown_kb": 591.0,
+      "files": {
+        "markdown": "cy-31683899-v1.md",
+        "meta": "cy-31683899-v1.meta.json"
+      }
+    },
+    {
+      "iso": "CZ",
+      "portal_url": "e-sbirka.gov.cz",
+      "portal_name": "E-Sb\u00edrka",
+      "document_id": "29662776",
+      "version": 1,
+      "title": "Z\u00e1kon, kter\u00fdm se m\u011bn\u00ed z\u00e1kon \u010d. 361/2000 Sb., o provozu na pozemn\u00edch komunikac\u00edch a o zm\u011bn\u00e1ch n\u011bkter\u00fdch z\u00e1kon\u016f, ve zn\u011bn\u00ed pozd\u011bj\u0161\u00edch p\u0159edpis\u016f, z\u00e1kon \u010d. 200/1990 Sb., o p\u0159estupc\u00edch, ve zn\u011bn\u00ed pozd\u011bj\u0161\u00edch p\u0159edpis\u016f, z\u00e1kon \u010d. 247/2000 Sb., o z\u00edsk\u00e1v\u00e1n\u00ed a zdokonalov\u00e1n\u00ed odborn\u00e9 zp\u016fsobilosti k \u0159\u00edzen\u00ed motorov\u00fdch vozidel a o zm\u011bn\u00e1ch n\u011bkter\u00fdch z\u00e1kon\u016f, ve zn\u011bn\u00ed pozd\u011bj\u0161\u00edch p\u0159edpis\u016f, a n\u011bkter\u00e9 dal\u0161\u00ed z\u00e1kony",
+      "type_of_authority": "Legislativa",
+      "language": "Czech",
+      "markdown_kb": 131.1,
+      "files": {
+        "markdown": "cz-29662776-v1.md",
+        "meta": "cz-29662776-v1.meta.json"
+      }
+    },
+    {
+      "iso": "DE",
+      "portal_url": "www.arbeitsagentur.de/en",
+      "portal_name": "Bundesagentur f\u00fcr Arbeit (English)",
+      "document_id": "20951816",
+      "version": 1,
+      "title": "Arbeitsmarkt im Februar 2026",
+      "type_of_authority": "News",
+      "language": "English",
+      "markdown_kb": 4.7,
+      "files": {
+        "markdown": "de-20951816-v1.md",
+        "meta": "de-20951816-v1.meta.json"
+      }
+    },
+    {
+      "iso": "DK",
+      "portal_url": "en.fm.dk",
+      "portal_name": "Denmark Finansministeriet (English)",
+      "document_id": "18087738",
+      "version": 1,
+      "title": "Central government financing requirements for 2025 and 2026",
+      "type_of_authority": "News",
+      "language": "English",
+      "markdown_kb": 2.5,
+      "files": {
+        "markdown": "dk-18087738-v1.md",
+        "meta": "dk-18087738-v1.meta.json"
+      }
+    },
+    {
+      "iso": "ES",
+      "portal_url": "sede.agenciatributaria.gob.es",
+      "portal_name": "Agencia Tributaria Espa\u00f1ola",
+      "document_id": "28885109",
+      "version": 1,
+      "title": "Manual pr\u00e1ctico IVA 2019",
+      "type_of_authority": "Manuales pr\u00e1cticos",
+      "language": "Spanish",
+      "markdown_kb": 1748.8,
+      "files": {
+        "markdown": "es-28885109-v1.md",
+        "meta": "es-28885109-v1.meta.json"
+      }
+    },
+    {
+      "iso": "EU",
+      "portal_url": "berec.europa.eu",
+      "portal_name": "The Body of European Regulators for Electronic Communications",
+      "document_id": "31366184",
+      "version": 1,
+      "title": "BEREC to present Digital Networks Act assessment at upcoming public debriefing",
+      "type_of_authority": "News",
+      "language": "English",
+      "markdown_kb": 2.8,
+      "files": {
+        "markdown": "eu-31366184-v1.md",
+        "meta": "eu-31366184-v1.meta.json"
+      }
+    },
+    {
+      "iso": "FI",
+      "portal_url": "www.finanssiala.fi",
+      "portal_name": "Finanssialary (English)",
+      "document_id": "28628500",
+      "version": 1,
+      "title": "Lausunto asuntos\u00e4\u00e4st\u00f6j\u00e4rjestelm\u00e4n (ASP) enimm\u00e4islainam\u00e4\u00e4rien yksinkertaistamisesta ja korottamisesta",
+      "type_of_authority": "Lausunnot (Statements)",
+      "language": "Finnish",
+      "markdown_kb": 3.0,
+      "files": {
+        "markdown": "fi-28628500-v1.md",
+        "meta": "fi-28628500-v1.meta.json"
+      }
+    },
+    {
+      "iso": "FJ",
+      "portal_url": "www.investinfiji.today",
+      "portal_name": "INVERSTINFIJI_TODAY",
+      "document_id": "3534070",
+      "version": 1,
+      "title": "Unit Titles Act",
+      "type_of_authority": "Acts",
+      "language": "English",
+      "markdown_kb": 134.4,
+      "files": {
+        "markdown": "fj-3534070-v1.md",
+        "meta": "fj-3534070-v1.meta.json"
+      }
+    },
+    {
+      "iso": "FR",
+      "portal_url": "acpr.banque-france.fr",
+      "portal_name": "L\u2019Autorit\u00e9 de contr\u00f4le prudentiel et de r\u00e9solution",
+      "document_id": "31702142",
+      "version": 1,
+      "title": "",
+      "type_of_authority": "D\u00e9cision",
+      "language": "French",
+      "markdown_kb": 52.2,
+      "files": {
+        "markdown": "fr-31702142-v1.md",
+        "meta": "fr-31702142-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "caselaw.nationalarchives.gov.uk",
+      "portal_name": "The national archives - Case Law",
+      "document_id": "28914588",
+      "version": 1,
+      "title": "Darron Foat v Department of Work and Pensions",
+      "type_of_authority": "Judgment and decision",
+      "language": "English",
+      "markdown_kb": 65.7,
+      "files": {
+        "markdown": "gb-28914588-v1.md",
+        "meta": "gb-28914588-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GE",
+      "portal_url": "matsne.gov.ge",
+      "portal_name": "Georgia Matsne",
+      "document_id": "4446542",
+      "version": 1,
+      "title": "\u10d2\u10d0\u10e0\u10d4\u10db\u10dd\u10e1\u10d3\u10d0\u10ea\u10d5\u10d8\u10d7\u10d8 \u10e8\u10d4\u10e4\u10d0\u10e1\u10d4\u10d1\u10d8\u10e1 \u10d9\u10dd\u10d3\u10d4\u10e5\u10e1\u10e8\u10d8 \u10ea\u10d5\u10da\u10d8\u10da\u10d4\u10d1\u10d8\u10e1 \u10e8\u10d4\u10e2\u10d0\u10dc\u10d8\u10e1 \u10e8\u10d4\u10e1\u10d0\u10ee\u10d4\u10d1",
+      "type_of_authority": "\u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd\u10e1 \u10d9\u10d0\u10dc\u10dd\u10dc\u10d8",
+      "language": "Georgian",
+      "markdown_kb": 3.0,
+      "files": {
+        "markdown": "ge-4446542-v1.md",
+        "meta": "ge-4446542-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GR",
+      "portal_url": "ministryofjustice.gr",
+      "portal_name": "MinistryOfJustice",
+      "document_id": "3539403",
+      "version": 1,
+      "title": "\u0395\u0393\u039a\u03a5\u039a\u039b\u0399\u039f\u03a3 \u03a5\u03a0\u2019 \u0391\u03a1\u0399\u0398. 1/2025",
+      "type_of_authority": "",
+      "language": "Greek",
+      "markdown_kb": 10.5,
+      "files": {
+        "markdown": "gr-3539403-v1.md",
+        "meta": "gr-3539403-v1.meta.json"
+      }
+    },
+    {
+      "iso": "HR",
+      "portal_url": "narodne-novine.nn.hr",
+      "portal_name": "Narodne Novine",
+      "document_id": "6339302",
+      "version": 1,
+      "title": "Rje\u0161enje o razrje\u0161enju \u010dlanova Komisije za za\u0161titu bilja Ministarstva poljoprivrede i \u0161umarstva 0",
+      "type_of_authority": "Rje\u0161enje",
+      "language": "Croatian",
+      "markdown_kb": 0.7,
+      "files": {
+        "markdown": "hr-6339302-v1.md",
+        "meta": "hr-6339302-v1.meta.json"
+      }
+    },
+    {
+      "iso": "HU",
+      "portal_url": "njt.jog.gov.hu",
+      "portal_name": "Hungary National Legislation Database",
+      "document_id": "9119685",
+      "version": 1,
+      "title": "33/2012. (V. 11.) NEFMI rendelet",
+      "type_of_authority": "Jogszab\u00e1lyok",
+      "language": "Hungarian",
+      "markdown_kb": 12.9,
+      "files": {
+        "markdown": "hu-9119685-v1.md",
+        "meta": "hu-9119685-v1.meta.json"
+      }
+    },
+    {
+      "iso": "IE",
+      "portal_url": "cro.ie",
+      "portal_name": "Corporate Publications",
+      "document_id": "8064194",
+      "version": 1,
+      "title": "CRO Social Media Policy",
+      "type_of_authority": "Rule",
+      "language": "English",
+      "markdown_kb": 4.6,
+      "files": {
+        "markdown": "ie-8064194-v1.md",
+        "meta": "ie-8064194-v1.meta.json"
+      }
+    },
+    {
+      "iso": "IT",
+      "portal_url": "mef.gov.it/en",
+      "portal_name": "Italy MEF (English)",
+      "document_id": "26863",
+      "version": 1,
+      "title": "Update to the Economic and Financial Document 2016",
+      "type_of_authority": "",
+      "language": "English",
+      "markdown_kb": 382.9,
+      "files": {
+        "markdown": "it-26863-v1.md",
+        "meta": "it-26863-v1.meta.json"
+      }
+    },
+    {
+      "iso": "JP",
+      "portal_url": "laws.e-gov.go.jp",
+      "portal_name": "Laws EGOV GO JP",
+      "document_id": "1771371",
+      "version": 1,
+      "title": "\u9632\u885b\u88c5\u5099\u5e81\u53d7\u8a17\u8a66\u9a13\u7814\u7a76\u898f\u5247",
+      "type_of_authority": "Ministerial ordinance",
+      "language": "Japanese",
+      "markdown_kb": 4.1,
+      "files": {
+        "markdown": "jp-1771371-v1.md",
+        "meta": "jp-1771371-v1.meta.json"
+      }
+    },
+    {
+      "iso": "KR",
+      "portal_url": "www.law.go.kr",
+      "portal_name": "\uad6d\uc138\ubc95\ub839\uc815\ubcf4\uc2dc\uc2a4\ud15c",
+      "document_id": "5412226",
+      "version": 1,
+      "title": "\ub300\uc804\uad11\uc5ed\uc2dc \ub300\ub355\uad6c \uc18c\ud1b5 \ubc0f \ud64d\ubcf4\ub9e4\uccb4 \uc6b4\uc601\uc5d0 \uad00\ud55c \uc870\ub840",
+      "type_of_authority": "Ordinance",
+      "language": "Korean",
+      "markdown_kb": 9.2,
+      "files": {
+        "markdown": "kr-5412226-v1.md",
+        "meta": "kr-5412226-v1.meta.json"
+      }
+    },
+    {
+      "iso": "LU",
+      "portal_url": "space-agency.public.lu",
+      "portal_name": "Luxembourg Space Agency",
+      "document_id": "5444178",
+      "version": 1,
+      "title": "TEN GOOD REASONS TO CHOOSE LUXEMBOURG",
+      "type_of_authority": "Publication",
+      "language": "English",
+      "markdown_kb": 25.9,
+      "files": {
+        "markdown": "lu-5444178-v1.md",
+        "meta": "lu-5444178-v1.meta.json"
+      }
+    },
+    {
+      "iso": "LV",
+      "portal_url": "likumi.lv",
+      "portal_name": "Latvijas Republikas Ties\u012bbu Akti",
+      "document_id": "34988027",
+      "version": 1,
+      "title": "Latvijas Atvese\u013co\u0161anas un notur\u012bbas meh\u0101nisma pl\u0101na otr\u0101s komponentes \"Digit\u0101l\u0101 transform\u0101cija\" 2.3. reformu un invest\u012bciju virziena \"Digit\u0101l\u0101s prasmes\" 2.3.2.reformas \"Digit\u0101l\u0101s prasmes sabiedr\u012bbas un p\u0101rvaldes digit\u0101lajai transform\u0101cijai\" 2.3.2.3.i. invest\u012bcijas \"Digit\u0101l\u0101s plaisas mazin\u0101\u0161ana soci\u0101li neaizsarg\u0101taj\u0101m grup\u0101m un izgl\u012bt\u012bbas iest\u0101d\u0113s\"\u012bsteno\u0161anas noteikumi",
+      "type_of_authority": "noteikumi",
+      "language": "Latvian",
+      "markdown_kb": 56.4,
+      "files": {
+        "markdown": "lv-34988027-v1.md",
+        "meta": "lv-34988027-v1.meta.json"
+      }
+    },
+    {
+      "iso": "MC",
+      "portal_url": "journaldemonaco.gouv.mc",
+      "portal_name": "Journal de Monaco",
+      "document_id": "7574537",
+      "version": 1,
+      "title": "",
+      "type_of_authority": "",
+      "language": "French",
+      "markdown_kb": 156.1,
+      "files": {
+        "markdown": "mc-7574537-v1.md",
+        "meta": "mc-7574537-v1.meta.json"
+      }
+    }
+  ]
+}

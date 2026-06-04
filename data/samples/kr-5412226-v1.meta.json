@@ -1,0 +1,58 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:32Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=KR&portal=www.law.go.kr&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=KR&portal=www.law.go.kr&limit=1",
+    "portal_name": "\uad6d\uc138\ubc95\ub839\uc815\ubcf4\uc2dc\uc2a4\ud15c"
+  },
+  "document_id": 5412226,
+  "title": "\ub300\uc804\uad11\uc5ed\uc2dc \ub300\ub355\uad6c \uc18c\ud1b5 \ubc0f \ud64d\ubcf4\ub9e4\uccb4 \uc6b4\uc601\uc5d0 \uad00\ud55c \uc870\ub840",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Korea",
+    "state": ""
+  },
+  "publication_date": "2022-12-16T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "",
+  "type_of_authority": "Ordinance",
+  "language": "Korean",
+  "legal_link": "https://www.law.go.kr/ordinInfoP.do?urlMode=ordinScJoRltInfoR&viewCls=ordinInfoP&ordinSeq=1757671",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Tax Law",
+      "national",
+      "government agency",
+      "citizens",
+      "businesses",
+      "legal professionals",
+      "compliance officers",
+      "binding law",
+      "regulation",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-27T16:29:57.030Z",
+  "portal": "www.law.go.kr",
+  "portal_name": "\uad6d\uc138\ubc95\ub839\uc815\ubcf4\uc2dc\uc2a4\ud15c",
+  "last_updated": "2026-04-27T16:29:57.030Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

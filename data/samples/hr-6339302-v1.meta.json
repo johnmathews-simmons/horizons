@@ -1,0 +1,43 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:24Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=HR&portal=narodne-novine.nn.hr&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=HR&portal=narodne-novine.nn.hr&limit=1",
+    "portal_name": "Narodne Novine"
+  },
+  "document_id": 6339302,
+  "title": "Rje\u0161enje o razrje\u0161enju \u010dlanova Komisije za za\u0161titu bilja Ministarstva poljoprivrede i \u0161umarstva 0",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Croatia",
+    "state": ""
+  },
+  "publication_date": "2002-05-07T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "MINISTARSTVO POLJOPRIVREDE I \u0160UMARSTVA",
+  "type_of_authority": "Rje\u0161enje",
+  "language": "Croatian",
+  "legal_link": "https://narodne-novine.nn.hr/clanci/sluzbeni/2002_05_50_979.html",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": null
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "NN 50/2002",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-15T12:00:44.311Z",
+  "portal": "narodne-novine.nn.hr",
+  "portal_name": "Narodne Novine",
+  "last_updated": "2026-05-15T12:00:44.311Z",
+  "file_data": {}
+}

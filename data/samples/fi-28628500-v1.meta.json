@@ -1,0 +1,67 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:16Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=FI&portal=www.finanssiala.fi&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=FI&portal=www.finanssiala.fi&limit=1",
+    "portal_name": "Finanssialary (English)"
+  },
+  "document_id": 28628500,
+  "title": "Lausunto asuntos\u00e4\u00e4st\u00f6j\u00e4rjestelm\u00e4n (ASP) enimm\u00e4islainam\u00e4\u00e4rien yksinkertaistamisesta ja korottamisesta",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Finland",
+    "state": ""
+  },
+  "publication_date": "2026-04-17T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Finanssiala ry",
+  "type_of_authority": "Lausunnot (Statements)",
+  "language": "Finnish",
+  "legal_link": "https://www.finanssiala.fi/lausunnot/lausunto-asuntosaastojarjestelman-asp-enimmaislainamaarien-yksinkertaistamisesta-ja-korottamisesta/",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "self-regulatory organization",
+      "national",
+      "financial institutions",
+      "businesses",
+      "policy makers",
+      "trade associations",
+      "regulators",
+      "policy documents",
+      "position papers",
+      "press release",
+      "news and updates",
+      "analysis",
+      "guidelines",
+      "annual reports",
+      "statistical reports",
+      "consultation",
+      "official source",
+      "reference document"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-28T08:30:44.116Z",
+  "portal": "www.finanssiala.fi",
+  "portal_name": "Finanssialary (Finnish)",
+  "last_updated": "2026-04-28T08:30:44.116Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 97793,
+    "timestamp": "2026-04-22T07:30:37.068048"
+  }
+}

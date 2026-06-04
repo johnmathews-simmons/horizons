@@ -1,0 +1,64 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:37:53Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=AL&portal=qbz.gov.al&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=AL&portal=qbz.gov.al&limit=1",
+    "portal_name": "Qendra e Botimeve Zyrtare"
+  },
+  "document_id": 31592917,
+  "title": "P\u00ebr miratimin dhe publikimin zyrtar t\u00eb Nomenklatur\u00ebs s\u00eb Kombinuar t\u00eb Mallrave 2024",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Albania",
+    "state": ""
+  },
+  "publication_date": "2023-12-29T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "2023-12-28T00:00:000Z",
+  "date_of_last_amendment": "",
+  "issuing_authority": "K\u00ebshilli i Ministrave",
+  "type_of_authority": "Akte",
+  "language": "Albanian",
+  "legal_link": "https://qbz.gov.al/alfresco/api/-default-/public/alfresco/versions/1/nodes/6fdd085a-ab3f-40e7-8f63-f4502f126277/content?attachment=false",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "national",
+      "government agency",
+      "the general public",
+      "legal professionals",
+      "public sector entities",
+      "businesses",
+      "policy makers",
+      "binding law",
+      "implementation measure",
+      "decision",
+      "decree",
+      "amendment",
+      "regulation",
+      "news and updates",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "816",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-27T04:46:12.390Z",
+  "portal": "qbz.gov.al",
+  "portal_name": "Qendra e Botimeve Zyrtare",
+  "last_updated": "2026-05-27T04:46:12.390Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 32674838,
+    "timestamp": "2026-05-25T20:34:08.027030"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:40Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=MC&portal=journaldemonaco.gouv.mc&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=MC&portal=journaldemonaco.gouv.mc&limit=1",
+    "portal_name": "Journal de Monaco"
+  },
+  "document_id": 7574537,
+  "title": "",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Monaco",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Journal de Monaco",
+  "type_of_authority": "",
+  "language": "French",
+  "legal_link": "https://journaldemonaco.gouv.mc/content/download/161953/3786323/file/JO%208.360_PROPRIETE%20INDUSTRIELLE%20253.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": null
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-17T05:42:54.418Z",
+  "portal": "journaldemonaco.gouv.mc",
+  "portal_name": "Journal de Monaco",
+  "last_updated": "2026-05-17T05:42:54.418Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 5620460,
+    "timestamp": "2026-05-14T04:50:03.417096"
+  }
+}

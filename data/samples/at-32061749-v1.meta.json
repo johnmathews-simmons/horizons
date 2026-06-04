@@ -1,0 +1,59 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:37:56Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=AT&portal=www.ris.bka.gv.at&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=AT&portal=www.ris.bka.gv.at&limit=1",
+    "portal_name": "Rechtsinformationssystem des Bundes (RIS)"
+  },
+  "document_id": 32061749,
+  "title": "Bundesverwaltungsgericht (BVwG) 28.07.2025 G307 2312334-1",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Austria",
+    "state": ""
+  },
+  "publication_date": "2025-07-28T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "2026-01-30T00:00:000Z",
+  "issuing_authority": "Bundesverwaltungsgericht (BVwG)",
+  "type_of_authority": "Entscheidung",
+  "language": "German",
+  "legal_link": "https://ris.bka.gv.at/Dokument.wxe?ResultFunctionToken=b6aa53f5-ad23-4d68-a973-7ada614f805f&Position=8101&Abfrage=Bvwg&Entscheidungsart=Undefined&SucheNachRechtssatz=True&SucheNachText=True&GZ=&VonDatum=01.01.2025&BisDatum=31.12.2025&Norm=&ImRisSeitVonDatum=&ImRisSeitBisDatum=&ImRisSeit=Undefined&ResultPageSize=100&Suchworte=&Dokumentnummer=BVWGT_20250728_G307_2312334_1_00",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "General Case Law",
+      "national",
+      "government",
+      "legislative body",
+      "legal professionals",
+      "policy makers",
+      "lawmakers",
+      "citizens",
+      "binding law",
+      "regulation",
+      "official commentary",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "G307 2312334-1",
+  "source_secondary_identifier": "ECLI:AT:BVWG:2025:G307.2312334.1.00",
+  "date_of_repealed": "",
+  "date_of_decision": "2025-07-28T00:00:000Z",
+  "summary": "",
+  "tags": "",
+  "source_keywords": [
+    "Aussetzung Landesgericht Verfahrensausgang"
+  ],
+  "crawling_date": "2026-05-30T15:33:12.191Z",
+  "portal": "www.ris.bka.gv.at",
+  "portal_name": "Rechtsinformationssystem des Bundes (RIS)",
+  "last_updated": "2026-05-30T15:33:12.191Z",
+  "file_data": {}
+}

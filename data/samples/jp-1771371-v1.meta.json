@@ -1,0 +1,67 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:30Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=JP&portal=laws.e-gov.go.jp&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=JP&portal=laws.e-gov.go.jp&limit=1",
+    "portal_name": "Laws EGOV GO JP"
+  },
+  "document_id": 1771371,
+  "title": "\u9632\u885b\u88c5\u5099\u5e81\u53d7\u8a17\u8a66\u9a13\u7814\u7a76\u898f\u5247",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Japan",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "2021-01-29T00:00:000Z",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "",
+  "type_of_authority": "Ministerial ordinance",
+  "language": "Japanese",
+  "legal_link": "https://laws.e-gov.go.jp/law/333M50000002028/20210129_503M60002000001",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "national",
+      "government",
+      "government agency",
+      "citizens",
+      "businesses",
+      "public sector entities",
+      "legal professionals",
+      "regulators",
+      "policy makers",
+      "binding law",
+      "regulation",
+      "implementation measure",
+      "forms",
+      "guidelines",
+      "notification",
+      "official source",
+      "translation",
+      "reference document"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-24T17:49:15.928Z",
+  "portal": "laws.e-gov.go.jp",
+  "portal_name": "Laws EGOV GO JP",
+  "last_updated": "2026-04-24T17:49:15.928Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

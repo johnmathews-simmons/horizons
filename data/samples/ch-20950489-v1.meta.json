@@ -1,0 +1,55 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:03Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=CH&portal=www.parlament.ch&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=CH&portal=www.parlament.ch&limit=1",
+    "portal_name": "Swiss Parliament (English)"
+  },
+  "document_id": 20950489,
+  "title": "Keine Abgangsentsch\u00e4digungen mehr f\u00fcr Topkader der Bundesverwaltung und von bundesnahen Betrieben",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Switzerland",
+    "state": ""
+  },
+  "publication_date": "2026-02-18T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Die Bundesversammlung \u2014 Das Schweizer Parlament",
+  "type_of_authority": "Medienmitteilung",
+  "language": "German",
+  "legal_link": "https://www.parlament.ch/press-releases/Pages/mm-spks-s-2026-02-18.aspx?lang=1031",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "national",
+      "citizens",
+      "lawmakers",
+      "legal professionals",
+      "bill",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "Abgangsentsch\u00e4digungen f\u00fcr Kaderpersonen in der Bundesverwaltung gaben in den vergangenen Jahren wiederholt zu Diskussionen Anlass. Die Staatspolitische Kommission\u2026",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-28T08:36:33.245Z",
+  "portal": "www.parlament.ch",
+  "portal_name": "Swiss Parliament (German)",
+  "last_updated": "2026-04-28T08:36:33.245Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

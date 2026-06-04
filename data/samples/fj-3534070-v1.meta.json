@@ -1,0 +1,58 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:18Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=FJ&portal=www.investinfiji.today&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=FJ&portal=www.investinfiji.today&limit=1",
+    "portal_name": "INVERSTINFIJI_TODAY"
+  },
+  "document_id": 3534070,
+  "title": "Unit Titles Act",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Fiji",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "",
+  "type_of_authority": "Acts",
+  "language": "English",
+  "legal_link": "https://www.investinfiji.today/wp-content/uploads/2018/01/Fiji-Unit-Titles-Act.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Information",
+      "national",
+      "government agency",
+      "businesses",
+      "investors",
+      "guidelines",
+      "policy documents",
+      "news and updates",
+      "educational material",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-24T15:48:56.305Z",
+  "portal": "www.investinfiji.today",
+  "portal_name": "INVERSTINFIJI_TODAY",
+  "last_updated": "2026-04-24T15:48:56.305Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

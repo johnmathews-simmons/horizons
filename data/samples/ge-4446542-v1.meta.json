@@ -1,0 +1,43 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:22Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GE&portal=matsne.gov.ge&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GE&portal=matsne.gov.ge&limit=1",
+    "portal_name": "Georgia Matsne"
+  },
+  "document_id": 4446542,
+  "title": "\u10d2\u10d0\u10e0\u10d4\u10db\u10dd\u10e1\u10d3\u10d0\u10ea\u10d5\u10d8\u10d7\u10d8 \u10e8\u10d4\u10e4\u10d0\u10e1\u10d4\u10d1\u10d8\u10e1 \u10d9\u10dd\u10d3\u10d4\u10e5\u10e1\u10e8\u10d8 \u10ea\u10d5\u10da\u10d8\u10da\u10d4\u10d1\u10d8\u10e1 \u10e8\u10d4\u10e2\u10d0\u10dc\u10d8\u10e1 \u10e8\u10d4\u10e1\u10d0\u10ee\u10d4\u10d1",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Georgia",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "2024-01-01T00:00:000Z",
+  "expiration_date": "",
+  "date_of_enactment": "2023-11-30T00:00:000Z",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Matsne",
+  "type_of_authority": "\u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd\u10e1 \u10d9\u10d0\u10dc\u10dd\u10dc\u10d8",
+  "language": "Georgian",
+  "legal_link": "https://matsne.gov.ge/ka/document/view/5982717",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": null
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "3877-XIII\u10db\u10e1-X\u10db\u10de",
+  "source_secondary_identifier": "360160000.05.001.102088",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-09T03:17:56.170Z",
+  "portal": "matsne.gov.ge",
+  "portal_name": "Georgia Matsne",
+  "last_updated": "2026-05-09T03:17:56.170Z",
+  "file_data": {}
+}

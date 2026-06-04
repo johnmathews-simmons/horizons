@@ -1,0 +1,61 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:37:59Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=BE&portal=employment.belgium.be&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=BE&portal=employment.belgium.be&limit=1",
+    "portal_name": "Belgium Federal - FPS Labour (English)"
+  },
+  "document_id": 19194112,
+  "title": "Analysis of work-related psychosocial risks Questionnaire",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Belgium",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Federal Public Service Employment, Labour and Social Dialogue",
+  "type_of_authority": "guidelines",
+  "language": "English",
+  "legal_link": "https://employment.belgium.be/sites/default/files/content/publications/Guide_AnalysisRisks_Questionnaire.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Employment Law",
+      "Social Security and Welfare Law",
+      "federal",
+      "employees",
+      "employers",
+      "public sector entities",
+      "compliance officers",
+      "regulation",
+      "guidelines",
+      "policy documents",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [
+    "Well-being at work"
+  ],
+  "crawling_date": "2026-06-04T02:22:30.606Z",
+  "portal": "employment.belgium.be",
+  "portal_name": "Belgium Federal - FPS Labour (English)",
+  "last_updated": "2026-06-04T02:22:30.606Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 1364350,
+    "timestamp": "2026-01-15T11:27:05.639840"
+  }
+}

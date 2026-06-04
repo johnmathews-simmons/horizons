@@ -1,0 +1,60 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:37:51Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=AE&portal=bayanat.ae/en&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=AE&portal=bayanat.ae/en&limit=1",
+    "portal_name": "UAE Open Data Portal (English)"
+  },
+  "document_id": 26813422,
+  "title": "Smart Data Strategy",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "United Arab Emirates",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "UAE Open Data Portal",
+  "type_of_authority": "Publication",
+  "language": "English",
+  "legal_link": "https://assets.u.ae/api/public/content/f2a6328b5031427cbe8f863fe0fbf493?v=8924b2b3",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Information",
+      "national",
+      "government agency",
+      "the general public",
+      "researchers",
+      "businesses",
+      "academics",
+      "students",
+      "datasets",
+      "statistical reports",
+      "news and updates",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "Smart Data Strategy",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-28T08:17:33.803Z",
+  "portal": "bayanat.ae/en",
+  "portal_name": "UAE Open Data Portal (English)",
+  "last_updated": "2026-04-28T08:17:33.803Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 1915628,
+    "timestamp": "2026-04-17T13:34:56.074024"
+  }
+}

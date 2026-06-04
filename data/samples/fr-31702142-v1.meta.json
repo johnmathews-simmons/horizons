@@ -1,0 +1,66 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:19Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=FR&portal=acpr.banque-france.fr&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=FR&portal=acpr.banque-france.fr&limit=1",
+    "portal_name": "L\u2019Autorit\u00e9 de contr\u00f4le prudentiel et de r\u00e9solution"
+  },
+  "document_id": 31702142,
+  "title": "",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "France",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "2026-05-18T00:00:000Z",
+  "issuing_authority": "Autorit\u00e9 de Contr\u00f4le Prudentiel et de R\u00e9solution (ACPR)",
+  "type_of_authority": "D\u00e9cision",
+  "language": "French",
+  "legal_link": "https://acpr.banque-france.fr/system/files/2026-05/20260518_d%C3%A9cision_SG.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "national",
+      "regulatory authority",
+      "independent agency",
+      "financial institutions",
+      "compliance officers",
+      "regulators",
+      "legal professionals",
+      "businesses",
+      "guidelines",
+      "enforcement decisions",
+      "policy documents",
+      "press release",
+      "annual reports",
+      "news and updates",
+      "regulation",
+      "statistical reports",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "2026-05-13T00:00:000Z",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-06-03T02:13:00.863Z",
+  "portal": "acpr.banque-france.fr",
+  "portal_name": "L\u2019Autorit\u00e9 de contr\u00f4le prudentiel et de r\u00e9solution",
+  "last_updated": "2026-06-03T02:13:00.863Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 353317,
+    "timestamp": "2026-05-29T02:11:25.849822"
+  }
+}

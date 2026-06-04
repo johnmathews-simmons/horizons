@@ -1,0 +1,65 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:13Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=ES&portal=sede.agenciatributaria.gob.es&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=ES&portal=sede.agenciatributaria.gob.es&limit=1",
+    "portal_name": "Agencia Tributaria Espa\u00f1ola"
+  },
+  "document_id": 28885109,
+  "title": "Manual pr\u00e1ctico IVA 2019",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Spain",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Agencia Estatal de Administraci\u00f3n Tributaria",
+  "type_of_authority": "Manuales pr\u00e1cticos",
+  "language": "Spanish",
+  "legal_link": "https://sede.agenciatributaria.gob.es/static_files/Sede/Biblioteca/Manual/Practicos/IVA/Manual_IVA_2019.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Tax Law",
+      "national",
+      "government agency",
+      "regulatory authority",
+      "citizens",
+      "businesses",
+      "the general public",
+      "legal professionals",
+      "regulation",
+      "guidelines",
+      "forms",
+      "FAQ / explanatory note",
+      "circulars",
+      "news and updates",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [
+    "IVA"
+  ],
+  "crawling_date": "2026-04-28T08:22:58.893Z",
+  "portal": "sede.agenciatributaria.gob.es",
+  "portal_name": "Agencia Tributaria Espa\u00f1ola",
+  "last_updated": "2026-04-28T08:22:58.893Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 4648758,
+    "timestamp": "2026-04-23T21:24:04.636332"
+  }
+}

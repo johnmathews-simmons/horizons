@@ -1,0 +1,66 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04T12:38:23Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GR&portal=ministryofjustice.gr&limit=1",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GR&portal=ministryofjustice.gr&limit=1",
+    "portal_name": "MinistryOfJustice"
+  },
+  "document_id": 3539403,
+  "title": "\u0395\u0393\u039a\u03a5\u039a\u039b\u0399\u039f\u03a3 \u03a5\u03a0\u2019 \u0391\u03a1\u0399\u0398. 1/2025",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "Greece",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "",
+  "type_of_authority": "",
+  "language": "Greek",
+  "legal_link": "https://ministryofjustice.gr/wp-content/uploads/2025/02/EGKYKLIOS_FORMATTED.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Law Enforcement",
+      "national",
+      "ministry",
+      "government agency",
+      "citizens",
+      "legal professionals",
+      "public sector entities",
+      "policy makers",
+      "lawmakers",
+      "judges",
+      "binding law",
+      "policy documents",
+      "guidelines",
+      "regulation",
+      "bill",
+      "amendment",
+      "official commentary",
+      "official source"
+    ]
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-04-24T15:52:12.385Z",
+  "portal": "ministryofjustice.gr",
+  "portal_name": "MinistryOfJustice",
+  "last_updated": "2026-04-24T15:52:12.385Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}
