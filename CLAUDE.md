@@ -46,14 +46,22 @@ These are load-bearing — don't relitigate them without checking with John firs
 
 ## Useful sample data
 
-`data/samples/ie-27732019-v1.md` is a real Irish Statute Book Act (~41 KB of markdown). It has dense `PART N` / `**N\.**` / `(N\)` / `(a)` / `(i)` clause structure and is a good fixture for the clause parser and diff engine when those exist.
+`data/samples/` holds 31 real legal documents in markdown from the Lawstronaut API — the original Irish Statute Book Act plus 30 round-robin captures across 30 jurisdictions and languages, collected 2026-06-04. Sizes range from 721 B (HR) to 3.8 MB (AL). Each document has a `<iso>-<docid>-v<n>.md` content file and a `.meta.json` sidecar with a `_provenance` block. `data/samples/fixtures.json` is the machine-readable inventory. The IE Act (`ie-27732019-v1.md`) has dense `PART N` / `**N\.**` / `(N\)` / `(a)` / `(i)` clause structure; the CZ document (`cz-29662776-v1.md`) is at the other extreme — clause structure expressed inline via `ČÁST PRVNÍ` / `Čl. I` / `N\.` with no markdown headings. The parser will need to handle both substrates.
 
 ## Commands
 
-There are no project-specific build / lint / test commands yet — the codebase has no code. When that changes, add:
+No package-level build / lint / test commands yet — the codebase has no application code. One ad-hoc script exists today:
+
+- **`uv run scripts/fetch_fixtures.py`** — log in to Lawstronaut (creds from `.env`, see `.env.example`), discover jurisdictions and portals, round-robin across them, and save up to 30 documents into `data/samples/` plus a `fixtures.json` index. Re-runnable; skips slugs that already exist on disk.
+
+When real application code lands, add:
 - How to install deps (`uv sync`).
-- How to run the watcher locally.
+- How to run the watcher / ingestion locally.
 - How to run the full test suite and a single test (`pytest path/to/test.py::test_name`).
-- How to build the container image and push to ACR.
+- How to build the container image and push to GHCR (per the global rule in `~/.claude/CLAUDE.md`).
 
 Update this section the moment those commands exist.
+
+## Journal cadence
+
+Global rule (`~/.claude/CLAUDE.md`): each project has a `/journal/` with dated entries (`yymmdd-descriptive-name.md`). Start an entry per session of substantive work — what was decided, what was learned, what's next. The first entry is `journal/260604-initial-design-and-fixtures.md`; read it before resuming work so you know which decisions are load-bearing and what next-session priorities the previous session left behind.
