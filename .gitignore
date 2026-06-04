@@ -1,0 +1,29 @@
+# Browser-automation captures — may contain JWTs or other secrets
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# uv
+.uv-cache/
+
+# Test / coverage artefacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

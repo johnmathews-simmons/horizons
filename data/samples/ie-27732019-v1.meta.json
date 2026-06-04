@@ -1,0 +1,61 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-04",
+    "endpoint": "GET https://api.lawstronaut.com/v2/contents?iso=IE&portal=www.irishstatutebook.ie&limit=1&offset=0",
+    "note": "First record returned by the endpoint at fetch time."
+  },
+  "document_id": 27732019,
+  "title": "Protection of Employees (Employers’ Insolvency) (Amendment) Act 2026",
+  "section_title": "",
+  "jurisdiction": { "country": "Ireland", "state": "" },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Office of the Attorney General (Ireland)",
+  "type_of_authority": "Act",
+  "language": "English",
+  "legal_link": "https://www.irishstatutebook.ie/2026/en/act/pub/0007/index.html",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "national",
+      "parliament",
+      "legislative body",
+      "citizens",
+      "legal professionals",
+      "policy makers",
+      "lawmakers",
+      "academics",
+      "students",
+      "businesses",
+      "binding law",
+      "regulation",
+      "amendment",
+      "official source",
+      "reference document",
+      "index entry"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-06-03T12:13:40.580Z",
+  "portal": "www.irishstatutebook.ie",
+  "portal_name": "Irish Statute Book",
+  "last_updated": "2026-06-03T12:13:40.580Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}
