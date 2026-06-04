@@ -22,8 +22,10 @@ horizons-api = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "alembic>=1.14",
     "asyncpg>=0.30",
     "pre-commit>=4.0",
+    "psycopg[binary]>=3.2",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=5.0",
