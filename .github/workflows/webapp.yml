@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies (clean)
         run: npm ci
 
-      - name: Lint (oxlint + eslint)
-        run: npm run lint
+      - name: Lint (oxlint + eslint, no --fix)
+        run: npm run lint:check
 
       - name: Build (vue-tsc + vite)
         run: npm run build
