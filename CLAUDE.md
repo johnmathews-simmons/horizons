@@ -6,7 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Horizons** is a commercial demo for a legal firm. The productionised product is a regulatory-change intelligence service intended for large multinational banks: it watches public legal sources and alerts customers to **upcoming** legal changes — laws, regulations, and official guidance that have been published but have not yet taken effect — so clients have lead time to prepare before the change is in force. The "horizon" in the name refers to this forward-looking framing: changes visible on the horizon, not changes already landed. Demo is scheduled for ~2026-06-08; public for 1–2 days while on display, so **all copy and sample data must be generic** — no firm name, no client names, no real bank names.
 
-The repo is in **early scaffolding**. The design-doc chain in `docs/` is complete; a `uv` workspace with three Python members (`packages/horizons-{core,ingestion,api}`) plus a Vue 3 webapp at `packages/horizons-webapp` is in place; `tests/` holds cross-package integration tests; ruff + pyright + pre-commit are wired at the workspace root. Application code, the database layer, the FastAPI surface, the testcontainers-backed integration suite, Dockerfiles, and CI are still to come. Follow the global rules in `~/.claude/CLAUDE.md` (Python 3.13, `uv`, `pytest`, type annotations, `/docs` per project, `/journal` per project).
+The repo is in **early scaffolding**. The design-doc chain in `docs/` is complete; a `uv` workspace with three Python members (`packages/horizons-{core,ingestion,api}`) plus a Vue 3 webapp at `packages/horizons-webapp` is in place; `tests/` holds cross-package integration tests; ruff + pyright + pre-commit are wired at the workspace root; GitHub Actions CI runs the Python sweep and the webapp build on every PR. Application code, the database layer, the FastAPI surface, the testcontainers-backed integration suite, and Dockerfiles are still to come. Follow the global rules in `~/.claude/CLAUDE.md` (Python 3.13, `uv`, `pytest`, type annotations, `/docs` per project, `/journal` per project).
+
+## Licensing
+
+Closed-source. All rights reserved. The demo period (~2026-06-08, 1–2 days public for the legal-firm showcase) does **not** confer any license to use, modify, or redistribute the code — viewers can read but acquire no rights. A formal license decision is deferred until after the demo. There is intentionally no `LICENSE` file: default copyright applies, which is the most restrictive default.
 
 ## Read first
 
