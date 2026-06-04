@@ -6,14 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Horizons** is a commercial demo for a legal firm. The productionised product is a regulatory-change intelligence service intended for large multinational banks: it watches public legal sources and alerts customers to **upcoming** legal changes — laws, regulations, and official guidance that have been published but have not yet taken effect — so clients have lead time to prepare before the change is in force. The "horizon" in the name refers to this forward-looking framing: changes visible on the horizon, not changes already landed. Demo is scheduled for ~2026-06-08; public for 1–2 days while on display, so **all copy and sample data must be generic** — no firm name, no client names, no real bank names.
 
-The repo is currently at the **pre-code, documentation-gathering** stage. Only `docs/` and `data/samples/` exist. There is no Python package, no tests, no Dockerfile, no CI yet — those are still to be designed. When you add them, follow the global rules in `~/.claude/CLAUDE.md` (Python 3.13, `uv`, `pytest`, type annotations, `/docs` per project, `/journal` per project).
+The repo is currently at the **pre-code, documentation-gathering** stage. Only `docs/`, `data/samples/`, and a one-off fetch script in `scripts/` exist. There is no Python package, no tests, no Dockerfile, no CI yet — those are still to be designed. When you add them, follow the global rules in `~/.claude/CLAUDE.md` (Python 3.13, `uv`, `pytest`, type annotations, `/docs` per project, `/journal` per project).
 
 ## Read first
 
 Before doing anything substantive, read in this order:
 
-1. `docs/api/README.md` — entry point to the Lawstronaut v2 API reference. Then `getting-started.md`, `concepts.md`, `endpoints.md`, `operational-notes.md`.
-2. `data/samples/README.md` — what the sample legal markdown is and where it came from.
+1. The numbered design-doc chain — these build on each other:
+   - `docs/1. product-questions.md` — the three primitives the tool must answer (discovery, temporal, differential) and the scope/filter/delivery dimensions.
+   - `docs/2. clause-alignment.md` — how clauses keep identity across versions; the alignment pipeline and similarity stack.
+   - `docs/3. database-design.md` — performance target, scale assumptions, principles; depends on the identity model from doc 2.
+2. `docs/api/README.md` — entry point to the Lawstronaut v2 API reference. Then `getting-started.md`, `concepts.md`, `endpoints.md`, `operational-notes.md`.
+3. `data/samples/README.md` — what the sample legal markdown is, how it was collected (`scripts/fetch_fixtures.py`), and the current 31-fixture inventory.
 3. The memory entries for this project (auto-loaded for you by the harness):
    - `project-horizons-business-context` — what we're selling and to whom.
    - `project-horizons-change-watcher` — clause-level scope decision.
@@ -21,6 +25,7 @@ Before doing anything substantive, read in this order:
    - `project-horizons-design-priorities` — flexibility > visibility > easy-to-understand.
    - `project-horizons-demo-2026-06-08` — audience, public exposure, tiered docs.
    - `lawstronaut-api-key-facts` — non-obvious API gotchas (verified against live API on 2026-06-04).
+   - `feedback-doc-style` — tight anchor-style for project docs; no chatty intermediate forms.
 
 ## Architectural decisions already made
 

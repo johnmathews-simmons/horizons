@@ -107,6 +107,14 @@ This is the basis for our clause-anchored IDs (e.g. `act/27732019/v1/part-1/sec-
 
 The first round-robin capture (`data/samples/fixtures.json`) surfaced three things worth recording:
 
+### Login response nests the bearer two levels deep
+
+`POST /auth/login` returns `{status, message, data: {first_name, last_name, user_name, email, avatar, token: {token_type: "bearer", refresh_token: "eyJ…", expires_in: 1800}}}`. The bearer to use on subsequent API calls is `payload["data"]["token"]["refresh_token"]` — *not* a top-level field. Token TTL is 1800 s (30 min). Memory entry `[[lawstronaut-api-key-facts]]` covers the high-level auth flow; this is the concrete response shape.
+
+### `/v2/portals` requires `iso`
+
+Calling `/v2/portals` without an `iso` query parameter returns **HTTP 400**, even though the docs list `iso` as optional. The endpoint also doesn't accept `limit` / `offset` (those return 400 too). To enumerate portals across jurisdictions: iterate `/v2/jurisdictions` first, then call `/v2/portals?iso=<each>`. The fetch script does this.
+
 ### `language=English` filter returns HTTP 400
 
 `/v2/contents` is documented as accepting `language=English` (and `/v2/contents/markdown` inherits that). In practice, supplying `language=English` (or the value listed against any portal's own `language` field) returns **HTTP 400 Bad Request**. Tested across IE, DE, GB, US — same behaviour. The script now omits the language filter entirely and filters post-hoc on the returned `language` field if needed.
