@@ -1,0 +1,40 @@
+name: Webapp CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: webapp-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  webapp:
+    name: lint, build, test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/horizons-webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/horizons-webapp/package-lock.json
+
+      - name: Install dependencies (clean)
+        run: npm ci
+
+      - name: Lint (oxlint + eslint)
+        run: npm run lint
+
+      - name: Build (vue-tsc + vite)
+        run: npm run build
+
+      - name: Unit tests (vitest)
+        run: npm run test:unit -- --run
