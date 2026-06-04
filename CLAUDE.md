@@ -85,7 +85,9 @@ cd packages/horizons-webapp && npm install && cd -
 - `cd packages/horizons-webapp && npm run dev` — Vite dev server.
 - `cd packages/horizons-webapp && npm run build` — production build (vue-tsc + Vite).
 - `cd packages/horizons-webapp && npm run test:unit` — Vitest.
-- `cd packages/horizons-webapp && npm run lint && npm run format` — oxlint + eslint + prettier (not in pre-commit; CI in WU0.4 will enforce).
+- `cd packages/horizons-webapp && npm run lint && npm run format` — oxlint + eslint + prettier with `--fix` (local dev only; CI uses the no-fix `npm run lint:check`).
+- `cd packages/horizons-webapp && npm run lint:check` — same linters with no `--fix`; what CI runs. Will fail on any unfixable diagnostic.
+- `uv run alembic upgrade head` — apply Postgres migrations. Reads connection URL from `HORIZONS_DB_URL`. Migration tree lives at `packages/horizons-core/migrations/`. Role model docs: `packages/horizons-core/src/horizons_core/db/roles.md`.
 - `uv run scripts/fetch_fixtures.py` — re-runnable Lawstronaut fixture fetcher; skips slugs already on disk. Reads creds from `.env` (see `.env.example`).
 
 Docker image / GHCR workflow land in later work units (per the global rule in `~/.claude/CLAUDE.md`).
