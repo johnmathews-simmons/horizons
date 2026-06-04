@@ -102,3 +102,26 @@ Markers in the markdown:
 - Inline links use absolute URLs to `irishstatutebook.ie` — useful for cross-reference detection, but we'll need to normalise them for diffing.
 
 This is the basis for our clause-anchored IDs (e.g. `act/27732019/v1/part-1/sec-1/sub-2`).
+
+## Findings from the 2026-06-04 30-jurisdiction fixture pull
+
+The first round-robin capture (`data/samples/fixtures.json`) surfaced three things worth recording:
+
+### `language=English` filter returns HTTP 400
+
+`/v2/contents` is documented as accepting `language=English` (and `/v2/contents/markdown` inherits that). In practice, supplying `language=English` (or the value listed against any portal's own `language` field) returns **HTTP 400 Bad Request**. Tested across IE, DE, GB, US — same behaviour. The script now omits the language filter entirely and filters post-hoc on the returned `language` field if needed.
+
+### Clause structure is often expressed inline, not as markdown headings
+
+Several captured documents have *no* markdown heading lines at all — clause structure is signalled purely by inline labels in the running text:
+
+- `cz-29662776-v1.md` (Czech, 119 KB) — uses `ČÁST PRVNÍ` / `Čl. I` / `1\.` / `2\.` style markers; whole document is 17 newlines, no `#` headings, paragraphs run on.
+- Several other non-English captures show similar patterns: jurisdiction-specific labels (`§`, `Art.`, `Reg.`, roman numerals) in body text rather than markdown structure.
+
+The parser must accept both substrates — markdown-heading-driven (IE) *and* inline-label-driven (CZ and friends) — and apply a per-portal recognition strategy. Doc 2 (`docs/2. clause-alignment.md`) already anticipates this under "Irregular structure"; the fixtures confirm it.
+
+### `legal_link` URLs may contain source-portal session tokens
+
+The `legal_link` field in `/v2/contents` records is whatever URL the source portal used at crawl time. In some cases this includes session-state tokens belonging to the source portal — for example, `at-32061749-v1.meta.json` carries `https://ris.bka.gv.at/Dokument.wxe?ResultFunctionToken=b6aa53f5-…&Position=8101&Abfrage=Bvwg&…`. These are *not* Lawstronaut auth tokens and are not credentials — they're query parameters belonging to public government portals — but they're likely to **expire on the source side**, which means archived links will rot.
+
+Operational consequence: when we display a "source link" to the customer, we may want to canonicalise (strip session params) or revalidate before serving. Worth a follow-up once we know how often the rot happens.
