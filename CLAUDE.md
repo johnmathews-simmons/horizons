@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-**Horizons** is a commercial demo for a legal firm. The productionised product is a regulatory-change intelligence service intended for large multinational banks: it watches public legal sources and tells customers when laws affecting them change. Demo is scheduled for ~2026-06-08; public for 1–2 days while on display, so **all copy and sample data must be generic** — no firm name, no client names, no real bank names.
+**Horizons** is a commercial demo for a legal firm. The productionised product is a regulatory-change intelligence service intended for large multinational banks: it watches public legal sources and alerts customers to **upcoming** legal changes — laws, regulations, and official guidance that have been published but have not yet taken effect — so clients have lead time to prepare before the change is in force. The "horizon" in the name refers to this forward-looking framing: changes visible on the horizon, not changes already landed. Demo is scheduled for ~2026-06-08; public for 1–2 days while on display, so **all copy and sample data must be generic** — no firm name, no client names, no real bank names.
 
 The repo is currently at the **pre-code, documentation-gathering** stage. Only `docs/` and `data/samples/` exist. There is no Python package, no tests, no Dockerfile, no CI yet — those are still to be designed. When you add them, follow the global rules in `~/.claude/CLAUDE.md` (Python 3.13, `uv`, `pytest`, type annotations, `/docs` per project, `/journal` per project).
 

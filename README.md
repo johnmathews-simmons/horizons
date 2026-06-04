@@ -1,8 +1,10 @@
 # Horizons
 
-A regulatory-change intelligence demo: watch public legal sources and flag, at the clause level, when laws change.
+A regulatory-change intelligence demo: surface *upcoming* changes to laws, regulations, and official guidance — at the clause level — **before they take effect**, so customers have lead time to prepare.
 
-The productionised version of this idea is aimed at large multinational organisations that need to know — quickly and precisely — when a statute or regulation they're exposed to is amended. The demo focuses on the headline experience: *"this clause changed, here is the before and after."*
+Legal updates are typically published ahead of their effective date, sometimes by weeks, sometimes by years. Horizons watches public legal sources and flags those changes as soon as they appear, so a customer hears *"this clause is changing on date X — here is what it says now and what it will say"* while there is still time to act, rather than discovering the amendment after it has already landed. That's the *horizon* in Horizons: changes visible on the legal horizon, not changes already in force.
+
+The productionised version is aimed at large multinational organisations whose compliance and legal teams today rely on manual horizon-scanning to keep up.
 
 ## Status
 
