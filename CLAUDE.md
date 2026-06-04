@@ -35,7 +35,7 @@ These are load-bearing — don't relitigate them without checking with John firs
 - **`/v2/contents/markdown` is the preferred content feed.** Markdown preserves the structural anchors we use as clause boundaries. Plain `/contents/full-text` and PDFs are weaker substrates.
 - **Clause IDs must be heading-anchored, not positional.** A clause keeps its identity across versions even when neighbours move or get renumbered.
 - **Deployment target is Azure Container Apps / Container Instances.** Not AKS/Kubernetes (overkill at demo scale), not Databricks (the v1 of this project is on Databricks and we're moving away from it).
-- **Configuration over code for sources / jurisdictions / domains.** Adding a new portal must not require a redeploy or a refactor — it should be a config/data change.
+- **Configuration over code for sources / jurisdictions / domains *and* experimental tuning parameters.** Adding a new portal must not require a redeploy or a refactor — it should be a config/data change. The same applies to anything we expect to tune during the demo: shingling *k*, MinHash signature size, similarity / confidence thresholds, etc. live as runtime-tunable config (surfaced in the UI), not as code constants. Slow redeploy cycles for parameter experimentation are unacceptable, at least during the demo period.
 
 ## Lawstronaut API quick reference
 
