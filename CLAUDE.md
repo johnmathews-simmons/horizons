@@ -20,7 +20,7 @@ Before doing anything substantive, read in this order:
    - `docs/4. services.md` — the three deployable services (ingestion worker, public API, SPA webapp), their responsibilities and non-responsibilities, and the cross-cutting principles (multi-tenant isolation, API responsiveness, single API surface).
 3. `docs/api/README.md` — entry point to the Lawstronaut v2 API reference. Then `getting-started.md`, `concepts.md`, `endpoints.md`, `operational-notes.md`.
 4. `data/samples/README.md` — what the sample legal markdown is, how it was collected (`scripts/fetch_fixtures.py`), and the current 31-fixture inventory.
-5. The memory entries for this project (auto-loaded for you by the harness):
+5. The memory entries for this project. These live in-repo at `.claude/memory/` (gitignored — synced across machines via syncthing, not git) and are also auto-loaded by the harness via a symlink at `~/.claude/projects/-Users-john-projects-syncthing-agent-lxc-horizons/memory` → `.claude/memory/`. The index is `.claude/memory/MEMORY.md`; write new entries here and they'll be picked up next session.
    - `project-horizons-business-context` — what we're selling and to whom.
    - `project-horizons-change-watcher` — clause-level scope decision.
    - `project-horizons-multi-tenant-isolation` — two-axis isolation; defence-in-depth enforcement.

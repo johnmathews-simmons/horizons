@@ -1,6 +1,12 @@
 # Browser-automation captures — may contain JWTs or other secrets
 .playwright-mcp/
 
+# Transient agent / sync state — not source of truth
+.relay/
+.stfolder/
+.engineering-team/
+.claude/
+
 # Python
 __pycache__/
 *.py[cod]
