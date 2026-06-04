@@ -1,38 +1,38 @@
 # Product questions Horizons should be able to answer
 
-The tool — through its API — should be able to answer the following questions about a document. These questions are the reference point for API shape and feature scope.
+The tool — through its API — should be able to answer the following questions about legal documents. These questions are the reference point for API shape and feature scope.
 
-Three primitives, parameterised by *scope*, *reference point*, and *filter*.
+Three primitives. Each accepts a **scope** and returns its own shape of answer.
+
+## Scope
+
+Every primitive can be applied at one of three scopes:
+
+- **Corpus** — a set of documents defined by a filter: jurisdiction (country / treaty area / continent), sector (finance, agriculture, employment law, …), time window. Example: *"EU finance laws."*
+- **Document** — a single document by id.
+- **Clause** — a single clause within a document.
+
+Sector and jurisdiction taxonomies come from the Lawstronaut feed (`taxonomy`, `jurisdiction`); we expose what's there, we don't invent our own classification.
 
 ## 1. Discovery — which documents have changed?
 
-- **Scope:** the corpus (with filters), or a single document (boolean: "has this changed?").
-- **Inputs:** filter (jurisdiction, sector) + time window.
 - **Returns:** list of documents that changed, optionally with the locations of the changes within them.
-- The customer query *"which financial laws have changed in the last 6 months"* is this primitive with `sector=finance, since=6mo`.
+- **Corpus example:** *"which financial laws in the EU changed in the last 6 months?"*
+- **Document scope** collapses to a boolean: *"has this document changed since date X?"*
 
 ## 2. Temporal — when was this last changed?
 
-- **Scope:** whole document or a single clause.
-- **Returns:** timestamp and/or version number.
-- Duration questions ("how long has this clause been in its current form?") fall out of this primitive — subtract the last-changed timestamp from today; no separate query needed.
+- **Returns:** timestamp and/or version number, per element in the scope.
+- **Corpus example:** *"when was each EU finance law last changed?"* — or aggregated: *"what's the most recent change across EU finance laws?"*
+- **Document / clause:** the single timestamp for that element.
+- Duration questions (*"how long has this been in its current form?"*) fall out of this primitive — subtract the last-changed timestamp from today; no separate query needed.
 
 ## 3. Differential — what changed between two reference points?
 
-- **Scope:** whole document or a single clause.
 - **Reference points:** a prior version, a date, or "the last N changes."
-- **Returns:** the affected clauses with before/after content.
-- "Which parts changed?" is the location field of the result. "Has anything changed since date X?" is whether the result is non-empty.
-
-## Filtering dimensions
-
-Applies across all three primitives (most obviously to discovery):
-
-- **Jurisdiction** — country, treaty area (e.g. EU), continent.
-- **Sector** — finance, agriculture, employment law, etc.
-- **Time** — absolute dates or relative windows ("last 6 months").
-
-Sector and jurisdiction taxonomies come from the Lawstronaut feed (`taxonomy`, `jurisdiction`) — we expose what's there, we don't invent our own classification.
+- **Returns:** affected clauses with before/after content, grouped by document when the scope is corpus.
+- **Corpus example:** *"what changed in EU finance laws between 2025-01-01 and 2025-06-30?"*
+- *"Which parts changed?"* is the location field of the result. *"Has anything changed?"* is whether the result is non-empty.
 
 ## Delivery channels
 
@@ -44,6 +44,5 @@ Same query semantics, multiple surfaces:
 
 ## API-shape implications
 
-- A discovery endpoint keyed by `(filter, time_window)` returning `(document_id, version_jump, change_locations?)`.
-- A timestamp/version lookup keyed by `(document_id, optional clause_id)`.
-- A diff lookup keyed by `(document_id, optional clause_id, reference_point)` returning `(clause_id, before, after)` tuples.
+- Each endpoint accepts a scope parameter that can be a filter spec (corpus), a `document_id`, or a `(document_id, clause_id)`.
+- Discovery returns identities and locations; temporal returns timestamps; differential returns before/after content. Same scope semantics across all three, different return shapes and cost profiles.
