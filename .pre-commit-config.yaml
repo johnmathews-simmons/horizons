@@ -1,0 +1,42 @@
+# Pre-commit hooks for the Horizons workspace.
+#
+# Install once after cloning:
+#   uv sync
+#   uv run pre-commit install
+#
+# Run manually against the whole tree:
+#   uv run pre-commit run --all-files
+#
+# Webapp linting (oxlint / eslint / prettier) is not wired in here — run
+# `npm run lint && npm run format` inside packages/horizons-webapp before
+# committing webapp changes. CI (WU0.4) will enforce it. Pyright is also
+# deferred to CI because it is too slow for an interactive pre-commit hook.
+
+exclude: |
+  (?x)^(
+    data/samples/.*|
+    packages/horizons-webapp/package-lock\.json|
+    uv\.lock
+  )$
+# `data/samples/` holds real Lawstronaut documents captured as fixtures —
+# they must stay byte-for-byte as received so the parser tests reflect the
+# actual upstream substrate. uv.lock and package-lock.json are machine-managed.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+      - id: ruff-format

@@ -57,17 +57,31 @@ These are load-bearing — don't relitigate them without checking with John firs
 
 ## Commands
 
-No package-level build / lint / test commands yet — the codebase has no application code. One ad-hoc script exists today:
+The repo is a `uv` workspace (root `pyproject.toml` with `[tool.uv.workspace]`) plus a separate npm-managed webapp under `packages/horizons-webapp`. The Python members live under `packages/horizons-{core,ingestion,api}`; the webapp is not a `uv` workspace member.
 
-- **`uv run scripts/fetch_fixtures.py`** — log in to Lawstronaut (creds from `.env`, see `.env.example`), discover jurisdictions and portals, round-robin across them, and save up to 30 documents into `data/samples/` plus a `fixtures.json` index. Re-runnable; skips slugs that already exist on disk.
+**First-time setup after cloning:**
 
-When real application code lands, add:
-- How to install deps (`uv sync`).
-- How to run the watcher / ingestion locally.
-- How to run the full test suite and a single test (`pytest path/to/test.py::test_name`).
-- How to build the container image and push to GHCR (per the global rule in `~/.claude/CLAUDE.md`).
+```bash
+uv sync                          # install Python workspace + dev tools
+uv run pre-commit install        # enable git pre-commit hooks
+cd packages/horizons-webapp && npm install && cd -
+```
 
-Update this section the moment those commands exist.
+**Day-to-day:**
+
+- `uv run pytest` — full Python test suite (pytest uses `--import-mode=importlib` so per-package `test_smoke.py` filenames don't collide).
+- `uv run pytest packages/horizons-core/tests/test_smoke.py::test_package_imports` — single test by path.
+- `uv run ruff check .` — lint Python.
+- `uv run ruff format .` — format Python.
+- `uv run pyright` — strict typecheck the three Python members.
+- `uv run pre-commit run --all-files` — run all pre-commit hooks across the whole tree (also fires automatically on `git commit`).
+- `cd packages/horizons-webapp && npm run dev` — Vite dev server.
+- `cd packages/horizons-webapp && npm run build` — production build (vue-tsc + Vite).
+- `cd packages/horizons-webapp && npm run test:unit` — Vitest.
+- `cd packages/horizons-webapp && npm run lint && npm run format` — oxlint + eslint + prettier (not in pre-commit; CI in WU0.4 will enforce).
+- `uv run scripts/fetch_fixtures.py` — re-runnable Lawstronaut fixture fetcher; skips slugs already on disk. Reads creds from `.env` (see `.env.example`).
+
+Docker image / GHCR workflow land in later work units (per the global rule in `~/.claude/CLAUDE.md`).
 
 ## Journal cadence
 
