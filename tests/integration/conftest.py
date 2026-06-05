@@ -62,13 +62,13 @@ def migrated_db(
     sync_engine = create_engine(sync_url, future=True)
     try:
         # The postgres_container fixture is session-scoped — rows from
-        # earlier tests persist. Truncate the WU3.1 surface before each
-        # WU3.3 test to keep the inserts deterministic.
+        # earlier tests persist. Truncate the WU3.1 + WU3.4 surface
+        # before each test to keep the inserts deterministic.
         with sync_engine.begin() as conn:
             conn.execute(
                 text(
                     "TRUNCATE document_poll_schedule, ingestion_incident, "
-                    "document_versions, clauses, documents "
+                    "change_events, document_versions, clauses, documents "
                     "RESTART IDENTITY CASCADE"
                 )
             )

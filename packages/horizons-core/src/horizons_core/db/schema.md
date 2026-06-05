@@ -238,6 +238,41 @@ counter to bring a parked document back into rotation.
 trigger — by design, the worker mutates `next_poll_at`,
 `last_polled_at`, and `failure_count` on every tick.
 
+### `change_events` — precomputed clause changes (WU3.4)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `bigserial PRIMARY KEY` | sequential id |
+| `document_id` | `uuid NOT NULL REFERENCES documents(id) ON DELETE RESTRICT` | the affected document |
+| `document_version_id` | `uuid NOT NULL REFERENCES document_versions(id) ON DELETE RESTRICT` | the **new** version whose alignment against its predecessor produced this event |
+| `jurisdiction` | `text NOT NULL` | denormalised from `documents` — keeps the doc-3 composite index single-table |
+| `sector` | `text NOT NULL` | same |
+| `change_type` | `text NOT NULL` | one of `ADDED`, `REMOVED`, `MODIFIED`, `MOVED` (CHECK constraint) |
+| `before_clause_uid` | `uuid NULL` | identity in the prior version; null for `ADDED` |
+| `after_clause_uid` | `uuid NULL` | identity in the new version; null for `REMOVED` |
+| `before_path` | `text NULL` | positional address in the prior version (e.g. `Part 1/Section 4`); null for `ADDED` |
+| `after_path` | `text NULL` | positional address in the new version; null for `REMOVED` |
+| `before_text` | `text NULL` | the clause body before; null for `ADDED` |
+| `after_text` | `text NULL` | the clause body after; null for `REMOVED` |
+| `alignment_confidence` | `double precision NOT NULL` | raw float in `(0, 1]` (CHECK constraint) |
+| `detected_at` | `timestamptz NOT NULL DEFAULT now()` | when the worker wrote the row |
+| `effective_date` | `timestamptz NULL` | inherited from the new `document_versions.effective_date` |
+
+Indexes:
+- `idx_change_events_scope` on `(jurisdiction, sector, detected_at, effective_date)` — the doc-3 composite that answers the discovery hot path without joining `documents`.
+- `idx_change_events_document` on `(document_id, detected_at)` — per-document temporal lookup.
+- `idx_change_events_version` on `(document_version_id)` — per-version replay (sweeps, backfills).
+
+The load-bearing read artefact for the three primitives. Discovery, temporal, and differential all read from here (see [design doc 3 §Implications for the three primitives](../../../../../docs/3.%20database-design.md#implications-for-the-three-primitives)).
+
+`change_type` mirrors the `alignment.ChangeType` `Literal` exactly. Field-presence rules — `ADDED` carries only after-side fields, `REMOVED` only before-side, `MODIFIED` both with differing text, `MOVED` both with identical text and distinct paths — are enforced by the pydantic model at the application layer (`alignment.ChangeEvent`). The database stores any combination; the application contract is the gate.
+
+`document_id` and `document_version_id` are both denormalised: the version's `document_id` is recoverable by join, but discovery queries filter on `(jurisdiction, sector, detected_at)` without touching `document_versions`, and keeping `document_id` on the row makes the per-document temporal index single-table too.
+
+**Writes:** `SELECT, INSERT` are granted to `ingestion_worker`; `SELECT` to `api_app` and `admin_bypass`. A trigger rejects every `UPDATE` and `DELETE` — change events are corpus, not workspace.
+
+**Isolation:** RLS is enabled and `FORCE`d. `change_events_in_scope` on `TO api_app` filters via `EXISTS(SELECT 1 FROM app_private.current_scope() cs WHERE cs.jurisdiction = change_events.jurisdiction AND cs.sector = change_events.sector)` — the same shape as the corpus policies. `change_events_ingestion_all` on `TO ingestion_worker` is a pass-through so the worker keeps writing under RLS-on.
+
 ### `ingestion_incident` — failure / parking log (WU3.1)
 
 | Column | Type | Notes |
@@ -462,6 +497,15 @@ the tables are unreachable from client code paths). `document_versions`
 gains the `valid_from` / `valid_to` / `version_no` columns the worker
 populates, and its append-only trigger is narrowed so `valid_to` is
 mutable while every other column stays immutable.
+
+WU3.4 adds `change_events` — the load-bearing read artefact for the
+three primitives. RLS is enabled and `FORCE`d; the
+`change_events_in_scope` policy on `TO api_app` mirrors the WU1.4
+corpus shape (`EXISTS(... current_scope() ...)`), and the
+`change_events_ingestion_all` pass-through keeps the worker's writes
+flowing under RLS-on. Append-only `BEFORE UPDATE OR DELETE` trigger;
+`document_versions.valid_from` / `valid_to` are populated by the same
+unit's per-document poll transaction.
 
 The tenancy tables (`users`, `subscriptions`, `subscription_scopes`)
 remain un-RLS'd in WU1.4 — they have no direct `api_app` reader today;
