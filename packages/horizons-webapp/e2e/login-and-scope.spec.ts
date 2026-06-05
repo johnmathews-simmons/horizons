@@ -18,9 +18,11 @@ import { expect, test } from '@playwright/test'
  * scoped RLS at the browser layer.
  */
 
-const UK_EMAIL = 'uk-client@e2e.test'
+// example.com is RFC-2606 reserved; matches seed_e2e.py (the .test TLD is
+// rejected by pydantic's EmailStr as a special-use name).
+const UK_EMAIL = 'uk-client@e2e.example.com'
 const UK_PASSWORD = 'e2e-test-pass-uk'
-const EU_EMAIL = 'eu-client@e2e.test'
+const EU_EMAIL = 'eu-client@e2e.example.com'
 const EU_PASSWORD = 'e2e-test-pass-eu'
 
 const UK_PATH = 'Part 2 / Section 12'

@@ -13,8 +13,10 @@ The flow is the demo's headline UX:
    to UK proves subscription RLS at the browser layer)
 7. Click row → assert amber `0.78` confidence badge
 
-The two test users live under `@e2e.test` so they're trivially distinguishable
-from any demo or production accounts.
+The two test users live under `@e2e.example.com` so they're trivially
+distinguishable from any demo or production accounts. (`example.com` is
+RFC-2606 reserved; `.test` would have been more idiomatic but pydantic's
+`EmailStr` validator rejects it as a special-use TLD.)
 
 ## Local boot sequence
 

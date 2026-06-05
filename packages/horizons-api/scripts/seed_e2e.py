@@ -10,7 +10,7 @@ The Playwright test in ``packages/horizons-webapp/e2e`` exercises:
 This script seeds exactly the rows that flow needs and nothing else:
 
 * Two ``users`` rows (one UK client, one EU client) under the
-  ``@e2e.test`` reserved TLD so they are trivially identifiable.
+  ``@e2e.example.com`` reserved TLD so they are trivially identifiable.
 * One ``subscriptions`` + ``subscription_scopes`` row per user, scoped
   to (UK, BANKING) and (EU, BANKING) respectively. Disjoint scopes
   are the substrate that proves subscription RLS in the UI.
@@ -29,7 +29,7 @@ This script seeds exactly the rows that flow needs and nothing else:
      this row is NOT visible without the toggle.
 
 Idempotence: every run begins with a teardown of anything tagged
-``@e2e.test`` (users) or ``e2e_`` (documents). Re-running is safe.
+``@e2e.example.com`` (users) or ``e2e_`` (documents). Re-running is safe.
 ``--teardown`` removes the fixtures without re-seeding.
 
 The teardown bypasses the append-only triggers on
@@ -66,12 +66,15 @@ if TYPE_CHECKING:
     from sqlalchemy import Connection
 
 
-UK_EMAIL = "uk-client@e2e.test"
+# example.com is RFC-2606 reserved; pydantic's EmailStr accepts it but
+# rejects RFC-6761 .test as a special-use name, so the original choice
+# would fail validation on /v1/auth/login.
+UK_EMAIL = "uk-client@e2e.example.com"
 UK_PASSWORD = "e2e-test-pass-uk"  # noqa: S105  # fixture password for e2e
-EU_EMAIL = "eu-client@e2e.test"
+EU_EMAIL = "eu-client@e2e.example.com"
 EU_PASSWORD = "e2e-test-pass-eu"  # noqa: S105
 
-E2E_EMAIL_LIKE = "%@e2e.test"
+E2E_EMAIL_LIKE = "%@e2e.example.com"
 E2E_DOC_LID_LIKE = "e2e\\_%"  # SQL LIKE: literal underscore needs escaping
 E2E_DOC_LID_ESCAPE = "\\"
 
