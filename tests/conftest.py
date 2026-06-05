@@ -1,7 +1,7 @@
 """Shared pytest fixtures for cross-package integration tests.
 
 Provides:
-- `postgres_container` — a session-scoped `testcontainers` Postgres 17
+- `postgres_container` — a session-scoped `testcontainers` Postgres 18
   instance, started once per test session.
 - `engine` — a session-scoped SQLAlchemy async engine pointed at the
   container.
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncEngine
 
-POSTGRES_IMAGE = "postgres:17-alpine"
+POSTGRES_IMAGE = "postgres:18-alpine"
 
 
 def _docker_available() -> bool:
@@ -49,7 +49,7 @@ def _docker_available() -> bool:
 
 @pytest.fixture(scope="session")
 def postgres_container() -> Iterator[PostgresContainer]:
-    """Start a Postgres 17 container for the whole test session."""
+    """Start a Postgres 18 container for the whole test session."""
     if not _docker_available():
         pytest.skip("Docker is not running; skipping integration tests.")
     container = PostgresContainer(POSTGRES_IMAGE, driver="asyncpg")

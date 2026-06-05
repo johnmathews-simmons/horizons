@@ -1,6 +1,6 @@
 """Integration test for the WU1.0 role-model migration.
 
-Applies the Alembic migration tree against a fresh Postgres 17 container
+Applies the Alembic migration tree against a fresh Postgres 18 container
 and asserts each of the four roles exists with the expected attributes.
 The smoke test in this directory already confirms the testcontainers
 substrate works; this test confirms the migration harness on top of it.

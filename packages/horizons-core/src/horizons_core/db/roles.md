@@ -75,6 +75,6 @@ uv run alembic upgrade head
 ```
 
 The integration test in `tests/test_role_model_migration.py` exercises
-this end-to-end against a fresh Postgres 17 container and asserts each
+this end-to-end against a fresh Postgres 18 container and asserts each
 role exists with the expected `rolbypassrls` / `rolcanlogin` /
 `rolcreatedb` / `rolcreaterole` attributes.

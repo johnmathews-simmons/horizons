@@ -73,7 +73,7 @@ cd packages/horizons-webapp && npm install && cd -
 
 **Day-to-day:**
 
-- `uv run pytest` — full Python test suite (pytest uses `--import-mode=importlib` so per-package `test_smoke.py` filenames don't collide; `asyncio_mode=auto` so `async def test_*` functions don't need a decorator). Integration tests marked `integration` spin up a testcontainers Postgres 17 and auto-skip if Docker isn't reachable.
+- `uv run pytest` — full Python test suite (pytest uses `--import-mode=importlib` so per-package `test_smoke.py` filenames don't collide; `asyncio_mode=auto` so `async def test_*` functions don't need a decorator). Integration tests marked `integration` spin up a testcontainers Postgres 18 and auto-skip if Docker isn't reachable.
 - `uv run pytest -m "not integration"` — fast unit tests only (no Docker required).
 - `uv run pytest -m integration` — Docker-backed integration tests only.
 - `uv run pytest --cov` — full suite with coverage; HTML report via `uv run pytest --cov --cov-report=html` → `htmlcov/`.
