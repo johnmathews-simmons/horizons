@@ -160,7 +160,9 @@ def test_watchlists_index_present(migrated_engine: Engine) -> None:
 
 @pytest.mark.integration
 def test_watchlists_grants(migrated_engine: Engine) -> None:
-    """api_app gets full CRUD; ingestion_worker and admin_bypass get nothing."""
+    """api_app gets full CRUD; ingestion_worker has no grant; admin_bypass
+    holds SELECT + UPDATE (the WU4.5 reduction path soft-hides rows by
+    flipping ``active=false`` under admin_bypass)."""
     try:
         with migrated_engine.connect() as conn:
             rows = list(
@@ -187,7 +189,7 @@ def test_watchlists_grants(migrated_engine: Engine) -> None:
 
     assert grants.get("api_app") == {"SELECT", "INSERT", "UPDATE", "DELETE"}
     assert "ingestion_worker" not in grants
-    assert grants.get("admin_bypass") == {"SELECT"}
+    assert grants.get("admin_bypass") == {"SELECT", "UPDATE"}
 
 
 @pytest.mark.integration

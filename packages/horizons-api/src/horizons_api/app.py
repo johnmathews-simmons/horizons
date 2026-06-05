@@ -27,7 +27,14 @@ from horizons_core.observability.otel import setup_otel  # noqa: E402
 
 from horizons_api.config import load_settings  # noqa: E402
 from horizons_api.middleware import RequestContextMiddleware  # noqa: E402
-from horizons_api.routes import auth, health, me, primitives, watchlists  # noqa: E402
+from horizons_api.routes import (  # noqa: E402
+    admin_subscriptions,
+    auth,
+    health,
+    me,
+    primitives,
+    watchlists,
+)
 
 
 def create_app() -> FastAPI:
@@ -67,5 +74,6 @@ def create_app() -> FastAPI:
     app.include_router(primitives.discovery_router)
     app.include_router(primitives.temporal_router)
     app.include_router(primitives.differential_router)
+    app.include_router(admin_subscriptions.router)
 
     return app

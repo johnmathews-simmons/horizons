@@ -92,7 +92,8 @@ class SubscriptionScope(Base):
         {
             "comment": (
                 "Jurisdiction x sector coverage per subscription. "
-                "Append-only via trigger (UPDATE rejected outright)."
+                "Append-only via trigger: only permitted UPDATE is "
+                "valid_to NULL -> timestamp (WU4.5 soft-delete)."
             ),
         },
     )
@@ -104,5 +105,9 @@ class SubscriptionScope(Base):
     )
     jurisdiction: Mapped[str] = mapped_column(Text, nullable=False)
     sector: Mapped[str] = mapped_column(Text, nullable=False)
+    valid_to: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     subscription: Mapped[Subscription] = relationship(back_populates="scopes")

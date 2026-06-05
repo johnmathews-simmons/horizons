@@ -81,6 +81,7 @@ row.
 | `subscription_id` | `uuid NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE` | composite-PK part |
 | `jurisdiction` | `text NOT NULL` | e.g. `EU`, `UK`, `IE` |
 | `sector` | `text NOT NULL` | e.g. `BANKING`, `INSURANCE` |
+| `valid_to` | `timestamptz NULL` | WU4.5 soft-delete (NULL = active) |
 | PK | `(subscription_id, jurisdiction, sector)` | natural composite |
 
 Each row is one jurisdiction × sector pair the subscription covers.
@@ -89,12 +90,18 @@ values live in configuration, not in code or in a separate lookup table —
 they come from the Lawstronaut taxonomy feed (see [design doc 3
 §Configuration over code](../../../../../docs/3.%20database-design.md#principles)).
 
-**Writes:** `INSERT` is permitted. `UPDATE` is rejected outright by the
-append-only trigger — changing the scope of an issued subscription would
-silently rewrite billing history. To change scope, end the old
-subscription (set `valid_to`) and insert a new one with its new scopes.
-`DELETE` cascades from the parent `subscriptions` row, which is itself
-forbidden by foreign-key absence (no `DELETE` path lands here today).
+**Writes:** `INSERT` is permitted. `UPDATE` is permitted in **exactly
+one shape** (WU4.5): setting `valid_to` from `NULL` to a non-`NULL`
+timestamp, with every other column unchanged. The append-only trigger
+rejects every other `UPDATE`. This single allowed transition is the
+soft-delete used by `/v1/admin/subscriptions` PATCH to remove a scope
+from an existing subscription without losing the row for audit. To
+add a scope, `INSERT` a new row.
+
+`app_private.current_scope()` filters by both `subscriptions.valid_to`
+and `subscription_scopes.valid_to` (NULL or in the future), so a
+soft-deleted scope row stops contributing to a client's reads
+immediately.
 
 ### `documents` — stable identity for an upstream legal text
 
@@ -366,7 +373,9 @@ path.
 | --- | --- | --- |
 | `id` | `uuid PRIMARY KEY` | `uuidv7()` default |
 | `user_id` | `uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE` | owner |
+| `document_id` | `uuid NOT NULL REFERENCES documents(id) ON DELETE CASCADE` | watched document (WU4.3) |
 | `name` | `text NOT NULL` | human-readable label |
+| `active` | `boolean NOT NULL DEFAULT true` | WU4.5 soft-hide flag |
 | `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
 
 Index: `idx_watchlists_user_id` on `(user_id)` for the owner-keyed read
@@ -402,7 +411,9 @@ opens `psql`. The shape is:
   Permits `OLD.valid_to IS NULL AND NEW.valid_to IS NOT NULL` with all
   other columns unchanged. Rejects everything else.
 - `subscription_scopes_no_update` — `BEFORE UPDATE` on
-  `subscription_scopes`. Rejects every `UPDATE`.
+  `subscription_scopes`. Permits `OLD.valid_to IS NULL AND
+  NEW.valid_to IS NOT NULL` with every other column unchanged
+  (WU4.5 soft-delete). Rejects every other `UPDATE`.
 - `admin_access_log_no_update` / `_no_delete` — `BEFORE UPDATE` and
   `BEFORE DELETE` on `admin_access_log`. Reject every mutation. The
   audit trail is irreducibly append-only.

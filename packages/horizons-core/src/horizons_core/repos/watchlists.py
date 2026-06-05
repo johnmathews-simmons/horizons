@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, ClassVar
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
+from sqlalchemy import update as sql_update
 
 from horizons_core.db.models.watchlists import Watchlist
 
@@ -36,6 +37,7 @@ class WatchlistDTO(BaseModel):
     user_id: uuid.UUID
     document_id: uuid.UUID
     name: str
+    active: bool
     created_at: datetime
 
 
@@ -54,13 +56,68 @@ class WatchlistsRepository:
         self._session = session
 
     async def list_for(self) -> list[WatchlistDTO]:
-        """Every watchlist visible to the current session.
+        """Every *active* watchlist visible to the current session.
 
-        RLS via the ``watchlists_owner_select`` policy is the filter;
-        the repo does not add a redundant ``WHERE user_id = ...``.
+        RLS via the ``watchlists_owner_select`` policy filters cross-
+        client rows; the repo adds ``active = true`` so soft-hidden
+        rows (set inactive when an admin reduced the owning user's
+        subscription scope) disappear from the client surface. Admin
+        views use ``list_all_including_inactive_for_user`` instead.
         """
-        rows = (await self._session.execute(select(Watchlist))).scalars().all()
+        rows = (
+            (await self._session.execute(select(Watchlist).where(Watchlist.active.is_(True))))
+            .scalars()
+            .all()
+        )
         return [WatchlistDTO.model_validate(r) for r in rows]
+
+    async def list_all_including_inactive_for_user(self, user_id: uuid.UUID) -> list[WatchlistDTO]:
+        """Every watchlist owned by ``user_id``, active or not.
+
+        Used by admin paths that need the audit-trail view of a client's
+        soft-hidden rows. The caller is expected to hold an
+        ``admin_bypass`` session — under ``api_app`` RLS would narrow
+        cross-user reads to zero rows.
+        """
+        rows = (
+            (await self._session.execute(select(Watchlist).where(Watchlist.user_id == user_id)))
+            .scalars()
+            .all()
+        )
+        return [WatchlistDTO.model_validate(r) for r in rows]
+
+    async def soft_hide_out_of_scope(
+        self,
+        *,
+        user_id: uuid.UUID,
+        in_scope_document_ids: set[uuid.UUID],
+    ) -> int:
+        """Set ``active=false`` on each active row whose document is no
+        longer in the user's scope; return the number of rows touched.
+
+        Idempotent: rows already inactive are not re-touched (the WHERE
+        narrows to ``active = true``). The caller picks
+        ``in_scope_document_ids`` by joining ``documents`` against the
+        post-reduction scope; an empty set hides every active watchlist
+        for the user.
+
+        Requires UPDATE on ``watchlists``. The session is expected to
+        run as ``admin_bypass`` — the WU4.5 migration grants UPDATE on
+        that role for this code path.
+        """
+        stmt = (
+            sql_update(Watchlist)
+            .where(
+                Watchlist.user_id == user_id,
+                Watchlist.active.is_(True),
+            )
+            .values(active=False)
+            .returning(Watchlist.id)
+        )
+        if in_scope_document_ids:
+            stmt = stmt.where(Watchlist.document_id.not_in(in_scope_document_ids))
+        result = await self._session.execute(stmt)
+        return len(result.all())
 
     async def get_by_id(self, watchlist_id: uuid.UUID) -> WatchlistDTO | None:
         """Fetch one watchlist by primary key, or ``None``.

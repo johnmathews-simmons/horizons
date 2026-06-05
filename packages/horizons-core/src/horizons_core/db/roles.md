@@ -75,33 +75,40 @@ migrations grant per-table:
 
 | Table | `api_app` | `ingestion_worker` | `admin_bypass` |
 | --- | --- | --- | --- |
-| `users` | SELECT, INSERT, UPDATE | — | — |
-| `subscriptions` | SELECT, INSERT, UPDATE *(trigger-policed)* | — | — |
-| `subscription_scopes` | SELECT, INSERT | — | — |
+| `users` | SELECT, INSERT, UPDATE | — | SELECT |
+| `subscriptions` | SELECT, INSERT, UPDATE *(trigger-policed)* | — | SELECT, INSERT |
+| `subscription_scopes` | SELECT, INSERT | — | SELECT, INSERT, UPDATE *(trigger-policed: `valid_to` NULL → ts only)* |
 | `documents` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
 | `document_versions` | SELECT *(RLS: in-scope)* | SELECT, INSERT, UPDATE *(valid_to only — trigger-policed)* | SELECT *(BYPASSRLS)* |
 | `clauses` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
-| `watchlists` | SELECT, INSERT, UPDATE, DELETE *(RLS: owner-only)* | — | SELECT *(BYPASSRLS)* |
+| `watchlists` | SELECT, INSERT, UPDATE, DELETE *(RLS: owner-only)* | — | SELECT, UPDATE *(WU4.5 soft-hide path: `active` only)* |
 | `admin_access_log` | — | — | SELECT, INSERT *(RLS enabled, no policy)* |
 | `refresh_tokens` | SELECT, INSERT, UPDATE *(RLS: owner-only)* | — | SELECT *(BYPASSRLS, read-only)* |
 | `document_poll_schedule` | — | SELECT, INSERT, UPDATE | — |
 | `ingestion_incident` | — | SELECT, INSERT | — |
 
-`admin_bypass` carries SELECT on the RLS-protected tables only —
-**no INSERT, no UPDATE, no DELETE anywhere**, with one exception:
-`admin_access_log` is where the role writes its own audit trail (one
-INSERT per session). Append-only triggers on the table reject UPDATE
-and DELETE outright, so the role's write surface is irreducibly
-"append a new audit row, never modify history." Postgres' `BYPASSRLS`
-attribute bypasses *row-level* security but does **not** override
-table-level GRANTs, so the role is unusable without at least SELECT
-on whatever it needs to read. Granting SELECT (and nothing else)
-elsewhere gives the audited-elevation code path enough reach for
-cross-tenant support work without becoming a back-door write surface.
-The tenancy tables (`users`, `subscriptions`, `subscription_scopes`)
-are deliberately omitted from `admin_bypass` until a real admin
-reader exists — adding the grant is cheap and small-blast-radius if
-and when WU2.x needs it.
+`admin_bypass` is mostly read-only — write grants are narrow and
+purpose-built:
+
+- `admin_access_log`: the audit-trail write path. Triggers reject
+  UPDATE / DELETE; the only legal write is "append a new row".
+- `users`, `subscriptions`, `subscription_scopes`: WU4.5's admin
+  subscription endpoints. The role can read every user (no RLS on the
+  tenancy tables) and insert new subscription / scope rows. UPDATE on
+  `subscription_scopes` is restricted by the WU4.5 trigger to the
+  `valid_to` NULL → timestamp transition (soft-delete); UPDATE on
+  `subscriptions` is intentionally **not** granted because PATCH never
+  ends a subscription.
+- `watchlists`: WU4.5's reduction soft-hide path. UPDATE flips
+  `active` on rows that have fallen out of the owner's scope; the
+  ``active`` column is the only intended write target.
+
+Postgres' `BYPASSRLS` attribute bypasses *row-level* security but
+does **not** override table-level GRANTs, so the role is unusable
+without explicit grants on whatever it needs to reach. SELECT on the
+corpus tables (`documents`, `document_versions`, `clauses`) and the
+tenancy tables is what makes the audited-elevation paths able to do
+their work without becoming back-door write surfaces.
 
 The corpus grants follow the same shape across `documents` and `clauses`:
 `api_app` reads (the public API exposes corpus rows to clients —
