@@ -441,6 +441,110 @@ def test_discovery_document_scope_filters_to_target(
     assert ids == [target_id]
 
 
+# ---- temporal tests ------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_temporal_requires_bearer(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    _ = migrated_postgres_p
+    response = client.get("/v1/temporal")
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_temporal_corpus_returns_timestamps_and_drops_text(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    j, s = f"TMP-{uuid.uuid4().hex[:8]}", f"TMP-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "tmp_corpus@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="tmp")
+    after_uid = uuid.uuid4()
+    seeded = _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        change_type="MODIFIED",
+        before_clause_uid=after_uid,
+        after_clause_uid=after_uid,
+    )
+
+    token = _login(client, "tmp_corpus@example.com")
+    response = client.get("/v1/temporal?scope=corpus", headers=_bearer(token))
+    assert response.status_code == 200, response.text
+    assert response.headers.get("Cache-Control") == "private, no-store"
+    body = response.json()
+    ids = [it["id"] for it in body["items"]]
+    assert seeded in ids
+    for item in body["items"]:
+        # Temporal projects only timestamp / identity / change_type
+        assert "before_text" not in item
+        assert "after_text" not in item
+        assert "before_path" not in item
+        assert "after_path" not in item
+        assert "clause_uid" in item
+        assert "detected_at" in item
+        assert "change_type" in item
+
+
+@pytest.mark.integration
+def test_temporal_projects_after_uid_for_modified_and_before_uid_for_removed(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    j, s = f"TPR-{uuid.uuid4().hex[:8]}", f"TPR-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "tmp_proj@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="tpr")
+    before_uid = uuid.uuid4()
+    after_uid = uuid.uuid4()
+    removed_only = uuid.uuid4()
+    modified_id = _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        change_type="MODIFIED",
+        before_clause_uid=before_uid,
+        after_clause_uid=after_uid,
+    )
+    removed_id = _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        change_type="REMOVED",
+        before_clause_uid=removed_only,
+        after_clause_uid=None,
+        after_text=None,
+    )
+
+    token = _login(client, "tmp_proj@example.com")
+    body = client.get("/v1/temporal?scope=corpus", headers=_bearer(token)).json()
+    by_id = {it["id"]: it for it in body["items"]}
+
+    assert by_id[modified_id]["clause_uid"] == str(after_uid)
+    assert by_id[removed_id]["clause_uid"] == str(removed_only)
+
+
+@pytest.mark.integration
+def test_temporal_document_scope_requires_document_id(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    _seed_user(migrated_postgres_p, "tmp_doc_missing@example.com")
+    token = _login(client, "tmp_doc_missing@example.com")
+    response = client.get("/v1/temporal?scope=document", headers=_bearer(token))
+    assert response.status_code == 422
+    assert "document_id" in response.json()["detail"]
+
+
 @pytest.mark.integration
 def test_discovery_clause_scope_filters_to_uid(
     client: TestClient,

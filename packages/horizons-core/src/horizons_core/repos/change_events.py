@@ -172,9 +172,33 @@ class ChangeEventsRepository:
         practice this is bounded by the per-clause event count (a
         handful) and is acceptable without an extra index.
         """
+        return await self._fetch_page(scope, limit, cursor)
+
+    async def timeline(
+        self,
+        scope: ChangeEventScope,
+        *,
+        limit: int = DEFAULT_LIMIT,
+        cursor: str | None = None,
+    ) -> tuple[list[ChangeEventDTO], str | None]:
+        """When did things change in this scope.
+
+        Same underlying read as ``list_discovery``; the API layer
+        projects different fields onto the wire (timestamps and the
+        change identity, no path / body / confidence). Separate method
+        so future per-primitive optimisations (e.g. selecting only the
+        timestamp columns) can land without callers changing.
+        """
+        return await self._fetch_page(scope, limit, cursor)
+
+    async def _fetch_page(
+        self,
+        scope: ChangeEventScope,
+        limit: int,
+        cursor: str | None,
+    ) -> tuple[list[ChangeEventDTO], str | None]:
         normalised_limit = _normalise_limit(limit)
-        stmt = self._base_stmt(scope, cursor)
-        stmt = stmt.limit(normalised_limit + 1)
+        stmt = self._base_stmt(scope, cursor).limit(normalised_limit + 1)
         rows = (await self._session.execute(stmt)).scalars().all()
         return _paginate(rows, normalised_limit)
 

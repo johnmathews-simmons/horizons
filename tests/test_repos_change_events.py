@@ -497,6 +497,44 @@ async def test_list_discovery_document_scope_out_of_scope_returns_empty(
 
 
 @pytest.mark.integration
+async def test_timeline_shares_ordering_and_scope_with_discovery(
+    migrated_db: tuple[Engine, str],
+    async_engine: AsyncEngine,
+) -> None:
+    j, s = f"TML-{uuid.uuid4().hex[:8]}", f"TML-{uuid.uuid4().hex[:8]}"
+    sync, _ = migrated_db
+    pin = datetime(2026, 6, 4, 12, 0, 0, tzinfo=UTC)
+    with sync.begin() as conn:
+        uid = _make_user(conn, "ce_timeline_basic@example.com")
+        _subscribe(conn, uid, [(j, s)])
+        doc, ver = _make_doc(conn, j, s, "tl")
+        early = _insert_event(
+            conn,
+            document_id=doc,
+            document_version_id=ver,
+            jurisdiction=j,
+            sector=s,
+            detected_at=pin - timedelta(hours=1),
+        )
+        late = _insert_event(
+            conn,
+            document_id=doc,
+            document_version_id=ver,
+            jurisdiction=j,
+            sector=s,
+            detected_at=pin,
+        )
+
+    async with session_for_user(async_engine, uid) as session:
+        await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
+        repo = ChangeEventsRepository(session)
+        items, cursor = await repo.timeline(CorpusScope())
+
+    assert [it.id for it in items] == [late, early]
+    assert cursor is None
+
+
+@pytest.mark.integration
 async def test_list_discovery_clause_scope_matches_before_or_after(
     migrated_db: tuple[Engine, str],
     async_engine: AsyncEngine,

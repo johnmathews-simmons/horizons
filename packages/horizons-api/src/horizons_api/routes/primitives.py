@@ -182,7 +182,7 @@ def _validate_limit(limit: int) -> int:
     return limit
 
 
-async def _fetch_page(
+async def _fetch_discovery(
     session: AsyncSession,
     *,
     scope: ChangeEventScope,
@@ -193,6 +193,22 @@ async def _fetch_page(
         return await ChangeEventsRepository(session).list_discovery(
             scope, limit=limit, cursor=cursor
         )
+    except CursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+async def _fetch_timeline(
+    session: AsyncSession,
+    *,
+    scope: ChangeEventScope,
+    limit: int,
+    cursor: str | None,
+) -> tuple[list[ChangeEventDTO], str | None]:
+    try:
+        return await ChangeEventsRepository(session).timeline(scope, limit=limit, cursor=cursor)
     except CursorError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -235,7 +251,7 @@ async def discovery(  # noqa: PLR0913 — every parameter maps to a wire field
         document_id=document_id,
         clause_uid=clause_uid,
     )
-    rows, next_cursor = await _fetch_page(
+    rows, next_cursor = await _fetch_discovery(
         session, scope=typed_scope, limit=bounded_limit, cursor=cursor
     )
     return DiscoveryPage(
@@ -258,6 +274,61 @@ def _to_discovery_item(dto: ChangeEventDTO) -> DiscoveryItem:
         before_path=dto.before_path,
         after_path=dto.after_path,
         alignment_confidence=dto.alignment_confidence,
+        detected_at=dto.detected_at,
+        effective_date=dto.effective_date,
+    )
+
+
+@temporal_router.get("", response_model=TemporalPage)
+async def temporal(  # noqa: PLR0913 — every parameter maps to a wire field
+    response: Response,
+    _principal: Annotated[Principal, Depends(authenticated_user)],
+    session: Annotated[AsyncSession, Depends(session_for_request)],
+    scope: Annotated[ScopeKind, Query()] = "corpus",
+    jurisdiction: Annotated[str | None, Query()] = None,
+    sector: Annotated[str | None, Query()] = None,
+    since: Annotated[datetime | None, Query()] = None,
+    until: Annotated[datetime | None, Query()] = None,
+    document_id: Annotated[uuid.UUID | None, Query()] = None,
+    clause_uid: Annotated[uuid.UUID | None, Query()] = None,
+    limit: Annotated[int, Query()] = 50,
+    cursor: Annotated[str | None, Query()] = None,
+) -> TemporalPage:
+    """When change events happened in the scope. No body text, no path."""
+    _no_store(response)
+    bounded_limit = _validate_limit(limit)
+    typed_scope = _build_scope(
+        scope,
+        jurisdiction=jurisdiction,
+        sector=sector,
+        since=since,
+        until=until,
+        document_id=document_id,
+        clause_uid=clause_uid,
+    )
+    rows, next_cursor = await _fetch_timeline(
+        session, scope=typed_scope, limit=bounded_limit, cursor=cursor
+    )
+    return TemporalPage(
+        items=[_to_temporal_item(r) for r in rows],
+        next_cursor=next_cursor,
+        has_more=next_cursor is not None,
+    )
+
+
+def _to_temporal_item(dto: ChangeEventDTO) -> TemporalItem:
+    # For ADDED / MODIFIED / MOVED the clause's current identity is the
+    # after_clause_uid. REMOVED has only before_clause_uid (the row
+    # that's gone in the new version). Project the right side onto the
+    # wire so a clause-scoped temporal query returns one uid per event,
+    # not two.
+    clause_uid = dto.after_clause_uid if dto.change_type != "REMOVED" else dto.before_clause_uid
+    return TemporalItem(
+        id=dto.id,
+        document_id=dto.document_id,
+        document_version_id=dto.document_version_id,
+        clause_uid=clause_uid,
+        change_type=dto.change_type,
         detected_at=dto.detected_at,
         effective_date=dto.effective_date,
     )
