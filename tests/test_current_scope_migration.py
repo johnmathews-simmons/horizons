@@ -156,7 +156,13 @@ def test_current_scope_execute_granted_to_api_app_only(
 
     assert api_app_can_execute is True
     assert ingestion_can_execute is False
-    assert admin_bypass_can_execute is False
+    # WU4.3 grants EXECUTE to admin_bypass so the
+    # ``watchlists_in_subscription_scope`` trigger (owned by
+    # admin_bypass for BYPASSRLS over ``documents``) can call
+    # ``current_scope()`` when validating an INSERT. Without this grant
+    # any api_app watchlist write would fail with "permission denied
+    # for function current_scope" before the trigger could check scope.
+    assert admin_bypass_can_execute is True
     assert public_can_execute is False
 
 

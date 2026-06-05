@@ -83,6 +83,43 @@ def _make_user(sync: Engine, email: str) -> uuid.UUID:
         ).scalar_one()
 
 
+def _make_document_and_subscription(
+    sync: Engine,
+    user_id: uuid.UUID,
+    lawstronaut_id: str,
+    jurisdiction: str = "ie",
+    sector: str = "legal",
+) -> uuid.UUID:
+    """Seed a document plus an active subscription scope covering it.
+
+    Together these make the ``watchlists_in_subscription_scope`` trigger
+    pass when the repo writes a watchlist for ``user_id``.
+    """
+    with sync.begin() as conn:
+        doc = conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO documents (jurisdiction, sector, lawstronaut_document_id, title) "
+                "VALUES (:j, :s, :l, 'repo_wl_doc') RETURNING id"
+            ),
+            {"j": jurisdiction, "s": sector, "l": lawstronaut_id},
+        ).scalar_one()
+        sub = conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO subscriptions (user_id, valid_from) "
+                "VALUES (:u, now() - interval '1 day') RETURNING id"
+            ),
+            {"u": user_id},
+        ).scalar_one()
+        conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO subscription_scopes (subscription_id, jurisdiction, sector) "
+                "VALUES (:s, :j, :sec)"
+            ),
+            {"s": sub, "j": jurisdiction, "sec": sector},
+        )
+    return doc
+
+
 @pytest.mark.integration
 async def test_create_returns_populated_dto(
     migrated_db: tuple[Engine, str],
@@ -90,14 +127,16 @@ async def test_create_returns_populated_dto(
 ) -> None:
     sync, _ = migrated_db
     u = _make_user(sync, "repo_wl_create@example.com")
+    doc = _make_document_and_subscription(sync, u, "repo_wl_create_doc")
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
         repo = WatchlistsRepository(session)
-        dto = await repo.create(user_id=u, name="repo_wl_created")
+        dto = await repo.create(user_id=u, document_id=doc, name="repo_wl_created")
 
     assert isinstance(dto, WatchlistDTO)
     assert dto.user_id == u
+    assert dto.document_id == doc
     assert dto.name == "repo_wl_created"
     assert isinstance(dto.id, uuid.UUID)
     assert dto.created_at is not None
@@ -110,12 +149,21 @@ async def test_list_for_returns_owner_rows(
 ) -> None:
     sync, _ = migrated_db
     u = _make_user(sync, "repo_wl_list@example.com")
+    doc1 = _make_document_and_subscription(sync, u, "repo_wl_list_doc1")
+    # Second document under the same subscription scope.
+    with sync.begin() as conn:
+        doc2 = conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO documents (jurisdiction, sector, lawstronaut_document_id, title) "
+                "VALUES ('ie', 'legal', 'repo_wl_list_doc2', 'doc2') RETURNING id"
+            )
+        ).scalar_one()
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
         repo = WatchlistsRepository(session)
-        await repo.create(user_id=u, name="repo_wl_list_one")
-        await repo.create(user_id=u, name="repo_wl_list_two")
+        await repo.create(user_id=u, document_id=doc1, name="repo_wl_list_one")
+        await repo.create(user_id=u, document_id=doc2, name="repo_wl_list_two")
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
@@ -132,11 +180,12 @@ async def test_get_by_id_returns_dto_or_none(
 ) -> None:
     sync, _ = migrated_db
     u = _make_user(sync, "repo_wl_get@example.com")
+    doc = _make_document_and_subscription(sync, u, "repo_wl_get_doc")
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
         repo = WatchlistsRepository(session)
-        created = await repo.create(user_id=u, name="repo_wl_get_target")
+        created = await repo.create(user_id=u, document_id=doc, name="repo_wl_get_target")
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
@@ -157,11 +206,12 @@ async def test_delete_owned_row_returns_true(
 ) -> None:
     sync, _ = migrated_db
     u = _make_user(sync, "repo_wl_delete@example.com")
+    doc = _make_document_and_subscription(sync, u, "repo_wl_delete_doc")
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
         repo = WatchlistsRepository(session)
-        created = await repo.create(user_id=u, name="repo_wl_delete_me")
+        created = await repo.create(user_id=u, document_id=doc, name="repo_wl_delete_me")
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))

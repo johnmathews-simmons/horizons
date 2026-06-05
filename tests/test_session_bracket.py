@@ -88,6 +88,41 @@ def _make_user(sync_engine: Engine, email: str) -> uuid.UUID:
         ).scalar_one()
 
 
+def _seed_doc_and_scope(sync_engine: Engine, user_id: uuid.UUID, slug: str) -> uuid.UUID:
+    """Seed a document + a subscription covering it for ``user_id``.
+
+    The WU4.3 ``watchlists_in_subscription_scope`` trigger requires a
+    matching subscription scope for any INSERT under ``api_app`` with
+    ``app.user_id`` bound. These tests bracket their writes inside the
+    bracket, so the trigger fires and needs a scope to validate against.
+    """
+    with sync_engine.begin() as conn:
+        doc = conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO documents (jurisdiction, sector, "
+                "lawstronaut_document_id, title) "
+                "VALUES ('ie', 'legal', :l, 'sess_doc') RETURNING id"
+            ),
+            {"l": slug},
+        ).scalar_one()
+        sub = conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO subscriptions (user_id, valid_from) "
+                "VALUES (:u, now() - interval '1 day') RETURNING id"
+            ),
+            {"u": user_id},
+        ).scalar_one()
+        conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO subscription_scopes "
+                "(subscription_id, jurisdiction, sector) "
+                "VALUES (:s, 'ie', 'legal')"
+            ),
+            {"s": sub},
+        )
+    return doc
+
+
 @pytest.mark.integration
 async def test_bracket_sets_app_user_id(
     migrated_db: tuple[Engine, str],
@@ -110,11 +145,14 @@ async def test_bracket_commits_on_normal_exit(
 ) -> None:
     sync, _ = migrated_db
     u = _make_user(sync, "sess_commit@example.com")
+    doc = _seed_doc_and_scope(sync, u, "sess_commit_doc")
 
     async with session_for_user(async_engine, u) as session:
         await session.execute(
-            sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-            {"u": u, "n": "sess_commit_row"},
+            sqlalchemy.text(
+                "INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"
+            ),
+            {"u": u, "d": doc, "n": "sess_commit_row"},
         )
 
     with sync.begin() as conn:
@@ -135,6 +173,7 @@ async def test_bracket_rolls_back_on_exception(
 ) -> None:
     sync, _ = migrated_db
     u = _make_user(sync, "sess_rollback@example.com")
+    doc = _seed_doc_and_scope(sync, u, "sess_rollback_doc")
 
     class _Boom(Exception):
         pass
@@ -142,8 +181,10 @@ async def test_bracket_rolls_back_on_exception(
     with pytest.raises(_Boom):
         async with session_for_user(async_engine, u) as session:
             await session.execute(
-                sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-                {"u": u, "n": "sess_rollback_row"},
+                sqlalchemy.text(
+                    "INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"
+                ),
+                {"u": u, "d": doc, "n": "sess_rollback_row"},
             )
             raise _Boom
 
@@ -192,14 +233,28 @@ async def test_rls_protected_read_is_user_scoped_through_bracket(
     sync, _ = migrated_db
     a = _make_user(sync, "sess_e2e_a@example.com")
     b = _make_user(sync, "sess_e2e_b@example.com")
+    # Inserts under superuser → trigger short-circuits (no app.user_id);
+    # we only need a single document FK target.
     with sync.begin() as conn:
+        doc = conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO documents (jurisdiction, sector, "
+                "lawstronaut_document_id, title) "
+                "VALUES ('ie', 'legal', 'sess_e2e_doc', 'sess_e2e_doc') "
+                "RETURNING id"
+            )
+        ).scalar_one()
         conn.execute(
-            sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-            {"u": a, "n": "sess_e2e_a_row"},
+            sqlalchemy.text(
+                "INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"
+            ),
+            {"u": a, "d": doc, "n": "sess_e2e_a_row"},
         )
         conn.execute(
-            sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-            {"u": b, "n": "sess_e2e_b_row"},
+            sqlalchemy.text(
+                "INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"
+            ),
+            {"u": b, "d": doc, "n": "sess_e2e_b_row"},
         )
 
     async with session_for_user(async_engine, a) as session:

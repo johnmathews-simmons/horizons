@@ -14,6 +14,7 @@ from horizons_core.repos.base import Repository
 from horizons_core.repos.clauses import ClauseDTO, ClausesRepository
 from horizons_core.repos.documents import DocumentDTO, DocumentsRepository
 from horizons_core.repos.refresh_tokens import RefreshTokenDTO, RefreshTokensRepository
+from horizons_core.repos.users import UserDTO, UsersRepository
 from horizons_core.repos.versions import (
     DocumentVersionDTO,
     DocumentVersionsRepository,
@@ -32,6 +33,8 @@ __all__ = [
     "RefreshTokenDTO",
     "RefreshTokensRepository",
     "Repository",
+    "UserDTO",
+    "UsersRepository",
     "WatchlistDTO",
     "WatchlistsRepository",
 ]

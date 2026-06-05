@@ -25,6 +25,9 @@ from horizons_core.core.auth.provider import (
     TokenProvider,
 )
 
+# ``verify_password`` is intentionally re-exported above; tests / callers
+# typically reach for it via ``horizons_core.core.auth``.
+
 __all__ = [
     "AuthError",
     "InvalidTokenError",

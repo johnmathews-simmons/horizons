@@ -131,6 +131,50 @@ async def get_session(user_id: uuid.UUID) -> AsyncGenerator[AsyncSession]:
         yield session
 
 
+@asynccontextmanager
+async def unauthenticated_session(
+    engine: AsyncEngine,
+) -> AsyncGenerator[AsyncSession]:
+    """Open a transaction with no ``app.user_id`` bound.
+
+    Narrow use case: the login flow needs to read ``users`` by email
+    *before* it knows the caller's id. ``users`` carries no RLS today
+    (the architecture spec defers tenancy RLS until an API path reads
+    them directly) so a session with no GUC can do the lookup; once
+    the user_id is known, the route binds it via
+    ``bind_app_user_id`` and writes the refresh-token row in the same
+    transaction.
+
+    Commits on normal exit, rolls back on any exception. The caller is
+    responsible for calling ``set_local_role(session, "api_app")`` if
+    it needs RLS-keyed reads / writes after binding the user id.
+    """
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as session, session.begin():
+        yield session
+
+
+@asynccontextmanager
+async def get_unauthenticated_session() -> AsyncGenerator[AsyncSession]:
+    """FastAPI-Depends-shaped login-flow bracket against the global engine."""
+    async with unauthenticated_session(get_engine()) as session:
+        yield session
+
+
+async def bind_app_user_id(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Set ``app.user_id`` for the current transaction.
+
+    Used by the login flow after the user has been identified, so that
+    the same transaction can subsequently write the refresh-token row
+    under RLS. ``set_config(..., is_local=true)`` scopes the GUC to the
+    transaction; pool checkin's ``DISCARD ALL`` is the second layer.
+    """
+    await session.execute(
+        sqlalchemy.text("SELECT set_config('app.user_id', :u, true)"),
+        {"u": str(user_id)},
+    )
+
+
 async def set_local_role(session: AsyncSession, role: str) -> None:
     """Issue ``SET LOCAL ROLE <role>`` inside the session's transaction.
 

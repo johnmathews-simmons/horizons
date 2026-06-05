@@ -163,37 +163,13 @@ def test_bearer_signed_by_other_keypair_returns_401(
     assert response.status_code == 401
 
 
-def test_valid_bearer_returns_200_and_principal_body(
-    configured_env: tuple[bytes, bytes],
-    client: TestClient,
-) -> None:
-    """A token issued by the same provider the app uses → 200 + body."""
-    private_pem, public_pem = configured_env
-    provider = LocalJwtProvider(
-        private_key=private_pem,
-        public_key=public_pem,
-        issuer=ISSUER,
-        audience=AUDIENCE,
-    )
-    user_id = uuid.uuid4()
-    import asyncio
-
-    token = asyncio.run(
-        provider.issue_token(
-            user_id=user_id,
-            role="client",
-            kind=TokenKind.ACCESS,
-        )
-    )
-
-    response = client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    body = response.json()
-    assert body == {
-        "user_id": str(user_id),
-        "role": "client",
-        "kind": "access",
-    }
+# The WU4.1 "valid bearer → 200" assertion for ``/v1/me`` was moved
+# to ``tests/test_me_and_watchlists_endpoints.py``. WU4.3 replaced the
+# stub with a DB-backed implementation, so the round-trip test needs a
+# seeded user + subscription, which is outside this file's no-DB
+# fixture. The auth-only kind-gate / signature-rejection checks below
+# still hold here because the dependency raises 401 *before* the DB
+# session opens.
 
 
 def _issue_token_with_kind(

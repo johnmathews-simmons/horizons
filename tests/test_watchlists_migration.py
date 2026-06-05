@@ -65,14 +65,33 @@ def _make_user(conn: Connection, email: str) -> uuid.UUID:
     ).scalar_one()
 
 
+def _make_document(
+    conn: Connection,
+    lawstronaut_id: str,
+    jurisdiction: str = "ie",
+    sector: str = "legal",
+    title: str = "wl_test_doc",
+) -> uuid.UUID:
+    return conn.execute(
+        text(
+            "INSERT INTO documents (jurisdiction, sector, lawstronaut_document_id, title) "
+            "VALUES (:j, :s, :l, :t) RETURNING id"
+        ),
+        {"j": jurisdiction, "s": sector, "l": lawstronaut_id, "t": title},
+    ).scalar_one()
+
+
 def _make_watchlist(
     conn: Connection,
     user_id: uuid.UUID,
+    document_id: uuid.UUID,
     name: str = "wl_default",
 ) -> uuid.UUID:
     return conn.execute(
-        text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n) RETURNING id"),
-        {"u": user_id, "n": name},
+        text(
+            "INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n) RETURNING id"
+        ),
+        {"u": user_id, "d": document_id, "n": name},
     ).scalar_one()
 
 
@@ -98,6 +117,7 @@ def test_watchlists_columns(migrated_engine: Engine) -> None:
 
     assert cols["id"] == ("uuid", "NO")
     assert cols["user_id"] == ("uuid", "NO")
+    assert cols["document_id"] == ("uuid", "NO")
     assert cols["name"] == ("text", "NO")
     assert cols["created_at"] == ("timestamp with time zone", "NO")
 
@@ -196,7 +216,8 @@ def test_watchlists_uuidv7_default(migrated_engine: Engine) -> None:
     try:
         with migrated_engine.begin() as conn:
             uid = _make_user(conn, "wl_v7@example.com")
-            wid = _make_watchlist(conn, uid, "wl_v7")
+            did = _make_document(conn, "wl_v7_doc")
+            wid = _make_watchlist(conn, uid, did, "wl_v7")
     finally:
         migrated_engine.dispose()
 
@@ -208,11 +229,12 @@ def test_watchlists_uuidv7_default(migrated_engine: Engine) -> None:
 def test_watchlists_insert_update_delete_all_permitted(
     migrated_engine: Engine,
 ) -> None:
-    """No append-only trigger — mutation is a real operation."""
+    """No append-only trigger — rename and delete are real operations."""
     try:
         with migrated_engine.begin() as conn:
             uid = _make_user(conn, "wl_crud@example.com")
-            wid = _make_watchlist(conn, uid, "wl_crud_original")
+            did = _make_document(conn, "wl_crud_doc")
+            wid = _make_watchlist(conn, uid, did, "wl_crud_original")
 
         with migrated_engine.begin() as conn:
             conn.execute(
@@ -242,7 +264,8 @@ def test_watchlists_cascade_on_user_delete(migrated_engine: Engine) -> None:
     try:
         with migrated_engine.begin() as conn:
             uid = _make_user(conn, "wl_cascade@example.com")
-            wid = _make_watchlist(conn, uid, "wl_cascade")
+            did = _make_document(conn, "wl_cascade_doc")
+            wid = _make_watchlist(conn, uid, did, "wl_cascade")
 
         with migrated_engine.begin() as conn:
             conn.execute(text("DELETE FROM users WHERE id = :id"), {"id": uid})
@@ -253,5 +276,27 @@ def test_watchlists_cascade_on_user_delete(migrated_engine: Engine) -> None:
                 {"id": wid},
             ).first()
             assert remaining is None
+    finally:
+        migrated_engine.dispose()
+
+
+@pytest.mark.integration
+def test_watchlists_user_document_unique_constraint(
+    migrated_engine: Engine,
+) -> None:
+    """A user cannot watch the same document twice."""
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        with migrated_engine.begin() as conn:
+            uid = _make_user(conn, "wl_unique@example.com")
+            did = _make_document(conn, "wl_unique_doc")
+            _make_watchlist(conn, uid, did, "wl_unique_first")
+
+        with (
+            pytest.raises(IntegrityError),
+            migrated_engine.begin() as conn,
+        ):
+            _make_watchlist(conn, uid, did, "wl_unique_dup")
     finally:
         migrated_engine.dispose()

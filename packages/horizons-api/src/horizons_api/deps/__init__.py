@@ -27,13 +27,23 @@ Four deps, layered:
 
 from __future__ import annotations
 
+from horizons_api.deps.anon_session import login_session_dep
 from horizons_api.deps.auth import authenticated_user, require_kind
 from horizons_api.deps.provider import get_token_provider
+from horizons_api.deps.refresh import (
+    REFRESH_COOKIE_NAME,
+    require_refresh_principal,
+    session_for_refresh,
+)
 from horizons_api.deps.session import session_for_request
 
 __all__ = [
+    "REFRESH_COOKIE_NAME",
     "authenticated_user",
     "get_token_provider",
+    "login_session_dep",
     "require_kind",
+    "require_refresh_principal",
+    "session_for_refresh",
     "session_for_request",
 ]

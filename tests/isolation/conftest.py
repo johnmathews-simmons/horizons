@@ -161,10 +161,17 @@ def _subscribe(
     )
 
 
-def _make_watchlist(conn: Connection, user_id: uuid.UUID, name: str) -> uuid.UUID:
+def _make_watchlist(
+    conn: Connection,
+    user_id: uuid.UUID,
+    document_id: uuid.UUID,
+    name: str,
+) -> uuid.UUID:
     return conn.execute(
-        sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n) RETURNING id"),
-        {"u": user_id, "n": name},
+        sqlalchemy.text(
+            "INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n) RETURNING id"
+        ),
+        {"u": user_id, "d": document_id, "n": name},
     ).scalar_one()
 
 
@@ -234,10 +241,15 @@ async def two_clients(
         admin_id = _make_user(conn, f"isolation_admin_{suffix}@example.com", role="admin")
         _subscribe(conn, a_id, "UK", "BANKING")
         _subscribe(conn, b_id, "EU", "INSURANCE")
-        a_wid = _make_watchlist(conn, a_id, f"isolation_a_watchlist_{suffix}")
-        b_wid = _make_watchlist(conn, b_id, f"isolation_b_watchlist_{suffix}")
         a_doc, a_ver, a_cl = _make_doc_chain(conn, "UK", "BANKING", f"a_{suffix}")
         b_doc, b_ver, b_cl = _make_doc_chain(conn, "EU", "INSURANCE", f"b_{suffix}")
+        # Watchlists land after documents now — the FK + the WU4.3
+        # scope trigger both need a document target. Each user watches
+        # their own scope's document so the trigger (if it ran under
+        # api_app) would pass; under the superuser seeding it
+        # short-circuits regardless.
+        a_wid = _make_watchlist(conn, a_id, a_doc, f"isolation_a_watchlist_{suffix}")
+        b_wid = _make_watchlist(conn, b_id, b_doc, f"isolation_b_watchlist_{suffix}")
 
     return TwoClients(
         a_id=a_id,

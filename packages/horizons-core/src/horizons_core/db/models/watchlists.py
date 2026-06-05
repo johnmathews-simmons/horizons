@@ -13,13 +13,14 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text, text
+from sqlalchemy import DateTime, ForeignKey, Index, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from horizons_core.db.models.base import Base
 
 if TYPE_CHECKING:
+    from horizons_core.db.models.documents import Document
     from horizons_core.db.models.users import User
 
 
@@ -27,10 +28,13 @@ class Watchlist(Base):
     __tablename__ = "watchlists"
     __table_args__ = (
         Index("idx_watchlists_user_id", "user_id"),
+        Index("idx_watchlists_document_id", "document_id"),
+        UniqueConstraint("user_id", "document_id", name="watchlists_user_document_unique"),
         {
             "comment": (
-                "Per-user saved query. Owner-keyed RLS (cross-client privacy "
-                "axis). Mutable — rename and delete are real operations."
+                "User -> watched document. Two-axis isolation: cross-client "
+                "privacy via owner-keyed RLS; subscription-scope via the "
+                "watchlists_in_subscription_scope trigger."
             ),
         },
     )
@@ -45,6 +49,11 @@ class Watchlist(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -53,3 +62,4 @@ class Watchlist(Base):
     )
 
     user: Mapped[User] = relationship()
+    document: Mapped[Document] = relationship()

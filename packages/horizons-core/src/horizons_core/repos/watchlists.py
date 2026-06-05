@@ -34,6 +34,7 @@ class WatchlistDTO(BaseModel):
 
     id: uuid.UUID
     user_id: uuid.UUID
+    document_id: uuid.UUID
     name: str
     created_at: datetime
 
@@ -74,14 +75,25 @@ class WatchlistsRepository:
         ).scalar_one_or_none()
         return WatchlistDTO.model_validate(row) if row is not None else None
 
-    async def create(self, *, user_id: uuid.UUID, name: str) -> WatchlistDTO:
-        """Insert a watchlist owned by ``user_id``.
+    async def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        document_id: uuid.UUID,
+        name: str,
+    ) -> WatchlistDTO:
+        """Insert a watchlist owned by ``user_id`` for ``document_id``.
 
         The keyword-only ``user_id`` is required by the policy's
         ``WITH CHECK`` predicate and by call-site clarity — a write
-        always names its owner.
+        always names its owner. ``document_id`` carries the same
+        clarity: the row is meaningless without it.
+
+        Scope validation against the caller's subscription is the
+        service layer's job; the database backs it with the
+        ``watchlists_in_subscription_scope`` trigger.
         """
-        row = Watchlist(user_id=user_id, name=name)
+        row = Watchlist(user_id=user_id, document_id=document_id, name=name)
         self._session.add(row)
         await self._session.flush()
         await self._session.refresh(row)

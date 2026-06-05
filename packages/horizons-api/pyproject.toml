@@ -6,6 +6,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115",
     "horizons-core",
+    "pydantic[email]>=2.9",
     "structlog>=24.4",
     "uvicorn>=0.32",
 ]

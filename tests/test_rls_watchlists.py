@@ -66,6 +66,45 @@ def _make_user(conn: Connection, email: str) -> uuid.UUID:
     ).scalar_one()
 
 
+def _make_document(
+    conn: Connection,
+    lawstronaut_id: str,
+    jurisdiction: str = "ie",
+    sector: str = "legal",
+) -> uuid.UUID:
+    return conn.execute(
+        text(
+            "INSERT INTO documents (jurisdiction, sector, lawstronaut_document_id, title) "
+            "VALUES (:j, :s, :l, 'wl_rls_test_doc') RETURNING id"
+        ),
+        {"j": jurisdiction, "s": sector, "l": lawstronaut_id},
+    ).scalar_one()
+
+
+def _seed_subscription(
+    conn: Connection,
+    user_id: uuid.UUID,
+    jurisdiction: str = "ie",
+    sector: str = "legal",
+) -> uuid.UUID:
+    """Active subscription covering (jurisdiction, sector) for ``user_id``."""
+    sub_id = conn.execute(
+        text(
+            "INSERT INTO subscriptions (user_id, valid_from) "
+            "VALUES (:u, now() - interval '1 day') RETURNING id"
+        ),
+        {"u": user_id},
+    ).scalar_one()
+    conn.execute(
+        text(
+            "INSERT INTO subscription_scopes (subscription_id, jurisdiction, sector) "
+            "VALUES (:s, :j, :sec)"
+        ),
+        {"s": sub_id, "j": jurisdiction, "sec": sector},
+    )
+    return sub_id
+
+
 def _set_app_user(conn: Connection, user_id: uuid.UUID) -> None:
     # set_config with is_local=true is the parameter-binding-safe
     # equivalent of `SET LOCAL app.user_id = '...'` — `SET LOCAL` parses
@@ -89,13 +128,16 @@ def test_owner_sees_own_watchlists_only(migrated_engine: Engine) -> None:
         with migrated_engine.begin() as conn:
             a = _make_user(conn, "wl_rls_a@example.com")
             b = _make_user(conn, "wl_rls_b@example.com")
+            doc = _make_document(conn, "wl_rls_owner_doc")
+            # Inserts run as superuser with no app.user_id; the scope
+            # trigger short-circuits so no subscription is needed here.
             conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-                {"u": a, "n": "wl_rls_a_only"},
+                text("INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"),
+                {"u": a, "d": doc, "n": "wl_rls_a_only"},
             )
             conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-                {"u": b, "n": "wl_rls_b_only"},
+                text("INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"),
+                {"u": b, "d": doc, "n": "wl_rls_b_only"},
             )
 
         with migrated_engine.begin() as conn:
@@ -124,9 +166,10 @@ def test_missing_app_user_id_raises_under_api_app(
     try:
         with migrated_engine.begin() as conn:
             uid = _make_user(conn, "wl_rls_no_guc@example.com")
+            doc = _make_document(conn, "wl_rls_no_guc_doc")
             conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-                {"u": uid, "n": "wl_rls_no_guc"},
+                text("INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"),
+                {"u": uid, "d": doc, "n": "wl_rls_no_guc"},
             )
 
         with (
@@ -145,11 +188,18 @@ def test_missing_app_user_id_raises_under_api_app(
 def test_insert_with_check_rejects_foreign_user_id(
     migrated_engine: Engine,
 ) -> None:
-    """api_app under B's GUC cannot insert a row owned by A."""
+    """api_app under B's GUC cannot insert a row owned by A.
+
+    Seeds B's subscription so the scope trigger passes (the
+    cross-client privacy axis is the failure under test, not the
+    subscription-scope axis — keep them separable).
+    """
     try:
         with migrated_engine.begin() as conn:
             a = _make_user(conn, "wl_rls_check_a@example.com")
             b = _make_user(conn, "wl_rls_check_b@example.com")
+            _seed_subscription(conn, b)
+            doc = _make_document(conn, "wl_rls_check_doc")
 
         with (
             pytest.raises(DBAPIError),
@@ -158,8 +208,8 @@ def test_insert_with_check_rejects_foreign_user_id(
             _assume_api_app(conn)
             _set_app_user(conn, b)
             conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-                {"u": a, "n": "wl_rls_foreign_insert"},
+                text("INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"),
+                {"u": a, "d": doc, "n": "wl_rls_foreign_insert"},
             )
     finally:
         migrated_engine.dispose()
@@ -172,9 +222,13 @@ def test_update_on_others_row_is_noop(migrated_engine: Engine) -> None:
         with migrated_engine.begin() as conn:
             a = _make_user(conn, "wl_rls_upd_a@example.com")
             b = _make_user(conn, "wl_rls_upd_b@example.com")
+            doc = _make_document(conn, "wl_rls_upd_doc")
             a_wid = conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n) RETURNING id"),
-                {"u": a, "n": "wl_rls_upd_original"},
+                text(
+                    "INSERT INTO watchlists (user_id, document_id, name) "
+                    "VALUES (:u, :d, :n) RETURNING id"
+                ),
+                {"u": a, "d": doc, "n": "wl_rls_upd_original"},
             ).scalar_one()
 
         with migrated_engine.begin() as conn:
@@ -209,9 +263,13 @@ def test_update_rekeying_to_other_user_rejected(
         with migrated_engine.begin() as conn:
             a = _make_user(conn, "wl_rls_rekey_a@example.com")
             b = _make_user(conn, "wl_rls_rekey_b@example.com")
+            doc = _make_document(conn, "wl_rls_rekey_doc")
             a_wid = conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n) RETURNING id"),
-                {"u": a, "n": "wl_rls_rekey"},
+                text(
+                    "INSERT INTO watchlists (user_id, document_id, name) "
+                    "VALUES (:u, :d, :n) RETURNING id"
+                ),
+                {"u": a, "d": doc, "n": "wl_rls_rekey"},
             ).scalar_one()
 
         with (
@@ -235,9 +293,13 @@ def test_delete_on_others_row_is_noop(migrated_engine: Engine) -> None:
         with migrated_engine.begin() as conn:
             a = _make_user(conn, "wl_rls_del_a@example.com")
             b = _make_user(conn, "wl_rls_del_b@example.com")
+            doc = _make_document(conn, "wl_rls_del_doc")
             a_wid = conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n) RETURNING id"),
-                {"u": a, "n": "wl_rls_del_target"},
+                text(
+                    "INSERT INTO watchlists (user_id, document_id, name) "
+                    "VALUES (:u, :d, :n) RETURNING id"
+                ),
+                {"u": a, "d": doc, "n": "wl_rls_del_target"},
             ).scalar_one()
 
         with migrated_engine.begin() as conn:
@@ -267,13 +329,14 @@ def test_admin_bypass_sees_all_watchlists(migrated_engine: Engine) -> None:
         with migrated_engine.begin() as conn:
             a = _make_user(conn, "wl_rls_admin_a@example.com")
             b = _make_user(conn, "wl_rls_admin_b@example.com")
+            doc = _make_document(conn, "wl_rls_admin_doc")
             conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-                {"u": a, "n": "wl_rls_admin_a_row"},
+                text("INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"),
+                {"u": a, "d": doc, "n": "wl_rls_admin_a_row"},
             )
             conn.execute(
-                text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
-                {"u": b, "n": "wl_rls_admin_b_row"},
+                text("INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n)"),
+                {"u": b, "d": doc, "n": "wl_rls_admin_b_row"},
             )
 
         with migrated_engine.begin() as conn:
