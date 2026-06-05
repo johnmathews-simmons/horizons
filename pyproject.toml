@@ -24,6 +24,7 @@ horizons-api = { workspace = true }
 dev = [
     "alembic>=1.14",
     "asyncpg>=0.30",
+    "hypothesis>=6.112",
     "pre-commit>=4.0",
     "psycopg[binary]>=3.2",
     "pytest>=8.3",
@@ -76,7 +77,7 @@ exclude = ["**/__pycache__", ".claude", "packages/horizons-webapp"]
 # `importlib` import mode lets per-package tests share `test_smoke.py`
 # filenames without colliding (rootdir test-collection conflates same-named
 # modules otherwise).
-addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib -m 'not nightly'"
 testpaths = [
     "packages/horizons-core/tests",
     "packages/horizons-ingestion/tests",
@@ -86,6 +87,7 @@ testpaths = [
 asyncio_mode = "auto"
 markers = [
     "integration: tests that require Docker (testcontainers PG, etc.) — auto-skipped if Docker isn't reachable",
+    "nightly: slow Hypothesis / property tests; default-excluded by addopts and run by the nightly GitHub Actions workflow only",
 ]
 
 [tool.coverage.run]

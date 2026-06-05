@@ -1,0 +1,39 @@
+name: Nightly property tests
+
+# Slow Hypothesis-driven tests that the default ``uv run pytest`` skips
+# via ``-m 'not nightly'`` in ``pyproject.toml``. This workflow flips
+# the marker on. By design, this run does NOT gate any merge — branch
+# protection on ``main`` does not require it. CI on ``ci.yml`` /
+# ``webapp.yml`` remains the early signal; this is a verification pass
+# that broader Hypothesis coverage hasn't surfaced an isolation bug.
+#
+# Triggered nightly at 04:00 UTC and on manual dispatch (used during
+# development to validate the workflow file without waiting for cron).
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  property-tests:
+    name: hypothesis property tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.27"
+          enable-cache: true
+
+      - name: Sync workspace (frozen lockfile)
+        run: uv sync --frozen
+
+      - name: Pytest (nightly marker only, testcontainers)
+        run: uv run pytest -m nightly --maxfail=1 -v
