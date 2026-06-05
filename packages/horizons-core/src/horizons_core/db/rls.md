@@ -49,18 +49,112 @@ narrowly would be tedious; with it, `api_app` having `USAGE` on
 Every request the API handles is wrapped in a transaction whose first
 statement is:
 
-    SET LOCAL app.user_id = '<requesting client id>';
+    SELECT set_config('app.user_id', '<requesting client id>', true);
 
-`SET LOCAL` scopes the GUC to the current transaction, so connection
-pool reuse cannot leak it between requests. The repository layer is
-responsible for issuing the `SET LOCAL`; raw SQL that bypasses the
-repository is lint-banned.
+`set_config(name, value, is_local => true)` is the parameter-binding-safe
+equivalent of `SET LOCAL app.user_id = '...'` — `SET LOCAL` parses above
+the parameter binder and rejects `$1` placeholders, so the function form
+is what `session.py` actually issues.
+
+`is_local => true` scopes the GUC to the current transaction, so
+connection pool reuse cannot leak it between requests. `session.py` is
+the only sanctioned issuer; imperative raw SQL via `sqlalchemy.text()`
+is permitted **only** inside that module (enforced by
+`tests/test_raw_sql_isolation.py`).
 
 `current_scope()` reads this GUC, looks up the calling user's active
 subscriptions, and returns the `(jurisdiction, sector)` set they are
 entitled to read. If the GUC is unset, the function **raises** —
-forgetting `SET LOCAL` is a bug and a silently empty result set is
+forgetting the bracket is a bug and a silently empty result set is
 worse than a loud failure.
+
+## Session contract (WU1.5)
+
+The application reaches Postgres through one entry point:
+`horizons_core.db.session.get_session()`. The bracket carries the
+responsibilities the RLS spine assumes are already in place by the time
+a query runs.
+
+**Shape.** `get_session(user_id: uuid.UUID)` is an `@asynccontextmanager`
+yielding an `AsyncSession`. It is FastAPI-Depends-shaped:
+
+```python
+async with get_session(user_id) as session:
+    rows = await session.execute(select(Watchlist))
+    ...
+```
+
+**What it does on entry:**
+
+1. Acquires a connection from the engine's pool.
+2. Begins a transaction.
+3. Issues `SELECT set_config('app.user_id', :u, true)` so the policy's
+   `current_setting('app.user_id')::uuid` cast succeeds.
+4. Yields the session.
+
+**What it does on exit:**
+
+- Normal exit (no exception): commits the transaction.
+- Exception exit: rolls back the transaction, then re-raises.
+
+Either way the connection is returned to the pool. `SET LOCAL` GUCs
+auto-clear at transaction end so per-request bleed is already
+impossible; `DISCARD ALL` on checkin (below) is the defence-in-depth
+second layer.
+
+**Why `app.user_role` and `app.subscription_id` are not set.** The
+improvement plan's WU1.5 spec lists three GUCs, but no policy and no
+helper reads `app.user_role` or `app.subscription_id` today.
+`current_scope()` derives the subscription set from
+`app_private.user_subscriptions` keyed on `app.user_id` — there is no
+single canonical `subscription_id` for a multi-subscription client.
+Setting GUCs no consumer reads is cargo-cult, so the bracket sets
+`app.user_id` only. When a real consumer for either of the other two
+arrives (e.g. an admin-context predicate or a single-subscription
+filter), the bracket grows the corresponding `set_config` call and the
+journal entry for that work unit documents why.
+
+**`DISCARD ALL` on pool checkin.** The engine carries a SQLAlchemy
+`checkin` event handler that issues `DISCARD ALL` against the returning
+connection. This clears every session-level GUC, prepared-statement
+plan cache, advisory lock, cursor, and temp table — defence-in-depth
+against any code path that issues `SET` (not `SET LOCAL`) and forgets
+to clear it. At demo-scale row counts the plan-cache churn is
+negligible.
+
+Two implementation notes are load-bearing here, both forced by the
+SQLAlchemy 2.x asyncpg adapter:
+
+1. The checkin handler issues `DISCARD ALL` against
+   `dbapi_connection.driver_connection` (the raw `asyncpg.Connection`)
+   via `sqlalchemy.util.await_only`, **not** via a SQLAlchemy cursor.
+   The adapter cursor wraps every execute in an implicit transaction,
+   and Postgres rejects `DISCARD ALL` with "cannot run inside a
+   transaction block" if invoked that way.
+2. The engine is built with `connect_args={"statement_cache_size": 0}`.
+   `DISCARD ALL` deallocates server-side prepared statements; asyncpg's
+   client-side cache does not know they are gone, and the next execute
+   on the same connection fails with `InvalidSQLStatementNameError`.
+   Disabling the client cache trades a re-prepare per call for not
+   carrying that stale-cache footgun.
+
+**Raw-SQL isolation.** `sqlalchemy.text()` is the only sanctioned
+imperative-SQL entry point and is permitted **only inside
+`session.py`**. Models may use `text("uuidv7()")` and `text("now()")`
+as declarative `server_default=` arguments — that is a SQL expression
+literal for schema generation, not raw-SQL execution — and the
+architectural test allow-lists `db/models/*.py` for this reason.
+Everything else goes through the SQLAlchemy ORM via the session
+`get_session()` yields. The architectural test
+`tests/test_raw_sql_isolation.py` AST-walks every `.py` under
+`packages/horizons-*/src/` and fails on any `text(...)` call outside the
+allowlist.
+
+**Admin code paths.** Admin readers that need to bypass RLS still
+acquire a session through `get_session()` for the GUC + bracket
+discipline, then `SET LOCAL ROLE admin_bypass` inside the txn. The
+session module does not provide a separate "admin session" entry
+point — the role switch is the carve-out, not the bracket.
 
 ## Planned policies
 
