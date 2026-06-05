@@ -42,8 +42,12 @@ export function configureApiClient(baseUrl: string): void {
 }
 
 apiClient.interceptors.request.use((config) => {
+  // _skipAuthRefresh marks the three auth endpoints (login / refresh /
+  // logout). For those, the refresh cookie is the authoritative source;
+  // an Authorization access token would win precedence on the API
+  // (deps/refresh.py _extract_refresh_token) and fail the kind check.
   const token = bridge?.getAccessToken() ?? null
-  if (token) {
+  if (token && !config._skipAuthRefresh) {
     config.headers.set('Authorization', `Bearer ${token}`)
   } else {
     config.headers.delete('Authorization')
