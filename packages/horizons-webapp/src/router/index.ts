@@ -20,6 +20,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/ChangesView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/changes/:id',
+    name: 'change-detail',
+    component: () => import('@/views/ChangeDetailView.vue'),
+    meta: { requiresAuth: true },
+    props: true,
+  },
 ]
 
 export function createAppRouter(): Router {

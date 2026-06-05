@@ -35,3 +35,13 @@ export async function fetchDiscovery(params: DiscoveryParams = {}): Promise<Disc
   const response = await apiClient.get<DiscoveryPage>('/v1/discovery', { params: search })
   return response.data
 }
+
+export interface DifferentialItem extends DiscoveryItem {
+  before_text: string | null
+  after_text: string | null
+}
+
+export async function fetchDifferentialById(eventId: number): Promise<DifferentialItem> {
+  const response = await apiClient.get<DifferentialItem>(`/v1/differential/${eventId}`)
+  return response.data
+}
