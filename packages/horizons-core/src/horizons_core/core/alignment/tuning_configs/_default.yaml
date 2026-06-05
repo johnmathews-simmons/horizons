@@ -1,0 +1,9 @@
+# Snapshot of `default_tuning_config()` for documentation and drift detection.
+# Tests assert this YAML round-trips against the Python defaults so they
+# can't silently diverge. The canonical source remains `TuningConfig`'s
+# field defaults in `tuning.py` — edit there first, then update this
+# snapshot.
+shingle_k: 5
+signature_size: 128
+lsh_bands: 16
+similarity_threshold: 0.7

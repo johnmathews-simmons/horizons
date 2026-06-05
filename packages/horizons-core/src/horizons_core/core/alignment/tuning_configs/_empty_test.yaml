@@ -1,0 +1,4 @@
+# Empty test fixture — used by tests/test_tuning.py to exercise the
+# loader's "yaml.safe_load returned None -> {}" normalisation branch.
+# Has no production consumer; the leading-underscore name marks it as
+# internal.
