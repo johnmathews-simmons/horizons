@@ -70,7 +70,8 @@ class User(Base):
         server_default=text("now()"),
     )
 
-    subscriptions: Mapped[list[Subscription]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
+    # No cascade: users are never deleted (the FK from subscriptions is
+    # ON DELETE RESTRICT, matching that intent). A user accumulates
+    # subscriptions over their lifetime; ending one is an UPDATE on the
+    # subscription row, not a DELETE on the user.
+    subscriptions: Mapped[list[Subscription]] = relationship(back_populates="user")
