@@ -1,0 +1,200 @@
+name: Infra drift check
+
+# WU6.6 — nightly `az deployment what-if` against the live infrastructure
+# resource group; opens a GitHub Issue (label `infra-drift`) when the
+# what-if reports a non-empty change set.
+#
+# Why this exists:
+#   The whole infra is declared in `infra/`. Console-side changes (a
+#   manual ingress tweak, a portal scale rule, an `az` one-liner) drift
+#   the live shape away from main. Drift discovered weeks later, after
+#   the original change context is forgotten, is the nightmare scenario.
+#   A nightly what-if surfaces it within 24h.
+#
+# What it does:
+#   1. Auth to Azure via OIDC using the WU6.1 federated credential bound
+#      to the `staging` GitHub Environment (a `production` environment
+#      doesn't exist yet; flip the env name to `production` when a prod
+#      RG/UAMI lands).
+#   2. Run `az deployment group what-if --no-pretty-print -o json`
+#      against the target RG with the same parameters file CI uses.
+#   3. Parse the `changes[]` array. If it's empty (or every entry has
+#      `changeType == "Ignore"` / `"NoChange"`), exit 0 silently.
+#   4. Otherwise, render a Markdown summary of the changes and open a
+#      GitHub Issue via `gh issue create`. Label `infra-drift` so the
+#      backlog is filterable.
+
+on:
+  schedule:
+    # Daily at 03:00 UTC. Late enough that scheduled CRON-driven
+    # workflows from the day have settled; early enough that anyone
+    # checking the project in the morning sees the result.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+# OIDC federation needs `id-token: write`; issue creation needs
+# `issues: write`; checking out the repo to read the Bicep template and
+# parameters file needs `contents: read`.
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+# Don't run two drift checks against the same RG concurrently — a
+# manual dispatch fired while the scheduled run is mid-flight would
+# double-create the issue.
+concurrency:
+  group: drift-check-staging
+  cancel-in-progress: false
+
+env:
+  # Single source of truth for the RG name. Update when a prod RG
+  # lands (and flip the `environment:` block on the job to match).
+  AZURE_RESOURCE_GROUP: horizons-nonprod
+  ISSUE_LABEL: infra-drift
+
+jobs:
+  drift:
+    name: az deployment what-if (${{ env.AZURE_RESOURCE_GROUP }})
+    runs-on: ubuntu-latest
+    # The `staging` environment is what GitHub binds the federated
+    # credential to — WU6.1 created two creds, one per environment,
+    # and `staging` is the one that maps to `horizons-nonprod`. When a
+    # `horizons-prod` RG lands, flip this to `production` and the
+    # other federated credential takes over.
+    environment: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bicep CLI
+        # Pre-installed on ubuntu-latest, but pin the install step
+        # explicitly so the workflow doesn't silently degrade if the
+        # runner image stops bundling it.
+        run: az bicep install
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run what-if
+        id: whatif
+        # `--no-pretty-print` is the documented opt-in to JSON output
+        # (the default is the human-readable change report). `-o json`
+        # alone doesn't suppress the pretty-print preamble; the flag
+        # is required.
+        #
+        # The migration job's password fallback is required as a
+        # parameter override (the example parameters file marks it
+        # as a Key Vault reference, which what-if can't resolve
+        # without an extra `--parameters-key-vault-reference` flag we
+        # haven't wired). A throwaway value is fine for what-if — it
+        # never reaches Azure.
+        run: |
+          set -euo pipefail
+          OUTPUT=$(mktemp)
+          az deployment group what-if \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters @infra/main.parameters.example.json \
+            --parameters postgresAdminPassword='drift-check-ephemeral' \
+            --no-pretty-print \
+            -o json > "$OUTPUT"
+          # Stash the JSON for the next step. Multi-line outputs use
+          # the GitHub-Actions delimiter dance to avoid shell-escape
+          # pain.
+          {
+            echo 'json<<DRIFT_EOF'
+            cat "$OUTPUT"
+            echo 'DRIFT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Detect drift
+        id: detect
+        # what-if returns a `changes` array. Each change has a
+        # `changeType` of Create/Delete/Modify/Deploy/Ignore/NoChange/
+        # Unsupported. Anything other than Ignore / NoChange is real
+        # drift worth reporting.
+        #
+        # The what-if JSON is sourced from Azure ARM, not from
+        # user-controlled input, but resource IDs and change types
+        # still flow through the shell — keep them in env vars and
+        # reference via $VAR rather than templating into the script
+        # body.
+        env:
+          WHATIF_JSON: ${{ steps.whatif.outputs.json }}
+        run: |
+          set -euo pipefail
+          DRIFT_COUNT=$(printf '%s' "$WHATIF_JSON" | \
+            jq '[.changes[]? | select(.changeType != "Ignore" and .changeType != "NoChange")] | length')
+          echo "count=$DRIFT_COUNT" >> "$GITHUB_OUTPUT"
+          if [[ "$DRIFT_COUNT" -gt 0 ]]; then
+            # Summary table for the issue body — resource ID + change
+            # type, one row each.
+            SUMMARY=$(printf '%s' "$WHATIF_JSON" | \
+              jq -r '
+                ["| Change | Resource ID |", "|---|---|"] +
+                ([.changes[]? |
+                  select(.changeType != "Ignore" and .changeType != "NoChange") |
+                  "| \(.changeType) | `\(.resourceId)` |"]) |
+                .[]')
+            {
+              echo 'summary<<DRIFT_EOF'
+              echo "$SUMMARY"
+              echo 'DRIFT_EOF'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open drift issue
+        # Only fires when the detect step found a non-empty drift set.
+        if: steps.detect.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Move every GHA expression into the env block so the shell
+          # body references $VAR rather than ${{ }} templating —
+          # defence-in-depth against workflow injection (the actual
+          # values here come from Azure ARM API output, not from
+          # untrusted contributors, but the pattern is the safe
+          # default for any composed string handed to `run:`).
+          DRIFT_COUNT: ${{ steps.detect.outputs.count }}
+          DRIFT_SUMMARY: ${{ steps.detect.outputs.summary }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # The label is created on first use. Issue body links the
+        # workflow run so the operator can pull the full what-if
+        # JSON from the run logs if the summary table omits a
+        # detail they need.
+        run: |
+          set -euo pipefail
+          if ! gh label list --search "$ISSUE_LABEL" --json name | jq -e --arg label "$ISSUE_LABEL" '.[] | select(.name == $label)' > /dev/null; then
+            gh label create "$ISSUE_LABEL" \
+              --description "Infrastructure drift detected by drift-check.yml" \
+              --color B60205
+          fi
+          BODY=$(cat <<EOF
+          Infrastructure drift detected in resource group \`$AZURE_RESOURCE_GROUP\`
+          by [\`drift-check.yml\` run #${RUN_NUMBER}](${RUN_URL}).
+
+          ${DRIFT_COUNT} change(s):
+
+          ${DRIFT_SUMMARY}
+
+          ## Next steps
+
+          1. Inspect the full what-if JSON in the workflow run logs.
+          2. Decide whether the drift is intended (someone touched the
+             live RG manually) or accidental.
+          3. If intended → port the change back into \`infra/\` and
+             close this issue.
+          4. If accidental → revert via \`az deployment group create\`
+             from the current \`infra/main.bicep\` and close this issue.
+          EOF
+          )
+          gh issue create \
+            --title "Infra drift detected: ${DRIFT_COUNT} change(s) in ${AZURE_RESOURCE_GROUP}" \
+            --body "$BODY" \
+            --label "$ISSUE_LABEL"
