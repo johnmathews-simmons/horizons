@@ -1,7 +1,7 @@
 """Add the ``change_events`` table — the load-bearing read artefact.
 
-Revision ID: 0009
-Revises: 0008
+Revision ID: 0010
+Revises: 0009
 Create Date: 2026-06-05
 
 WU3.4 — the per-document poll transaction writes one ``change_events``
@@ -68,8 +68,8 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = "0009"
-down_revision: str | None = "0008"
+revision: str = "0010"
+down_revision: str | None = "0009"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
