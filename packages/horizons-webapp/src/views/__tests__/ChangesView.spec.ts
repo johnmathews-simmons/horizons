@@ -208,6 +208,35 @@ describe('ChangesView', () => {
     expect(wrapper.get('[data-testid="error-state"]').text()).toContain('Could not load')
   })
 
+  it('windows the list so a large page does not render every row at once', async () => {
+    const items = Array.from({ length: 1000 }, (_, i) => ({
+      ...baseItem,
+      id: i + 1,
+      change_type: 'MODIFIED',
+      alignment_confidence: 0.9,
+    }))
+    server.use(
+      http.get(`${API}/v1/discovery`, () =>
+        HttpResponse.json({ items, next_cursor: null, has_more: false }),
+      ),
+    )
+
+    const router = makeRouter()
+    await router.push('/changes')
+    await router.isReady()
+    const wrapper = mountChanges(router)
+    await flushPromises()
+
+    // Sanity: the data came back.
+    expect(wrapper.find('[data-testid="empty-state"]').exists()).toBe(false)
+    // But far fewer rows are rendered than items returned: the virtualiser
+    // is windowing. The exact rendered count depends on viewport / overscan,
+    // but it must be well below the total.
+    const rendered = wrapper.findAll('[data-testid="change-row"]').length
+    expect(rendered).toBeGreaterThan(0)
+    expect(rendered).toBeLessThan(200)
+  })
+
   it('uses generic copy — no firm or bank names', async () => {
     server.use(
       http.get(`${API}/v1/discovery`, () =>

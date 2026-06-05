@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useWindowVirtualizer, type VirtualItem } from '@tanstack/vue-virtual'
 import { useChangeEvents } from '@/composables/useChangeEvents'
 import { confidenceTier } from '@/constants/confidence'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,38 @@ const isInitialLoading = computed(() => query.isPending.value)
 const hasError = computed(() => query.isError.value)
 const isEmpty = computed(() => !isInitialLoading.value && filteredItems.value.length === 0)
 
+const listContainerRef = ref<HTMLElement | null>(null)
+
+const virtualizer = useWindowVirtualizer({
+  get count() {
+    return filteredItems.value.length
+  },
+  estimateSize: () => 72,
+  overscan: 8,
+  get scrollMargin() {
+    return listContainerRef.value?.offsetTop ?? 0
+  },
+})
+
+interface VisibleRow {
+  virtualItem: VirtualItem
+  item: DiscoveryItem
+  isLast: boolean
+}
+
+const visibleRows = computed<VisibleRow[]>(() => {
+  const rows: VisibleRow[] = []
+  const lastIndex = filteredItems.value.length - 1
+  for (const virtualItem of virtualizer.value.getVirtualItems()) {
+    const item = filteredItems.value[virtualItem.index]
+    if (!item) continue
+    rows.push({ virtualItem, item, isLast: virtualItem.index === lastIndex })
+  }
+  return rows
+})
+const totalSize = computed(() => virtualizer.value.getTotalSize())
+const scrollMargin = computed(() => virtualizer.value.options.scrollMargin)
+
 function formatRelative(iso: string): string {
   const detected = new Date(iso).getTime()
   const now = Date.now()
@@ -48,6 +81,15 @@ function pathDisplay(item: DiscoveryItem): string {
     return `${item.before_path} → ${item.after_path}`
   }
   return item.after_path ?? item.before_path ?? '—'
+}
+
+function measureRow(el: Element | null) {
+  // Skip the measurement when the element has no real layout (jsdom, hidden
+  // tab, pre-paint). Feeding a 0-height back into the size cache collapses
+  // the virtualiser's range and causes it to render every item.
+  if (!(el instanceof HTMLElement)) return
+  if (el.getBoundingClientRect().height <= 0) return
+  virtualizer.value.measureElement(el)
 }
 </script>
 
@@ -117,20 +159,43 @@ function pathDisplay(item: DiscoveryItem): string {
         No recent changes in your scope.
       </div>
 
-      <ul v-else class="divide-y divide-slate-200 overflow-hidden rounded-md border border-slate-200 bg-white">
-        <li v-for="item in filteredItems" :key="item.id" data-testid="change-row">
+      <ul
+        v-else
+        ref="listContainerRef"
+        role="list"
+        class="overflow-hidden rounded-md border border-slate-200 bg-white"
+        :style="{ position: 'relative', height: `${totalSize}px`, width: '100%' }"
+      >
+        <li
+          v-for="row in visibleRows"
+          :key="row.item.id"
+          :ref="(el) => measureRow(el as Element | null)"
+          :data-index="row.virtualItem.index"
+          data-testid="change-row"
+          :class="row.isLast ? '' : 'border-b border-slate-200'"
+          :style="{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            transform: `translateY(${row.virtualItem.start - scrollMargin}px)`,
+          }"
+        >
           <RouterLink
-            :to="{ name: 'change-detail', params: { id: String(item.id) } }"
+            :to="{ name: 'change-detail', params: { id: String(row.item.id) } }"
             class="flex items-center gap-4 px-4 py-3 transition hover:bg-slate-50"
           >
-            <ChangeTypePill :type="item.change_type" />
+            <ChangeTypePill :type="row.item.change_type" />
             <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-medium text-slate-900">{{ pathDisplay(item) }}</div>
+              <div class="truncate text-sm font-medium text-slate-900">
+                {{ pathDisplay(row.item) }}
+              </div>
               <div class="mt-0.5 text-xs text-slate-500">
-                {{ item.jurisdiction }} · {{ item.sector }} · {{ formatRelative(item.detected_at) }}
+                {{ row.item.jurisdiction }} · {{ row.item.sector }} ·
+                {{ formatRelative(row.item.detected_at) }}
               </div>
             </div>
-            <ConfidenceBadge :value="item.alignment_confidence" />
+            <ConfidenceBadge :value="row.item.alignment_confidence" />
           </RouterLink>
         </li>
       </ul>
