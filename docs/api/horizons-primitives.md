@@ -158,6 +158,18 @@ the `change_type`:
 | `MODIFIED` | non-null, different from `after_text` | non-null |
 | `MOVED` | non-null, same as `after_text` | non-null |
 
+## Single-event lookup — `GET /v1/differential/{event_id}`
+
+A bounded, single-row variant of differential for the webapp's
+clause-diff detail view (WU5.3). Same response shape as a
+`DifferentialItem` (not a `*Page`). `include_content` defaults `true`
+— one event is a bounded payload, no corpus-style payload guard
+applies. Pass `?include_content=false` to omit body text.
+
+Out-of-scope rows are invisible via RLS; the route returns `404` for
+both truly-absent ids and out-of-scope ids — the caller cannot tell
+the difference. `Cache-Control: private, no-store`.
+
 ## Errors
 
 Standard FastAPI shape — `{"detail": "..."}`:
@@ -165,7 +177,10 @@ Standard FastAPI shape — `{"detail": "..."}`:
 - `401` — missing / invalid / expired / wrong-kind bearer.
 - `422` — invalid scope discriminator, invalid cursor, or
   `include_content=true` at corpus scope with `limit > 10`.
-- `404` — never returned. Out-of-scope rows are invisible, not absent.
+- `404` — `/v1/differential/{event_id}` only, for absent or
+  out-of-scope ids (indistinguishable by design). The list endpoints
+  never return 404: out-of-scope rows are silently absent from the
+  page.
 
 ## Performance budget
 

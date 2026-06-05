@@ -662,6 +662,112 @@ def test_differential_corpus_include_content_true_allowed_under_cap(
     assert any(it["before_text"] == "cap_before" for it in items)
 
 
+# ---- differential by id (WU5.3) -----------------------------------------
+
+
+@pytest.mark.integration
+def test_differential_by_id_requires_bearer(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    _ = migrated_postgres_p
+    response = client.get("/v1/differential/1")
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_differential_by_id_returns_event_with_text(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """In-scope event returns 200 with before/after text by default."""
+    j, s = f"DBI-{uuid.uuid4().hex[:8]}", f"DBI-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "dif_by_id_in@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="dbi")
+    event_id = _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        before_text="prior text",
+        after_text="updated text",
+    )
+
+    token = _login(client, "dif_by_id_in@example.com")
+    response = client.get(f"/v1/differential/{event_id}", headers=_bearer(token))
+
+    assert response.status_code == 200, response.text
+    assert response.headers.get("Cache-Control") == "private, no-store"
+    body = response.json()
+    assert body["id"] == event_id
+    assert body["before_text"] == "prior text"
+    assert body["after_text"] == "updated text"
+
+
+@pytest.mark.integration
+def test_differential_by_id_include_content_false_omits_text(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    j, s = f"DBIC-{uuid.uuid4().hex[:8]}", f"DBIC-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "dif_by_id_nc@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="dbic")
+    event_id = _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        before_text="prior text",
+        after_text="updated text",
+    )
+
+    token = _login(client, "dif_by_id_nc@example.com")
+    response = client.get(
+        f"/v1/differential/{event_id}?include_content=false",
+        headers=_bearer(token),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["before_text"] is None
+    assert body["after_text"] is None
+
+
+@pytest.mark.integration
+def test_differential_by_id_out_of_scope_is_404(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """Out-of-scope rows are invisible via RLS — must look like 404, not 403."""
+    in_j, in_s = f"OOS-IN-{uuid.uuid4().hex[:6]}", f"OOS-IN-{uuid.uuid4().hex[:6]}"
+    out_j, out_s = f"OOS-OUT-{uuid.uuid4().hex[:6]}", f"OOS-OUT-{uuid.uuid4().hex[:6]}"
+    _seed_user(migrated_postgres_p, "dif_by_id_oos@example.com", scope=((in_j, in_s),))
+    out_doc, out_ver = _seed_doc(migrated_postgres_p, jurisdiction=out_j, sector=out_s, label="oos")
+    out_id = _seed_event(
+        migrated_postgres_p,
+        document_id=out_doc,
+        document_version_id=out_ver,
+        jurisdiction=out_j,
+        sector=out_s,
+    )
+
+    token = _login(client, "dif_by_id_oos@example.com")
+    response = client.get(f"/v1/differential/{out_id}", headers=_bearer(token))
+    assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_differential_by_id_nonexistent_is_404(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    _seed_user(migrated_postgres_p, "dif_by_id_missing@example.com")
+    token = _login(client, "dif_by_id_missing@example.com")
+    response = client.get("/v1/differential/9999999", headers=_bearer(token))
+    assert response.status_code == 404
+
+
 # ---- load budget --------------------------------------------------------
 
 

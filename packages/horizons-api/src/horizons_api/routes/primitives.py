@@ -421,6 +421,28 @@ async def differential(  # noqa: PLR0913 — every parameter maps to a wire fiel
     )
 
 
+@differential_router.get("/{event_id}", response_model=DifferentialItem)
+async def differential_by_id(
+    event_id: int,
+    response: Response,
+    _principal: Annotated[Principal, Depends(authenticated_user)],
+    session: Annotated[AsyncSession, Depends(session_for_request)],
+    include_content: Annotated[bool, Query()] = True,
+) -> DifferentialItem:
+    """One change event by id, with before/after text by default.
+
+    A single bounded event — ``include_content`` defaults true (like
+    document and clause scope on the bulk endpoint). Out-of-scope rows
+    are invisible via RLS, so they map to 404 the same as truly absent
+    ids.
+    """
+    _no_store(response)
+    dto = await ChangeEventsRepository(session).get_by_id(event_id)
+    if dto is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not found")
+    return _to_differential_item(dto, include_content=include_content)
+
+
 def _to_differential_item(dto: ChangeEventDTO, *, include_content: bool) -> DifferentialItem:
     return DifferentialItem(
         id=dto.id,

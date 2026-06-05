@@ -208,6 +208,19 @@ class ChangeEventsRepository:
         """
         return await self._fetch_page(scope, limit, cursor)
 
+    async def get_by_id(self, event_id: int) -> ChangeEventDTO | None:
+        """Fetch one change event by id, or ``None`` if not visible.
+
+        Subscription scope is enforced by RLS — out-of-scope rows are
+        silently invisible (look the same as ``id`` not existing at
+        all), so the API layer maps either to 404.
+        """
+        stmt = select(ChangeEvent).where(ChangeEvent.id == event_id)
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            return None
+        return ChangeEventDTO.model_validate(row)
+
     async def _fetch_page(
         self,
         scope: ChangeEventScope,
