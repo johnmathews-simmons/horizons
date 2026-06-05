@@ -25,7 +25,7 @@ import hashlib
 import uuid as _uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 import yaml
@@ -430,6 +430,16 @@ _INSERT_CHANGE_EVENT_SQL = text(
     "VALUES (:doc, :dv, :j, :s, :ct, :bu, :au, :bp, :ap, :bt, :at, :conf, :eff)"
 )
 
+# Pushed far past the demo window so the worker's claim query
+# (next_poll_at <= now()) never picks the row up while the synthetic
+# v2 is staged. ``unstage_synthetic_v2`` rewinds it to a real cadence-
+# anchored value.
+_STAGED_NEXT_POLL_AT = datetime(2026, 12, 31, 0, 0, tzinfo=UTC)
+
+_PARK_SCHEDULE_SQL = text(
+    "UPDATE document_poll_schedule    SET next_poll_at = :n  WHERE document_id = :d"
+)
+
 
 def _walk_emitting_leaves(tree: Clause) -> list[Clause]:
     """Return clauses the aligner treats as units: every node with non-empty body."""
@@ -592,6 +602,15 @@ def _stage_one_pair(
             },
         )
         event_count += 1
+
+    # Push the schedule row well past the demo so the worker's
+    # ``SELECT ... FOR UPDATE SKIP LOCKED`` claim query never picks up
+    # this document and overwrites the staged change events with a real
+    # poll. Same transaction as the version + clause + change_event
+    # inserts so a rollback un-parks the row. A document with no
+    # schedule row (synthetic v2 staged without WU3.5 seeding first)
+    # produces a 0-row UPDATE, which is harmless.
+    conn.execute(_PARK_SCHEDULE_SQL, {"d": doc_id, "n": _STAGED_NEXT_POLL_AT})
 
     return clause_count, event_count
 

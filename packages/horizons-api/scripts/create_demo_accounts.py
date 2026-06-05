@@ -201,8 +201,16 @@ def _resolve_passwords(
     from_dev_default: set[str] = set()
     for account in accounts:
         env_value = os.environ.get(account.password_env)
-        if env_value is not None and env_value != "":
-            resolved[account.email] = env_value
+        # Strip surrounding whitespace before deciding whether the env
+        # var counts as "set": ``" "`` / ``"\t"`` / ``"\n"`` are
+        # whitespace-only values that an operator never intends as a
+        # password. The original guard (``is not None and != ""``)
+        # accepted them silently. We do preserve internal whitespace
+        # and only strip the edges, so an operator's "  hunter2  " typo
+        # becomes "hunter2" — usable, not rejected.
+        stripped = env_value.strip() if env_value is not None else ""
+        if stripped:
+            resolved[account.email] = stripped
             continue
         if allow_dev_defaults:
             resolved[account.email] = account.password_default

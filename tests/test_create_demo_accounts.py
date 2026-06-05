@@ -16,11 +16,8 @@ import importlib.util
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import pytest
-
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPO_ROOT / "packages" / "horizons-api" / "scripts" / "create_demo_accounts.py"
@@ -101,6 +98,58 @@ def test_empty_string_env_var_treated_as_unset(
         allow_dev_defaults=False,
     )
     assert missing == ["HORIZONS_DEMO_UK_PASSWORD"]
+
+
+@pytest.mark.parametrize("whitespace", [" ", "  ", "\t", "\n", " \t\n "])
+def test_whitespace_only_env_var_treated_as_unset(
+    monkeypatch: pytest.MonkeyPatch,
+    whitespace: str,
+) -> None:
+    """Whitespace-only values are not real passwords; they must be flagged.
+
+    The original guard (``is not None and != ""``) accepted ``" "``
+    silently, leaving an unusable password hash in the DB and producing
+    "wrong credentials" failures at login that look like an unrelated
+    bug. Reject whitespace-only values up front so the CLI's "missing"
+    error message points the operator at the offending env var.
+    """
+    module = _load_script_module()
+    monkeypatch.setenv("HORIZONS_DEMO_UK_PASSWORD", whitespace)
+    monkeypatch.setenv("HORIZONS_DEMO_EU_PASSWORD", "eu-real-pw")
+    monkeypatch.setenv("HORIZONS_DEMO_ADMIN_PASSWORD", "admin-real-pw")
+
+    resolved, missing, _ = module._resolve_passwords(  # type: ignore[attr-defined]
+        module._accounts(),  # type: ignore[attr-defined]
+        allow_dev_defaults=False,
+    )
+    assert missing == ["HORIZONS_DEMO_UK_PASSWORD"]
+    assert "demo-uk@example.test" not in resolved
+
+
+def test_env_var_with_surrounding_whitespace_is_stripped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Real passwords with edge whitespace pass, stripped of the edges.
+
+    Common operator typo: copy/paste introduces a trailing space. We
+    preserve internal whitespace (a password can legitimately contain
+    a space) and only trim the edges so a "hunter2 " typo becomes
+    "hunter2" rather than rejecting silently.
+    """
+    module = _load_script_module()
+    monkeypatch.setenv("HORIZONS_DEMO_UK_PASSWORD", "  hunter2  ")
+    monkeypatch.setenv("HORIZONS_DEMO_EU_PASSWORD", "\teu real pw\n")
+    monkeypatch.setenv("HORIZONS_DEMO_ADMIN_PASSWORD", "admin-real-pw")
+
+    resolved, missing, _ = module._resolve_passwords(  # type: ignore[attr-defined]
+        module._accounts(),  # type: ignore[attr-defined]
+        allow_dev_defaults=False,
+    )
+    assert missing == []
+    assert resolved["demo-uk@example.test"] == "hunter2"
+    # Internal whitespace is preserved.
+    assert resolved["demo-eu@example.test"] == "eu real pw"
+    assert resolved["admin-demo@example.test"] == "admin-real-pw"
 
 
 def test_all_env_vars_set_resolves_cleanly(
