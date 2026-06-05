@@ -21,7 +21,7 @@ describe('sanitiseRedirect', () => {
     // Protocol-relative — the original vulnerability.
     ['//evil.com', '/'],
     ['//evil.com/path', '/'],
-    // Backslash-prefixed — IE / some browsers normalise this to '/'.
+    // Backslash-prefixed — browsers normalise this to '/'.
     ['/\\evil.com', '/'],
     ['/\\/evil.com', '/'],
     // Absolute URL.
@@ -30,7 +30,8 @@ describe('sanitiseRedirect', () => {
     // Schemes.
     ['javascript:alert(1)', '/'],
     ['data:text/html,<script>alert(1)</script>', '/'],
-    // No leading slash.
+    // No leading slash — would parse against origin/ as same-origin but
+    // the input-side check rejects.
     ['evil.com', '/'],
     ['?redirect=foo', '/'],
     // Empty.
@@ -44,6 +45,15 @@ describe('sanitiseRedirect', () => {
     ['/\t\t/evil.com', '/'],
     ['/\r\n/evil.com', '/'],
     ['\t//evil.com', '/'],
+    // Path-traversal forms that the URL parser normalises to a
+    // `//evil.com` pathname through `.`/`..` segment collapsing — same
+    // origin per the parser, but `router.push('//evil.com')` would still
+    // emit a protocol-relative navigation. Regression for the third-pass
+    // security-review finding; caught by the output-side check.
+    ['/.//evil.com', '/'],
+    ['/..//evil.com', '/'],
+    ['/././/evil.com', '/'],
+    ['/foo/../..//evil.com', '/'],
   ])('rejects %p and falls back to /', (input, expected) => {
     expect(sanitiseRedirect(input)).toBe(expected)
   })

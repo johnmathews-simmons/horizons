@@ -19,10 +19,22 @@
  * the validator and the navigator through the same parser.
  *
  * Returns `pathname + search + hash` so any host the parser found is
- * discarded even if the same-origin check were to pass.
+ * discarded — and re-asserts that the result itself starts with exactly
+ * one '/' (not '//' or '/\'). The URL parser collapses `.` segments but
+ * preserves empty segments, so `/.//evil.com` resolves to a same-origin
+ * URL whose `pathname` is `//evil.com`; returning that to `router.push`
+ * would still produce a protocol-relative navigation. The output check
+ * closes that gap.
  */
 export function sanitiseRedirect(raw: unknown): string {
   if (typeof raw !== 'string' || raw.length === 0) return '/'
+  // Input-side check: the URL parser resolves bare strings ('evil.com',
+  // '?q=1') as relative to `origin/`, which would be same-origin and
+  // pass the origin check below. Demanding a leading '/' keeps the
+  // policy "only same-origin paths the caller explicitly typed as
+  // paths" rather than "anything the URL parser can normalise to same
+  // origin".
+  if (!raw.startsWith('/')) return '/'
   // Without a window (SSR / unusual jsdom configs), refuse rather than
   // attempt to validate without the document's origin to compare against.
   if (typeof window === 'undefined' || !window.location?.origin) return '/'
@@ -34,9 +46,10 @@ export function sanitiseRedirect(raw: unknown): string {
     return '/'
   }
   if (parsed.origin !== window.location.origin) return '/'
-  // Reject anything that didn't start with a path — `//evil.com` parses
-  // successfully against same-origin under some hosts and we want a
-  // belt-and-braces check on the leading byte too.
-  if (!raw.startsWith('/')) return '/'
-  return parsed.pathname + parsed.search + parsed.hash
+  const out = parsed.pathname + parsed.search + parsed.hash
+  // Output-side check: even though the parsed URL is same-origin,
+  // `pathname` can still begin with `//` (e.g. `/.//evil.com` resolves
+  // there). `router.push('//evil.com')` would protocol-relative navigate.
+  if (!/^\/(?![\\/])/.test(out)) return '/'
+  return out
 }
