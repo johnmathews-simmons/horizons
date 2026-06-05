@@ -59,5 +59,6 @@ def create_app() -> FastAPI:
     app.include_router(watchlists.router)
     app.include_router(primitives.discovery_router)
     app.include_router(primitives.temporal_router)
+    app.include_router(primitives.differential_router)
 
     return app

@@ -545,6 +545,187 @@ def test_temporal_document_scope_requires_document_id(
     assert "document_id" in response.json()["detail"]
 
 
+# ---- differential tests --------------------------------------------------
+
+
+@pytest.mark.integration
+def test_differential_requires_bearer(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    _ = migrated_postgres_p
+    response = client.get("/v1/differential")
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_differential_corpus_default_omits_text(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """At corpus scope, include_content defaults false → no body text."""
+    j, s = f"DCD-{uuid.uuid4().hex[:8]}", f"DCD-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "dif_corpus_default@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="dcd")
+    _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        before_text="old body",
+        after_text="new body",
+    )
+
+    token = _login(client, "dif_corpus_default@example.com")
+    response = client.get("/v1/differential?scope=corpus", headers=_bearer(token))
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert all(it["before_text"] is None for it in body["items"])
+    assert all(it["after_text"] is None for it in body["items"])
+
+
+@pytest.mark.integration
+def test_differential_document_scope_default_includes_text(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """At document scope, include_content defaults true → text present."""
+    j, s = f"DDD-{uuid.uuid4().hex[:8]}", f"DDD-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "dif_doc_default@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="ddd")
+    _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        before_text="old body",
+        after_text="new body",
+    )
+
+    token = _login(client, "dif_doc_default@example.com")
+    response = client.get(
+        f"/v1/differential?scope=document&document_id={doc}",
+        headers=_bearer(token),
+    )
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+    assert len(items) == 1
+    assert items[0]["before_text"] == "old body"
+    assert items[0]["after_text"] == "new body"
+
+
+@pytest.mark.integration
+def test_differential_corpus_include_content_true_rejected_above_cap(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """include_content=true at corpus scope with limit > 10 → 422."""
+    _seed_user(migrated_postgres_p, "dif_corpus_cap@example.com")
+    token = _login(client, "dif_corpus_cap@example.com")
+
+    response = client.get(
+        "/v1/differential?scope=corpus&include_content=true&limit=50",
+        headers=_bearer(token),
+    )
+    assert response.status_code == 422
+    assert "include_content" in response.json()["detail"]
+
+
+@pytest.mark.integration
+def test_differential_corpus_include_content_true_allowed_under_cap(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """include_content=true at corpus scope with limit <= 10 → 200 + text."""
+    j, s = f"DCC-{uuid.uuid4().hex[:8]}", f"DCC-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "dif_corpus_cap_ok@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="dcc")
+    _seed_event(
+        migrated_postgres_p,
+        document_id=doc,
+        document_version_id=ver,
+        jurisdiction=j,
+        sector=s,
+        before_text="cap_before",
+        after_text="cap_after",
+    )
+
+    token = _login(client, "dif_corpus_cap_ok@example.com")
+    response = client.get(
+        "/v1/differential?scope=corpus&include_content=true&limit=10",
+        headers=_bearer(token),
+    )
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+    assert any(it["before_text"] == "cap_before" for it in items)
+
+
+# ---- load budget --------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_discovery_corpus_p95_under_three_seconds(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """Doc 3 sets a 3 s p95 budget for corpus-scope queries.
+
+    Seeds ~500 events into a unique scope, then issues 50 paginated
+    requests and asserts the 95th-percentile latency stays under
+    3 s. Bounded inline to keep the dev loop's signal fast; the real
+    deployed smoke runs in WU6.3.
+    """
+    import time
+
+    j, s = f"P95-{uuid.uuid4().hex[:8]}", f"P95-{uuid.uuid4().hex[:8]}"
+    _seed_user(migrated_postgres_p, "p95_load@example.com", scope=((j, s),))
+    doc, ver = _seed_doc(migrated_postgres_p, jurisdiction=j, sector=s, label="p95")
+
+    base = datetime(2026, 5, 1, tzinfo=UTC)
+    seeds = 500
+    with migrated_postgres_p.begin() as conn:
+        for i in range(seeds):
+            conn.execute(
+                text(
+                    "INSERT INTO change_events ("
+                    "  document_id, document_version_id, jurisdiction, sector, "
+                    "  change_type, before_clause_uid, after_clause_uid, "
+                    "  before_path, after_path, before_text, after_text, "
+                    "  alignment_confidence, detected_at"
+                    ") VALUES ("
+                    "  :doc, :ver, :j, :sec, 'MODIFIED', NULL, NULL, "
+                    "  'P1/S1', 'P1/S1', 'b', 'a', 0.9, :dt"
+                    ")"
+                ),
+                {
+                    "doc": doc,
+                    "ver": ver,
+                    "j": j,
+                    "sec": s,
+                    "dt": base + timedelta(seconds=i),
+                },
+            )
+
+    token = _login(client, "p95_load@example.com")
+    iters = 50
+    latencies: list[float] = []
+    for _ in range(iters):
+        t0 = time.perf_counter()
+        response = client.get(
+            "/v1/discovery?scope=corpus&limit=50",
+            headers=_bearer(token),
+        )
+        latencies.append(time.perf_counter() - t0)
+        assert response.status_code == 200
+
+    latencies.sort()
+    p95_idx = max(0, int(0.95 * iters) - 1)
+    p95 = latencies[p95_idx]
+    assert p95 < 3.0, f"p95 latency {p95:.3f}s exceeds 3s budget; sample: {latencies}"
+
+
 @pytest.mark.integration
 def test_discovery_clause_scope_filters_to_uid(
     client: TestClient,

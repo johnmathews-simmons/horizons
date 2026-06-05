@@ -191,6 +191,23 @@ class ChangeEventsRepository:
         """
         return await self._fetch_page(scope, limit, cursor)
 
+    async def differential(
+        self,
+        scope: ChangeEventScope,
+        *,
+        limit: int = DEFAULT_LIMIT,
+        cursor: str | None = None,
+    ) -> tuple[list[ChangeEventDTO], str | None]:
+        """Before/after diff content for the scope.
+
+        Reads all columns (the DTO already carries ``before_text`` /
+        ``after_text``); the API layer chooses whether to project the
+        text fields onto the wire via its ``include_content`` flag and
+        enforces the corpus-scope payload guard. Same pagination as
+        ``list_discovery`` / ``timeline``.
+        """
+        return await self._fetch_page(scope, limit, cursor)
+
     async def _fetch_page(
         self,
         scope: ChangeEventScope,

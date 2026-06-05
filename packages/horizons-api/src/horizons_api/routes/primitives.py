@@ -216,6 +216,49 @@ async def _fetch_timeline(
         ) from exc
 
 
+async def _fetch_differential(
+    session: AsyncSession,
+    *,
+    scope: ChangeEventScope,
+    limit: int,
+    cursor: str | None,
+) -> tuple[list[ChangeEventDTO], str | None]:
+    try:
+        return await ChangeEventsRepository(session).differential(scope, limit=limit, cursor=cursor)
+    except CursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+def _resolve_include_content(
+    scope: ChangeEventScope,
+    include_content: bool | None,
+    limit: int,
+) -> bool:
+    """Apply the per-scope ``include_content`` default + corpus payload guard.
+
+    Defaults: ``true`` at document / clause scope, ``false`` at corpus
+    scope. At corpus scope, an explicit opt-in is allowed only when
+    ``limit`` stays under ``CORPUS_INCLUDE_CONTENT_MAX_LIMIT`` —
+    larger pages with body text reach megabytes for a 50-doc corpus
+    differential. Tripping the guard returns 422.
+    """
+    is_corpus = isinstance(scope, CorpusScope)
+    if include_content is None:
+        return not is_corpus
+    if include_content and is_corpus and limit > CORPUS_INCLUDE_CONTENT_MAX_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "include_content=true at scope=corpus requires "
+                f"limit <= {CORPUS_INCLUDE_CONTENT_MAX_LIMIT}"
+            ),
+        )
+    return include_content
+
+
 # ----- routers ------------------------------------------------------------
 
 
@@ -329,6 +372,70 @@ def _to_temporal_item(dto: ChangeEventDTO) -> TemporalItem:
         document_version_id=dto.document_version_id,
         clause_uid=clause_uid,
         change_type=dto.change_type,
+        detected_at=dto.detected_at,
+        effective_date=dto.effective_date,
+    )
+
+
+@differential_router.get("", response_model=DifferentialPage)
+async def differential(  # noqa: PLR0913 — every parameter maps to a wire field
+    response: Response,
+    _principal: Annotated[Principal, Depends(authenticated_user)],
+    session: Annotated[AsyncSession, Depends(session_for_request)],
+    scope: Annotated[ScopeKind, Query()] = "corpus",
+    jurisdiction: Annotated[str | None, Query()] = None,
+    sector: Annotated[str | None, Query()] = None,
+    since: Annotated[datetime | None, Query()] = None,
+    until: Annotated[datetime | None, Query()] = None,
+    document_id: Annotated[uuid.UUID | None, Query()] = None,
+    clause_uid: Annotated[uuid.UUID | None, Query()] = None,
+    limit: Annotated[int, Query()] = 50,
+    cursor: Annotated[str | None, Query()] = None,
+    include_content: Annotated[bool | None, Query()] = None,
+) -> DifferentialPage:
+    """Before/after diff content for the scope.
+
+    `include_content` defaults true at document / clause scope, false
+    at corpus scope. At corpus scope, opting in with limit > 10
+    returns 422 to avoid multi-MB responses.
+    """
+    _no_store(response)
+    bounded_limit = _validate_limit(limit)
+    typed_scope = _build_scope(
+        scope,
+        jurisdiction=jurisdiction,
+        sector=sector,
+        since=since,
+        until=until,
+        document_id=document_id,
+        clause_uid=clause_uid,
+    )
+    project_content = _resolve_include_content(typed_scope, include_content, bounded_limit)
+    rows, next_cursor = await _fetch_differential(
+        session, scope=typed_scope, limit=bounded_limit, cursor=cursor
+    )
+    return DifferentialPage(
+        items=[_to_differential_item(r, include_content=project_content) for r in rows],
+        next_cursor=next_cursor,
+        has_more=next_cursor is not None,
+    )
+
+
+def _to_differential_item(dto: ChangeEventDTO, *, include_content: bool) -> DifferentialItem:
+    return DifferentialItem(
+        id=dto.id,
+        document_id=dto.document_id,
+        document_version_id=dto.document_version_id,
+        jurisdiction=dto.jurisdiction,
+        sector=dto.sector,
+        change_type=dto.change_type,
+        before_clause_uid=dto.before_clause_uid,
+        after_clause_uid=dto.after_clause_uid,
+        before_path=dto.before_path,
+        after_path=dto.after_path,
+        before_text=dto.before_text if include_content else None,
+        after_text=dto.after_text if include_content else None,
+        alignment_confidence=dto.alignment_confidence,
         detected_at=dto.detected_at,
         effective_date=dto.effective_date,
     )

@@ -497,6 +497,36 @@ async def test_list_discovery_document_scope_out_of_scope_returns_empty(
 
 
 @pytest.mark.integration
+async def test_differential_returns_text_columns_populated(
+    migrated_db: tuple[Engine, str],
+    async_engine: AsyncEngine,
+) -> None:
+    j, s = f"DIF-{uuid.uuid4().hex[:8]}", f"DIF-{uuid.uuid4().hex[:8]}"
+    sync, _ = migrated_db
+    with sync.begin() as conn:
+        uid = _make_user(conn, "ce_diff_basic@example.com")
+        _subscribe(conn, uid, [(j, s)])
+        doc, ver = _make_doc(conn, j, s, "df")
+        _insert_event(
+            conn,
+            document_id=doc,
+            document_version_id=ver,
+            jurisdiction=j,
+            sector=s,
+            before_text="old body",
+            after_text="new body",
+        )
+
+    async with session_for_user(async_engine, uid) as session:
+        await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
+        items, _ = await ChangeEventsRepository(session).differential(CorpusScope())
+
+    assert len(items) == 1
+    assert items[0].before_text == "old body"
+    assert items[0].after_text == "new body"
+
+
+@pytest.mark.integration
 async def test_timeline_shares_ordering_and_scope_with_discovery(
     migrated_db: tuple[Engine, str],
     async_engine: AsyncEngine,
