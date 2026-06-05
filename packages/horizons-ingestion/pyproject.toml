@@ -7,6 +7,8 @@ dependencies = [
     "horizons-core",
     "aiohttp>=3.10",
     "asyncpg>=0.30",
+    "azure-identity>=1.18",
+    "azure-storage-blob>=12.22",
 ]
 
 [build-system]

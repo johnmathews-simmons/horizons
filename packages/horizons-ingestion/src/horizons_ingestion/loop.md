@@ -100,6 +100,9 @@ knob is overridable so the demo can re-tune live without a redeploy
 | `HORIZONS_INGESTION_HEALTHZ_PORT` | `healthz_port` | `8080` |
 | `HORIZONS_INGESTION_POOL_MIN` | `pool_min` | `2` |
 | `HORIZONS_INGESTION_POOL_MAX` | `pool_max` | `4` |
+| `HORIZONS_INGESTION_BLOB_ACCOUNT_URL` | `blob_account_url` | (required for deploy) |
+| `HORIZONS_INGESTION_BLOB_CONTAINER` | `blob_container` | `originals` |
+| `HORIZONS_INGESTION_SWEEP_INTERVAL_S` | `sweep_interval_s` | `1800.0` |
 
 The asyncpg DSN the worker uses is a plain `postgresql://` URL — not
 the SQLAlchemy-style `postgresql+asyncpg://` the API uses. The
@@ -114,9 +117,22 @@ PollFn = Callable[[asyncpg.Connection, uuid.UUID], Awaitable[None]]
 
 An async callable. The connection is the one that holds the claim
 lock — anything `poll` writes through it commits with the schedule
-update. WU3.3 ships `noop_poll`. WU3.4 will provide the real
-implementation.
+update. WU3.3 ships `noop_poll`; WU3.4 ships
+[`poll_document`](poll.md) — the real per-document body — which the
+worker's `__main__` binds with its `LawstronautClient` and
+`BlobStore` via `functools.partial` before handing it to
+`ClaimLoop`.
 
 The seam is a type alias (not a `Protocol`, not an ABC) because we
 expect exactly one real implementation. If a second implementation
 emerges, lift to `Protocol` then.
+
+## The sweep loop
+
+A second long-running coroutine, [`SweepLoop`](sweep.py), runs
+concurrently with `ClaimLoop` in `__main__.py`. It iterates every
+`sweep_interval_s` (default 30 min): list every blob in
+`HORIZONS_INGESTION_BLOB_CONTAINER`, compare against
+`document_versions.content_blob_key`, delete unreferenced keys. Same
+process, same shutdown event — SIGTERM drains both loops together.
+The sweep is the orphan reclaimer WU3.4 acceptance requires.

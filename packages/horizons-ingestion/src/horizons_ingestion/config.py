@@ -46,6 +46,9 @@ class ClaimLoopConfig:
     healthz_port: int = 8080
     pool_min: int = 2
     pool_max: int = 4
+    blob_container: str = "originals"
+    blob_account_url: str | None = None
+    sweep_interval_s: float = 1800.0
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> ClaimLoopConfig:
@@ -67,6 +70,9 @@ class ClaimLoopConfig:
             healthz_port=_int(env.get("HORIZONS_INGESTION_HEALTHZ_PORT"), 8080),
             pool_min=_int(env.get("HORIZONS_INGESTION_POOL_MIN"), 2),
             pool_max=_int(env.get("HORIZONS_INGESTION_POOL_MAX"), 4),
+            blob_container=env.get("HORIZONS_INGESTION_BLOB_CONTAINER") or "originals",
+            blob_account_url=env.get("HORIZONS_INGESTION_BLOB_ACCOUNT_URL"),
+            sweep_interval_s=_float(env.get("HORIZONS_INGESTION_SWEEP_INTERVAL_S"), 1800.0),
         )
         if cfg.pool_min > cfg.pool_max:
             raise ValueError(f"pool_min ({cfg.pool_min}) must be <= pool_max ({cfg.pool_max})")
