@@ -26,7 +26,9 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from horizons_core.observability.otel import setup_otel  # noqa: E402
 
 from horizons_api.admin import audit as admin_audit  # noqa: E402
+from horizons_api.admin import clients as admin_clients  # noqa: E402
 from horizons_api.admin import health as admin_health  # noqa: E402
+from horizons_api.admin import impersonate as admin_impersonate  # noqa: E402
 from horizons_api.config import load_settings  # noqa: E402
 from horizons_api.middleware import RequestContextMiddleware  # noqa: E402
 from horizons_api.routes import (  # noqa: E402
@@ -78,6 +80,8 @@ def create_app() -> FastAPI:
     app.include_router(primitives.temporal_router)
     app.include_router(primitives.differential_router)
     app.include_router(admin_subscriptions.router)
+    app.include_router(admin_clients.router)
+    app.include_router(admin_impersonate.router)
     app.include_router(admin_health.router)
     app.include_router(admin_audit.router)
 

@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from horizons_core.db.models.users import User, UserRole
 
@@ -62,3 +62,41 @@ class UsersRepository:
             await self._session.execute(select(User).where(User.id == user_id))
         ).scalar_one_or_none()
         return UserDTO.model_validate(row) if row is not None else None
+
+    async def list_by_role(
+        self,
+        role: UserRole,
+        *,
+        limit: int,
+        offset: int,
+    ) -> list[UserDTO]:
+        """Return up to ``limit`` users with ``role``, oldest-first.
+
+        Stable ordering on ``(created_at ASC, id ASC)`` so paginated
+        admin views can rely on offset-based paging without rows
+        shuffling between pages. Newer signups land after the current
+        page, not in the middle of it.
+        """
+        rows = (
+            (
+                await self._session.execute(
+                    select(User)
+                    .where(User.role == role)
+                    .order_by(User.created_at.asc(), User.id.asc())
+                    .offset(offset)
+                    .limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return [UserDTO.model_validate(r) for r in rows]
+
+    async def count_by_role(self, role: UserRole) -> int:
+        """Total rows for ``role`` — companion to ``list_by_role``."""
+        count = (
+            await self._session.execute(
+                select(func.count()).select_from(User).where(User.role == role)
+            )
+        ).scalar_one()
+        return int(count)

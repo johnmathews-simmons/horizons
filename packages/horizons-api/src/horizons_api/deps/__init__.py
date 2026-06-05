@@ -32,7 +32,7 @@ from horizons_api.deps.admin import (
     require_admin_principal,
 )
 from horizons_api.deps.anon_session import login_session_dep
-from horizons_api.deps.auth import authenticated_user, require_kind
+from horizons_api.deps.auth import authenticated_user, require_kind, require_kinds
 from horizons_api.deps.provider import get_token_provider
 from horizons_api.deps.refresh import (
     REFRESH_COOKIE_NAME,
@@ -51,6 +51,7 @@ __all__ = [
     "login_session_dep",
     "require_admin_principal",
     "require_kind",
+    "require_kinds",
     "require_refresh_principal",
     "session_for_refresh",
     "session_for_request",

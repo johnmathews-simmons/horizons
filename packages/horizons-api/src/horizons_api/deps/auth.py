@@ -1,17 +1,33 @@
 """Bearer-token authentication dependencies.
 
-Each authenticated route declares which ``TokenKind`` it accepts by
-depending on ``require_kind(<kind>)`` rather than a single
+Each authenticated route declares which set of ``TokenKind`` values it
+accepts by depending on ``require_kind(<kind>)`` or
+``require_kinds(<kind>, <kind>, ...)`` rather than a single
 ``authenticated_user``. The factory shape forces the call site to
 state its expectation explicitly — a refresh token presented as a
 bearer to a non-refresh endpoint is rejected at the auth boundary,
 not deep in a handler.
 
-``authenticated_user`` is the convenience alias for the dominant
-case (``require_kind(TokenKind.ACCESS)``); refresh-handling endpoints
-(WU4.2's ``/v1/auth/refresh``) depend on
-``require_kind(TokenKind.REFRESH)``; impersonation tokens (WU4.5)
-will have their own dependency in the admin surface.
+``authenticated_user`` is the alias for the dominant "human user
+acting on their own behalf" case and accepts both
+``TokenKind.ACCESS`` and ``TokenKind.IMPERSONATION``. The latter is
+the audited admin support-view carrier minted by
+``POST /v1/admin/impersonate``: its ``sub`` is the impersonated
+client and its ``role`` is ``client``, so RLS and role gating fire
+exactly as they would for a real client request. The elevation is
+recorded once by the mint endpoint (``admin_access_log`` with
+``mode='impersonation'``) and bounded by the 15-minute token TTL;
+this contract trades per-request observability of impersonation for
+the simplicity of "the SPA carries one bearer in support view". The
+distinction between an impersonated and a direct client request is
+not visible to client-facing routes by design.
+
+Refresh-handling endpoints (WU4.2's ``/v1/auth/refresh``) depend on
+``require_kind(TokenKind.REFRESH)``; admin endpoints layer
+``require_admin_principal`` on top of ``authenticated_user`` and so
+reject impersonation tokens by virtue of their ``role='client'``
+claim. A refresh token presented as a bearer to any non-refresh
+endpoint is still rejected.
 
 The 401 body intentionally does not distinguish missing vs malformed
 vs expired vs wrong-kind — the verifier's specific reason is logged
@@ -62,21 +78,24 @@ def _verify_bearer(
         ) from exc
 
 
-def require_kind(kind: TokenKind):  # type: ignore[no-untyped-def]
-    """Build a FastAPI dependency that requires a specific token kind.
+def require_kinds(*kinds: TokenKind):  # type: ignore[no-untyped-def]
+    """Build a FastAPI dependency that accepts any of ``kinds``.
 
     The returned callable is the dep injected into a route. A token
-    presented with the wrong ``kind`` claim is rejected with 401 —
+    whose ``kind`` claim is not in ``kinds`` is rejected with 401 —
     the same status code as any other auth failure, so a client
-    presenting a refresh token where an access token was expected
-    cannot tell from the response whether the token was wrong-kind,
-    wrong-signature, or absent.
+    presenting (say) a refresh token where ``{ACCESS, IMPERSONATION}``
+    were expected cannot tell from the response whether the token was
+    wrong-kind, wrong-signature, or absent.
 
     Annotation note: the return type is left implicit so FastAPI's
     dependency resolver sees the *closure* (it has the right
     signature) rather than a typed wrapper. Mypy / pyright still
     follow the Principal return through the closure's annotation.
     """
+    if not kinds:
+        raise ValueError("require_kinds requires at least one TokenKind")
+    accepted = frozenset(kinds)
 
     def _dependency(
         credentials: Annotated[
@@ -89,7 +108,7 @@ def require_kind(kind: TokenKind):  # type: ignore[no-untyped-def]
         ],
     ) -> Principal:
         principal = _verify_bearer(credentials, provider)
-        if principal.kind is not kind:
+        if principal.kind not in accepted:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="invalid bearer token",
@@ -103,11 +122,22 @@ def require_kind(kind: TokenKind):  # type: ignore[no-untyped-def]
         user_id_var.set(str(principal.user_id))
         return principal
 
-    _dependency.__name__ = f"require_kind_{kind.value}"
+    _dependency.__name__ = "require_kinds_" + "_".join(sorted(k.value for k in accepted))
     return _dependency
 
 
-# The dominant case. Routes that want an ordinary authenticated
-# request depend on ``authenticated_user``; refresh / impersonation
-# routes build their own dep via ``require_kind``.
-authenticated_user = require_kind(TokenKind.ACCESS)
+def require_kind(kind: TokenKind):  # type: ignore[no-untyped-def]
+    """Build a FastAPI dependency that requires exactly one ``kind``.
+
+    Thin wrapper around ``require_kinds`` for the single-kind case.
+    Kept as the call shape for refresh-only endpoints where the
+    semantics are unambiguously "one kind, no others".
+    """
+    return require_kinds(kind)
+
+
+# The dominant "human user acting on their own behalf" case. Accepts
+# ACCESS (real client request) and IMPERSONATION (admin in support
+# view, audited at mint by /v1/admin/impersonate). Refresh-handling
+# endpoints build their own dep via ``require_kind(TokenKind.REFRESH)``.
+authenticated_user = require_kinds(TokenKind.ACCESS, TokenKind.IMPERSONATION)

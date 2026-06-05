@@ -9,6 +9,6 @@ that the private-state surface uses).
 
 from __future__ import annotations
 
-from horizons_api.admin import audit, health
+from horizons_api.admin import audit, clients, health, impersonate
 
-__all__ = ["audit", "health"]
+__all__ = ["audit", "clients", "health", "impersonate"]
