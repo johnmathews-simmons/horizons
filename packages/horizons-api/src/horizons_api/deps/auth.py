@@ -31,6 +31,7 @@ from horizons_core.core.auth import (
     TokenKind,
     TokenProvider,
 )
+from horizons_core.observability.logging import user_id_var
 
 from horizons_api.deps.provider import get_token_provider
 
@@ -94,6 +95,12 @@ def require_kind(kind: TokenKind):  # type: ignore[no-untyped-def]
                 detail="invalid bearer token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        # Bind user_id for log enrichment in the same place we know the
+        # principal is valid. No reset — FastAPI runs each request in a
+        # fresh asyncio task, so the contextvar is request-scoped via
+        # task locals; pairing with the GUC bracket in deps/session.py
+        # keeps the log value and the RLS value in lock-step.
+        user_id_var.set(str(principal.user_id))
         return principal
 
     _dependency.__name__ = f"require_kind_{kind.value}"

@@ -857,7 +857,6 @@ dependencies = [
     { name = "fastapi" },
     { name = "horizons-core" },
     { name = "pydantic", extra = ["email"] },
-    { name = "structlog" },
     { name = "uvicorn" },
 ]
 
@@ -866,7 +865,6 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "horizons-core", editable = "packages/horizons-core" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.9" },
-    { name = "structlog", specifier = ">=24.4" },
     { name = "uvicorn", specifier = ">=0.32" },
 ]
 
