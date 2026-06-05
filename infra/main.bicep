@@ -62,6 +62,12 @@ param tags object = {
   managedBy: 'bicep'
 }
 
+@description('Email address that receives Azure Monitor alert notifications (WU7.3). Single email receiver on the action group; swap to a Slack webhook by extending alerts.bicep with a webhookReceivers param.')
+param alertEmail string = 'mthwsjc@gmail.com'
+
+@description('Whether the WU7.3 alert rules are armed at deploy time. Default false — provisioned-disabled so they do not fire "no data" before WU6.3 deploys the API + worker. Flip per-environment after the first deploy emits data.')
+param alertsEnabled bool = false
+
 // ---------------------------------------------------------------------
 // 1. Network — VNet + two delegated subnets + private DNS zone.
 // ---------------------------------------------------------------------
@@ -223,6 +229,30 @@ module frontDoor 'modules/front-door.bicep' = {
 }
 
 // ---------------------------------------------------------------------
+// 9. Alerts — Action Group + 5xx / p95 / ingestion-failure alert rules.
+//    WU7.3. All three alerts ship DISABLED (alertsEnabled=false) so
+//    they don't fire "no data" notifications before WU6.3 deploys the
+//    API + worker. Flip per-environment with
+//    `--parameters alertsEnabled=true` or via `az monitor scheduled-query
+//    update` (see infra/README.md and the WU7.3 journal entry).
+// ---------------------------------------------------------------------
+module alerts 'modules/alerts.bicep' = {
+  name: 'alerts'
+  params: {
+    location: location
+    workloadPrefix: workloadPrefix
+    environmentName: environmentName
+    appInsightsId: observability.outputs.appInsightsId
+    logAnalyticsWorkspaceId: observability.outputs.workspaceId
+    apiAppRoleName: containerApi.outputs.appName
+    workerAppRoleName: containerWorker.outputs.appName
+    alertEmail: alertEmail
+    alertsEnabled: alertsEnabled
+    tags: tags
+  }
+}
+
+// ---------------------------------------------------------------------
 // Outputs surfaced for the deploy.yml pipeline (WU6.3, out of scope here).
 // ---------------------------------------------------------------------
 output keyVaultName string = keyVault.outputs.keyVaultName
@@ -235,3 +265,7 @@ output workerContainerAppName string = containerWorker.outputs.appName
 output migrationJobName string = migrationJob.outputs.jobName
 output frontDoorHostName string = frontDoor.outputs.endpointHostName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
+output alertActionGroupName string = alerts.outputs.actionGroupName
+output alertApi5xxName string = alerts.outputs.alertApi5xxName
+output alertApiP95Name string = alerts.outputs.alertApiP95Name
+output alertIngestionFailuresName string = alerts.outputs.alertIngestionFailuresName
