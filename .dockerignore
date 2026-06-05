@@ -1,0 +1,53 @@
+# Build context exclusions for the api/worker Dockerfiles.
+# Both images build from the repo root so the daemon doesn't need
+# anything outside the workspace tree.
+
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# Agent / sync state
+.claude/
+.relay/
+.engineering-team/
+.stfolder/
+.playwright-mcp/
+
+# Per-language caches that bloat context but are never used by uv sync
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+htmlcov/
+.coverage
+.coverage.*
+.venv/
+node_modules/
+dist/
+.vite/
+
+# Infra / docs / journal — not consumed by the runtime images
+infra/
+docs/
+journal/
+scripts/
+tests/
+data/
+README.md
+CLAUDE.md
+alembic.ini
+.github/
+.pre-commit-config.yaml
+
+# The webapp is its own deploy unit, not bundled into the Python images
+packages/horizons-webapp/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

@@ -1,0 +1,94 @@
+name: Build and push container images
+
+# WU6.2 — push container images for the API and ingestion-worker to GHCR.
+#
+# Triggers:
+#   * push to main → build + tag :sha-<short> + :latest, push both.
+#   * workflow_dispatch → manual rebuild (useful for re-tagging after a
+#     base-image security update).
+#
+# Per docs/4. services.md, API and worker are SEPARATE images; they MUST
+# NOT be merged into a single multi-purpose image. The matrix below
+# enforces that — each entry is a self-contained image build.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  # Serialise pushes per ref. Manual dispatches don't cancel; main pushes
+  # cancel any in-flight dispatch on the same ref.
+  group: build-and-push-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # `packages: write` is the GHCR push grant. The default GITHUB_TOKEN
+  # has it scoped to this repo's owner namespace once the package is
+  # created (first push initialises the package).
+  packages: write
+  # OIDC token, kept available for any future cosign signing step. Not
+  # used by the push itself.
+  id-token: write
+
+jobs:
+  build:
+    name: build ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: horizons-api
+            dockerfile: packages/horizons-api/Dockerfile
+          - image: horizons-worker
+            dockerfile: packages/horizons-ingestion/Dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/johnmathews/${{ matrix.image }}
+          tags: |
+            type=raw,value=sha-${{ steps.sha.outputs.short }}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Proprietary
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GHA cache keeps layer reuse across runs without a separate
+          # registry-cache repo. Scope per matrix entry so the API build
+          # doesn't poison the worker build's cache (their layer trees
+          # diverge after the `uv sync --package …` step).
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+          provenance: false
