@@ -315,6 +315,19 @@ Likely first-run failure modes:
 - **`POSTGRES_ADMIN_PASSWORD` not set.** Bicep fails immediately at
   `parameter resolution` with a missing-secret error. Set the
   secret on the `staging` environment and re-run.
+- **SPA upload 403 — missing `Storage Blob Data Contributor`.**
+  WU6.1 granted `Contributor` on `horizons-nonprod` to the UAMI,
+  which covers every control-plane call in the workflow but does
+  NOT cover blob data-plane operations. The first SPA upload step
+  (`az storage blob upload-batch --auth-mode login`) returns 403
+  until the UAMI is granted `Storage Blob Data Contributor` on the
+  storage account. Documented at the top of the
+  `docs/runbooks/deploy.md` prerequisites table with the exact
+  `az role assignment create` command. The API + worker deploy is
+  unaffected — it's a control-plane chain. Caught during the WU6.3
+  wrap-up code review; a follow-up could roll the role assignment
+  into `infra/modules/storage.bicep` by accepting the UAMI principal
+  ID as a parameter.
 - **Migration Job's first run hits a fresh Postgres.** The Job logs
   show alembic creating the entire schema from scratch. If the
   Postgres `horizons` database itself doesn't exist, the

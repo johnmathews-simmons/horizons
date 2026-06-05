@@ -233,11 +233,37 @@ The workflow assumes these are already in place:
 |---|---|---|
 | `vars.AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | Repository variables | WU6.1 |
 | Federated credential `repo:johnmathews/horizons:environment:staging` on UAMI `horizons-github-oidc` | Azure portal | WU6.1 |
-| `Contributor` role on `horizons-nonprod` for the UAMI's principal | Azure RBAC | WU6.1 |
+| `Contributor` role on `horizons-nonprod` for the UAMI's principal | Azure RBAC | WU6.1 (control plane only — see next row) |
+| `Storage Blob Data Contributor` on the storage account for the UAMI's principal | Azure RBAC | **NEW — required for the SPA `upload-batch` step** |
 | `secrets.POSTGRES_ADMIN_PASSWORD` | `staging` GitHub Environment secret | **NEW — must be set before first deploy** |
 | GHCR packages `horizons-api`, `horizons-worker` set to public visibility | github.com package settings | WU6.2 (post-first-push flip) |
 | Static-website hosting enabled on the storage account | One-off `az storage blob service-properties update --static-website` | First deploy follow-up — see `infra/README.md` |
 | ACA env bound to App Insights via `az containerapp env update --logs-destination log-analytics` | One-off control-plane action | First deploy follow-up — see `infra/README.md` |
+
+`Contributor` is a control-plane role — it grants permission to
+create / modify / delete resources but **not** to read or write
+blob data. The SPA upload step uses `--auth-mode login` against the
+storage account's blob endpoint, which is a data-plane operation
+requiring a separate role assignment. After the first Bicep deploy
+creates the storage account, grant the role with:
+
+```bash
+PRINCIPAL_ID=$(az identity show \
+  --resource-group horizons-nonprod \
+  --name horizons-github-oidc \
+  --query principalId -o tsv)
+STORAGE_ID=$(az storage account list \
+  --resource-group horizons-nonprod \
+  --query "[0].id" -o tsv)
+az role assignment create \
+  --assignee-object-id "$PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Storage Blob Data Contributor" \
+  --scope "$STORAGE_ID"
+```
+
+Then re-run the deploy (`gh workflow run deploy.yml --field
+environment=staging`) — the SPA upload step succeeds on the retry.
 
 The two "one-off" rows are idempotent and can be re-run safely. The
 storage-website flip is what makes the SPA reachable through Front
