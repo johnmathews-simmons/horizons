@@ -82,18 +82,23 @@ migrations grant per-table:
 | `document_versions` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
 | `clauses` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
 | `watchlists` | SELECT, INSERT, UPDATE, DELETE *(RLS: owner-only)* | — | SELECT *(BYPASSRLS)* |
+| `admin_access_log` | — | — | SELECT, INSERT *(RLS enabled, no policy)* |
 
 `admin_bypass` carries SELECT on the RLS-protected tables only —
-**no INSERT, no UPDATE, no DELETE anywhere**. Postgres' `BYPASSRLS`
+**no INSERT, no UPDATE, no DELETE anywhere**, with one exception:
+`admin_access_log` is where the role writes its own audit trail (one
+INSERT per session). Append-only triggers on the table reject UPDATE
+and DELETE outright, so the role's write surface is irreducibly
+"append a new audit row, never modify history." Postgres' `BYPASSRLS`
 attribute bypasses *row-level* security but does **not** override
 table-level GRANTs, so the role is unusable without at least SELECT
 on whatever it needs to read. Granting SELECT (and nothing else)
-gives the audited-elevation code path enough reach for cross-tenant
-support work without becoming a back-door write surface. The
-tenancy tables (`users`, `subscriptions`, `subscription_scopes`) are
-deliberately omitted from `admin_bypass` until a real admin reader
-exists — adding the grant is cheap and small-blast-radius if and
-when WU2.x needs it.
+elsewhere gives the audited-elevation code path enough reach for
+cross-tenant support work without becoming a back-door write surface.
+The tenancy tables (`users`, `subscriptions`, `subscription_scopes`)
+are deliberately omitted from `admin_bypass` until a real admin
+reader exists — adding the grant is cheap and small-blast-radius if
+and when WU2.x needs it.
 
 The corpus grants follow the same shape across all three tables:
 `api_app` reads (the public API exposes corpus rows to clients —

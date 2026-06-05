@@ -8,7 +8,15 @@ declarative ``server_default=`` argument; that is a SQL expression
 literal for schema generation, not raw-SQL execution, and the
 architectural test allow-lists ``db/models/*.py`` accordingly.
 
-See ``db/rls.md`` §Session contract for the bracket's responsibilities.
+This module also exposes two narrow helpers — ``set_local_role`` and
+``bind_impersonation_admin_id`` — that the admin context managers in
+``horizons_core.core.auth.admin`` call after entering a
+``session_for_user`` bracket. Keeping the raw SQL here preserves the
+single-file ``text()`` carve-out; ``auth/admin.py`` itself stays free
+of imperative SQL.
+
+See ``db/rls.md`` §Session contract for the bracket's responsibilities
+and §Admin code paths for how the helpers compose.
 """
 
 from __future__ import annotations
@@ -33,6 +41,12 @@ if TYPE_CHECKING:
 
 
 _ENGINE_ENV_VAR: Final[str] = "HORIZONS_DB_URL"
+
+# Roles the admin context managers may assume. Validated by
+# ``set_local_role`` because the role name is interpolated into raw SQL —
+# ``SET LOCAL ROLE`` parses above the parameter binder and rejects
+# placeholders, so the allow-list is the safety net.
+_ADMIN_SETTABLE_ROLES: Final[frozenset[str]] = frozenset({"admin_bypass", "api_app"})
 
 _engine: AsyncEngine | None = None
 
@@ -73,7 +87,14 @@ def _install_discard_all_on_checkin(engine: AsyncEngine) -> None:
     event.listen(engine.sync_engine, "checkin", _discard_all_on_checkin)
 
 
-def _get_engine() -> AsyncEngine:
+def get_engine() -> AsyncEngine:
+    """Return the lazy module-level engine, building it on first call.
+
+    Reads ``HORIZONS_DB_URL`` from the process environment. Tests that
+    need a dedicated engine bypass this by calling ``make_engine`` and
+    passing it explicitly into ``session_for_user`` or the admin
+    context managers' ``engine=`` kwarg.
+    """
     global _engine
     if _engine is None:
         _engine = make_engine(os.environ[_ENGINE_ENV_VAR])
@@ -106,5 +127,36 @@ async def get_session(user_id: uuid.UUID) -> AsyncGenerator[AsyncSession]:
     call. Tests can inject a dedicated engine via ``session_for_user``
     instead of monkeypatching the global.
     """
-    async with session_for_user(_get_engine(), user_id) as session:
+    async with session_for_user(get_engine(), user_id) as session:
         yield session
+
+
+async def set_local_role(session: AsyncSession, role: str) -> None:
+    """Issue ``SET LOCAL ROLE <role>`` inside the session's transaction.
+
+    ``SET LOCAL`` parses above the parameter binder and rejects ``$1``
+    placeholders, so ``role`` is interpolated directly. The
+    ``_ADMIN_SETTABLE_ROLES`` allow-list is the safety net: any
+    unrecognised role raises ``ValueError`` before the SQL is sent.
+    """
+    if role not in _ADMIN_SETTABLE_ROLES:
+        raise ValueError(
+            f"role {role!r} not in admin-settable allow-list {sorted(_ADMIN_SETTABLE_ROLES)}"
+        )
+    await session.execute(sqlalchemy.text(f"SET LOCAL ROLE {role}"))
+
+
+async def bind_impersonation_admin_id(session: AsyncSession, admin_id: uuid.UUID) -> None:
+    """Bind ``app.impersonating_admin_id`` for the current transaction.
+
+    Companion GUC to ``app.user_id`` used by the admin impersonation
+    context manager. ``app.user_id`` carries the target user's id (so
+    RLS policies fire as if the client were making the request);
+    ``app.impersonating_admin_id`` carries the admin's own id so
+    downstream observability can distinguish impersonated traffic from
+    a real client request.
+    """
+    await session.execute(
+        sqlalchemy.text("SELECT set_config('app.impersonating_admin_id', :a, true)"),
+        {"a": str(admin_id)},
+    )

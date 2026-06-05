@@ -6,6 +6,10 @@ ORM-only-no-text() rule.
 
 from __future__ import annotations
 
+from horizons_core.repos.admin_access_log import (
+    AdminAccessLogDTO,
+    AdminAccessLogRepository,
+)
 from horizons_core.repos.base import Repository
 from horizons_core.repos.clauses import ClauseDTO, ClausesRepository
 from horizons_core.repos.documents import DocumentDTO, DocumentsRepository
@@ -16,6 +20,8 @@ from horizons_core.repos.versions import (
 from horizons_core.repos.watchlists import WatchlistDTO, WatchlistsRepository
 
 __all__ = [
+    "AdminAccessLogDTO",
+    "AdminAccessLogRepository",
     "ClauseDTO",
     "ClausesRepository",
     "DocumentDTO",

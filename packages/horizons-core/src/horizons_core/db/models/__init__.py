@@ -12,6 +12,7 @@ live database to produce the next migration.
 
 from __future__ import annotations
 
+from horizons_core.db.models.admin_access_log import AdminAccessLog, AdminAccessMode
 from horizons_core.db.models.base import Base
 from horizons_core.db.models.clauses import Clause
 from horizons_core.db.models.documents import Document
@@ -21,6 +22,8 @@ from horizons_core.db.models.versions import DocumentVersion
 from horizons_core.db.models.watchlists import Watchlist
 
 __all__ = [
+    "AdminAccessLog",
+    "AdminAccessMode",
     "Base",
     "Clause",
     "Document",

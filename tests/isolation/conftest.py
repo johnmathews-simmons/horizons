@@ -11,6 +11,9 @@ The ``two_clients`` fixture seeds:
 - User B with an EU / INSURANCE-only subscription
 - One watchlist owned by each
 - One in-scope document/version/clause for each scope
+- An admin user (``role='admin'``) used by the WU1.9 admin code paths.
+  The user only needs to exist so the ``admin_access_log.admin_id`` FK
+  resolves; no subscription is attached.
 
 And returns a ``TwoClients`` object whose ``session_for(user_id)`` helper
 hands out an async session already bracketed with the WU1.5 GUC binding
@@ -90,6 +93,7 @@ class TwoClients:
 
     a_id: uuid.UUID
     b_id: uuid.UUID
+    admin_id: uuid.UUID
     a_watchlist_id: uuid.UUID
     b_watchlist_id: uuid.UUID
     a_document_id: uuid.UUID  # UK / BANKING
@@ -124,13 +128,12 @@ def _sha256() -> bytes:
     return hashlib.sha256(uuid.uuid4().bytes).digest()
 
 
-def _make_user(conn: Connection, email: str) -> uuid.UUID:
+def _make_user(conn: Connection, email: str, role: str = "client") -> uuid.UUID:
     return conn.execute(
         sqlalchemy.text(
-            "INSERT INTO users (email, password_hash, role) "
-            "VALUES (:e, 'hash', 'client') RETURNING id"
+            "INSERT INTO users (email, password_hash, role) VALUES (:e, 'hash', :r) RETURNING id"
         ),
-        {"e": email},
+        {"e": email, "r": role},
     ).scalar_one()
 
 
@@ -228,6 +231,7 @@ async def two_clients(
     with sync.begin() as conn:
         a_id = _make_user(conn, f"isolation_a_{suffix}@example.com")
         b_id = _make_user(conn, f"isolation_b_{suffix}@example.com")
+        admin_id = _make_user(conn, f"isolation_admin_{suffix}@example.com", role="admin")
         _subscribe(conn, a_id, "UK", "BANKING")
         _subscribe(conn, b_id, "EU", "INSURANCE")
         a_wid = _make_watchlist(conn, a_id, f"isolation_a_watchlist_{suffix}")
@@ -238,6 +242,7 @@ async def two_clients(
     return TwoClients(
         a_id=a_id,
         b_id=b_id,
+        admin_id=admin_id,
         a_watchlist_id=a_wid,
         b_watchlist_id=b_wid,
         a_document_id=a_doc,

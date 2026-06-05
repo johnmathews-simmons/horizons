@@ -158,6 +158,62 @@ discipline, then `SET LOCAL ROLE admin_bypass` inside the txn. The
 session module does not provide a separate "admin session" entry
 point — the role switch is the carve-out, not the bracket.
 
+Two async context managers in `horizons_core.core.auth.admin` (WU1.9)
+compose the bracket + role switch + audit-log write into the only
+sanctioned entry points for admin code:
+
+- `admin_operator_session(admin_id, *, engine=None, reason=None)`
+  yields a session bound to the admin's own `app.user_id` with
+  `SET LOCAL ROLE admin_bypass`. BYPASSRLS means every row in every
+  tenant is visible.
+- `admin_impersonation_session(admin_id, target_user_id, *,
+  engine=None, reason=None)` yields a session bound to the target
+  user's `app.user_id` with `SET LOCAL ROLE api_app`. RLS fires
+  exactly as if the target client made the request; the admin's id is
+  captured in `app.impersonating_admin_id` (a sibling GUC) so
+  downstream code can distinguish impersonated traffic from a direct
+  client request.
+
+Both managers write exactly one `admin_access_log` row in a separate,
+self-committing transaction *before* the working session is yielded.
+The separation matters: if the caller's body raises and rolls back the
+working session, the audit row still persists. The elevation happened
+the moment the row was issued.
+
+The `text()` carve-out stays single-file: the admin context managers
+call two narrow helpers in `db/session.py` — `set_local_role(session,
+role)` (validates against an allow-list, then issues `SET LOCAL ROLE
+<role>`) and `bind_impersonation_admin_id(session, admin_id)` (issues
+`SELECT set_config('app.impersonating_admin_id', :a, true)`). `auth/admin.py`
+itself contains no `sqlalchemy.text()` calls.
+
+### Audit log table (WU1.9)
+
+`admin_access_log` is the append-only audit trail. One row per admin
+session, written on entry:
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid PK | `uuidv7()` default. |
+| `admin_id` | uuid NOT NULL → `users.id` | The acting admin. |
+| `target_user_id` | uuid NULL → `users.id` | Set only for `impersonation`. |
+| `mode` | enum `admin_access_mode` | `operator` or `impersonation`. |
+| `token_id` | uuid NULL | Placeholder UUID today; Track 4 binds the real JWT id. The column stays nullable so backfill / migration shape does not change. |
+| `reason` | text NULL | Optional human-supplied reason. |
+| `granted_at` | timestamptz NOT NULL | `now()` default. |
+
+A CHECK constraint enforces the mode/target consistency: `operator`
+forbids `target_user_id`, `impersonation` requires it.
+
+Append-only triggers reject `UPDATE` and `DELETE` outright (same
+pattern as `subscription_scopes` from WU1.1). RLS is enabled and
+`FORCE`d for defence in depth but **no policy is attached** — only
+`admin_bypass` (BYPASSRLS) writes here today, and BYPASSRLS sidesteps
+the default-deny that a policy-less RLS-enabled table would otherwise
+inflict on a non-bypass role. If a future read path under `api_app`
+needs visibility (e.g. an admin viewing their own audit trail), the
+policy is added in that work unit's migration.
+
 ## Planned policies
 
 ### Private state (WU1.4)
@@ -257,7 +313,7 @@ Test discipline: multi-user integration tests run two concurrent
 sessions with different `app.user_id` values and assert non-leakage at
 the database boundary. Single-tenant unit tests are not enough.
 
-## Status by table (end of WU1.4)
+## Status by table (end of WU1.9)
 
 | Table | RLS enabled? | FORCE? | Policies |
 | --- | --- | --- | --- |
@@ -266,6 +322,7 @@ the database boundary. Single-tenant unit tests are not enough.
 | `documents` | **yes** | **yes** | `documents_in_scope` (`TO api_app`, joins `current_scope()`); `documents_ingestion_all` (`TO ingestion_worker`, pass-through). |
 | `document_versions` | **yes** | **yes** | `document_versions_in_scope` (`TO api_app`, joins through `documents`); `document_versions_ingestion_all` (`TO ingestion_worker`, pass-through). |
 | `clauses` | **yes** | **yes** | `clauses_in_scope` (`TO api_app`, joins through `document_versions` → `documents`); `clauses_ingestion_all` (`TO ingestion_worker`, pass-through). |
+| `admin_access_log` | **yes** | **yes** | No policy. Only `admin_bypass` (BYPASSRLS) reads / writes; default-deny holds for every other role. |
 | `app_private.current_scope()` | n/a | n/a | EXECUTE granted to `api_app` only. |
 
 `admin_bypass` is not listed: BYPASSRLS is a role attribute, not a
@@ -273,7 +330,7 @@ policy, so it does not appear in any policy's `TO` clause. Sessions
 that `SET LOCAL ROLE admin_bypass` see every row on every table —
 audited per-operation, never granted statically.
 
-## Status by gate (end of WU1.8)
+## Status by gate (end of WU1.9)
 
 The repository layer ([repos.md](../repos/repos.md)) is the third
 defence-in-depth layer; the WU1.7 two-client integration gate
@@ -294,6 +351,15 @@ scopes (corpus). The property test is `@pytest.mark.nightly` and runs
 in the dedicated `.github/workflows/nightly.yml` workflow (04:00 UTC
 schedule + `workflow_dispatch`); it is non-gating by design — branch
 protection on `main` does not require it.
+
+WU1.9 closes Track 1: the admin operator and impersonation context
+managers land with their integration tests in
+`tests/isolation/test_admin_paths.py`. Operator mode is a BYPASSRLS
+cross-tenant read; impersonation mode runs the same `api_app` posture
+RLS the gate already proves under WU1.7. Every admin session writes
+one `admin_access_log` row in its own self-committing transaction,
+which means an exception in the caller's body still leaves the audit
+trail in place.
 
 ## Related
 

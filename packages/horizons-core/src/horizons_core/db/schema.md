@@ -201,6 +201,37 @@ human-readable address.
 append-only trigger — clauses are recorded per version, not mutated in
 place.
 
+### `admin_access_log` — audit trail for admin sessions (WU1.9)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid PRIMARY KEY` | `uuidv7()` default |
+| `admin_id` | `uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT` | the acting admin |
+| `target_user_id` | `uuid REFERENCES users(id) ON DELETE RESTRICT` | NULL for `operator`; required for `impersonation` |
+| `mode` | `admin_access_mode NOT NULL` | enum: `operator`, `impersonation` |
+| `token_id` | `uuid` | placeholder UUID today; Track 4 binds the real JWT id |
+| `reason` | `text` | optional human-supplied reason |
+| `granted_at` | `timestamptz NOT NULL DEFAULT now()` | |
+
+Indexes: `(admin_id, granted_at DESC)` for "what has this admin done"
+queries; `(target_user_id, granted_at DESC) WHERE target_user_id IS NOT
+NULL` for "who has impersonated this user." A `CHECK` constraint
+enforces the mode/target consistency at the database layer.
+
+Written by the `horizons_core.core.auth.admin` context managers — one
+row per session, in its own self-committing transaction so an
+exception in the caller's body does not roll back the audit. See
+[rls.md](rls.md) §Admin code paths and §Audit log table for the
+architecture.
+
+**Writes:** `INSERT` only, by `admin_bypass`. `UPDATE` and `DELETE`
+are rejected by append-only triggers (same shape as
+`subscription_scopes_no_update`).
+
+**Isolation:** RLS is enabled and `FORCE`d but no policy is attached.
+Only `admin_bypass` (BYPASSRLS) reads / writes here; every other role
+hits the default-deny that a policy-less RLS-enabled table inflicts.
+
 ### `watchlists` — per-user saved queries (private state)
 
 | Column | Type | Notes |
@@ -244,6 +275,9 @@ opens `psql`. The shape is:
   other columns unchanged. Rejects everything else.
 - `subscription_scopes_no_update` — `BEFORE UPDATE` on
   `subscription_scopes`. Rejects every `UPDATE`.
+- `admin_access_log_no_update` / `_no_delete` — `BEFORE UPDATE` and
+  `BEFORE DELETE` on `admin_access_log`. Reject every mutation. The
+  audit trail is irreducibly append-only.
 - `documents_no_update`, `document_versions_no_update`,
   `clauses_no_update` — `BEFORE UPDATE` on the corpus tables. Reject
   every `UPDATE`. Corpus rows are immutable; corrections are a new row.
@@ -329,9 +363,15 @@ remain un-RLS'd in WU1.4 — they have no direct `api_app` reader today;
 `current_scope()` reaches them under SECURITY DEFINER. RLS on those
 tables lands when an API surface needs them (WU2.x).
 
-`admin_bypass` receives no static grants on any table — admin reach is
-assumed per-operation via `SET LOCAL ROLE` and its `BYPASSRLS`
-attribute. See [rls.md](rls.md) for the full RLS architecture spec.
+`admin_bypass` receives no static grants on the gate-protected tables
+beyond `SELECT` (audited reads only). The one exception is
+`admin_access_log`, where the role carries `SELECT, INSERT` — append
+the audit trail, never modify history. Reach is assumed per-operation
+via `SET LOCAL ROLE` and its `BYPASSRLS` attribute. WU1.9's
+`horizons_core.core.auth.admin` context managers are the only
+sanctioned entry points; both write one `admin_access_log` row before
+yielding the working session. See [rls.md](rls.md) for the full RLS
+architecture spec.
 
 ## Related
 
