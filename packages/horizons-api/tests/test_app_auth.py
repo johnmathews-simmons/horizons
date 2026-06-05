@@ -235,25 +235,54 @@ def test_refresh_token_rejected_at_me_endpoint(
     assert response.json() == {"detail": "invalid bearer token"}
 
 
-def test_impersonation_token_rejected_at_me_endpoint(
+def test_impersonation_token_accepted_at_me_endpoint(
     configured_env: tuple[bytes, bytes],
-    client: TestClient,
 ) -> None:
-    """An IMPERSONATION token must not authenticate /v1/me.
+    """An IMPERSONATION token passes the kind gate at /v1/me (WU4.7).
 
-    /v1/me depends on require_kind(ACCESS). An impersonation token is
-    a valid JWT against the configured keypair, so the signature /
-    issuer / audience / expiry all pass; the kind gate is the only
-    defence. Regression test for the missing-authz finding from the
-    push-time security review.
+    Post-WU4.7, ``/v1/me``'s ``authenticated_user`` dep accepts both
+    ``ACCESS`` and ``IMPERSONATION`` because the impersonation token is
+    the sanctioned support-view bearer minted by
+    ``/v1/admin/impersonate``. The historical regression test
+    (``test_impersonation_token_rejected_at_me_endpoint``) was correct
+    at the time because there was no audited mint path; with one now
+    in place, impersonation tokens on client-facing routes are
+    expected and the kind gate must let them through.
+
+    This fixture deliberately has no ``HORIZONS_DB_URL``, so a request
+    that gets past the kind gate fails downstream when
+    ``session_for_request`` tries to open a session. We use
+    ``raise_server_exceptions=False`` so the downstream KeyError
+    surfaces as a 500 response we can inspect, rather than re-raising
+    through the TestClient. The only "the auth dep rejected this
+    token" shape is ``401`` with body ``{"detail": "invalid bearer
+    token"}`` — any other outcome (200, 500, etc.) means the kind
+    gate accepted the token, which is exactly what WU4.7 requires.
+
+    The companion negative case — REFRESH still rejected at /v1/me —
+    is ``test_refresh_token_rejected_at_me_endpoint`` above.
     """
-    private_pem, public_pem = configured_env
-    token = _issue_token_with_kind(private_pem, public_pem, TokenKind.IMPERSONATION)
-    response = client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 401
-    # Body must not distinguish wrong-kind from invalid-signature —
-    # the client cannot probe the verifier's branches.
-    assert response.json() == {"detail": "invalid bearer token"}
+    from horizons_api.app import create_app
+
+    _ = configured_env  # ensure env is set before create_app
+    app = create_app()
+    with TestClient(app, raise_server_exceptions=False) as no_raise_client:
+        private_pem, public_pem = configured_env
+        token = _issue_token_with_kind(private_pem, public_pem, TokenKind.IMPERSONATION)
+        response = no_raise_client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    rejected_by_kind_gate = (
+        response.status_code == 401
+        and isinstance(body, dict)
+        and body.get("detail") == "invalid bearer token"
+    )
+    assert not rejected_by_kind_gate, (
+        f"impersonation token unexpectedly rejected at auth boundary: {response.status_code} {body}"
+    )
 
 
 def test_missing_required_env_var_fails_app_construction(
