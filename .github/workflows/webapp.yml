@@ -37,3 +37,11 @@ jobs:
 
       - name: Unit tests (vitest)
         run: npm run test:unit -- --run
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp-dist
+          path: packages/horizons-webapp/dist
+          if-no-files-found: error
+          retention-days: 14
