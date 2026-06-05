@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 
@@ -25,9 +25,15 @@ async function onSignOut(): Promise<void> {
 
     <section class="mx-auto max-w-3xl px-6 py-16">
       <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Welcome</h1>
-      <p class="mt-3 text-slate-600">
-        Regulatory-change intelligence. Application views land in later work units.
-      </p>
+      <p class="mt-3 text-slate-600">Regulatory-change intelligence.</p>
+      <div class="mt-6">
+        <RouterLink
+          to="/changes"
+          class="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-slate-50 hover:bg-slate-800"
+        >
+          Browse recent changes
+        </RouterLink>
+      </div>
     </section>
   </main>
 </template>
