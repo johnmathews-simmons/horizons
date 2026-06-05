@@ -1,10 +1,12 @@
 """Clause-tree parser and alignment-pipeline primitives.
 
 The parser is in :mod:`horizons_core.core.alignment.parser`; similarity
-primitives are in :mod:`horizons_core.core.alignment.similarity`. Clause,
-config, and tuning types are re-exported here for convenience.
+primitives are in :mod:`horizons_core.core.alignment.similarity`; the
+alignment pipeline itself is in :mod:`horizons_core.core.alignment.align`.
+Clause, config, and tuning types are re-exported here for convenience.
 """
 
+from horizons_core.core.alignment.align import ChangeEvent, ChangeType, align
 from horizons_core.core.alignment.clause import Clause
 from horizons_core.core.alignment.config import (
     IgnorePattern,
@@ -34,11 +36,14 @@ from horizons_core.core.alignment.tuning import (
 
 __all__ = [
     "MINHASH_SEED",
+    "ChangeEvent",
+    "ChangeType",
     "Clause",
     "IgnorePattern",
     "ParserConfig",
     "StructuralPattern",
     "TuningConfig",
+    "align",
     "default_parser_config",
     "default_patterns",
     "default_tuning_config",
