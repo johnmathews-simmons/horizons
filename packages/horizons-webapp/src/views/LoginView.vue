@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { sanitiseRedirect } from '@/router/redirect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,8 +22,7 @@ async function onSubmit(): Promise<void> {
   errorMessage.value = null
   try {
     await auth.login({ email: email.value, password: password.value })
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    await router.push(redirect)
+    await router.push(sanitiseRedirect(route.query.redirect))
   } catch (err: unknown) {
     if (axios.isAxiosError(err) && err.response?.status === 401) {
       errorMessage.value = 'Invalid email or password.'

@@ -72,6 +72,25 @@ describe('LoginView', () => {
     expect(router.currentRoute.value.name).toBe('login')
   })
 
+  it('a protocol-relative ?redirect= is sanitised to / before navigation', async () => {
+    server.use(
+      http.post(`${API}/v1/auth/login`, () => HttpResponse.json({ access_token: 'access-1' })),
+    )
+
+    const router = makeRouter()
+    await router.push('/login?redirect=//evil.com')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, { global: { plugins: [router] } })
+
+    await wrapper.get('[data-testid="email-input"]').setValue('alice@example.test')
+    await wrapper.get('[data-testid="password-input"]').setValue('hunter2')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
   it('renders the generic copy (no firm names)', () => {
     const router = makeRouter()
     const wrapper = mount(LoginView, { global: { plugins: [router] } })
