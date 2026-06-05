@@ -26,6 +26,13 @@ export default defineConfigWithVueTs(
     files: ['src/**/__tests__/*'],
   },
 
+  // shadcn-style UI primitives keep their single-word filenames (Button.vue,
+  // Input.vue, Label.vue) on purpose — they mirror the upstream registry.
+  {
+    files: ['src/components/ui/**/*.vue'],
+    rules: { 'vue/multi-word-component-names': 'off' },
+  },
+
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
   skipFormatting,
