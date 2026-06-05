@@ -3,7 +3,11 @@ name = "horizons-ingestion"
 version = "0.0.0"
 description = "Ingestion worker: scheduled fetcher that hits Lawstronaut and writes the corpus."
 requires-python = ">=3.13"
-dependencies = ["horizons-core"]
+dependencies = [
+    "horizons-core",
+    "aiohttp>=3.10",
+    "asyncpg>=0.30",
+]
 
 [build-system]
 requires = ["hatchling"]
