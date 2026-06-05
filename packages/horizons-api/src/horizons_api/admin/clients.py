@@ -98,9 +98,7 @@ async def list_clients(
     )
     total = await repo.count_by_role(UserRole.CLIENT)
 
-    rows = [
-        ClientRow(id=d.id, email=d.email, created_at=d.created_at) for d in dtos
-    ]
+    rows = [ClientRow(id=d.id, email=d.email, created_at=d.created_at) for d in dtos]
     return ClientsListResponse(
         limit=effective_limit,
         offset=offset,

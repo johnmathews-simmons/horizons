@@ -46,19 +46,14 @@ def test_clients_list_writes_one_operator_audit_row_per_request(
     other parallel tests may have written audit rows; absolute counts
     against a shared session-scoped DB would be flaky.
     """
-    admin_id = make_user(
-        migrated_postgres_h, "admin_list_clients@example.com", role="admin"
-    )
+    admin_id = make_user(migrated_postgres_h, "admin_list_clients@example.com", role="admin")
     make_user(migrated_postgres_h, "audit_target_a@example.com", role="client")
 
     admin_token = login(client, "admin_list_clients@example.com")
 
     with migrated_postgres_h.begin() as conn:
         before = conn.execute(
-            text(
-                "SELECT COUNT(*) FROM admin_access_log "
-                "WHERE admin_id = :a AND mode = 'operator'"
-            ),
+            text("SELECT COUNT(*) FROM admin_access_log WHERE admin_id = :a AND mode = 'operator'"),
             {"a": str(admin_id)},
         ).scalar_one()
 
@@ -71,10 +66,7 @@ def test_clients_list_writes_one_operator_audit_row_per_request(
 
     with migrated_postgres_h.begin() as conn:
         after = conn.execute(
-            text(
-                "SELECT COUNT(*) FROM admin_access_log "
-                "WHERE admin_id = :a AND mode = 'operator'"
-            ),
+            text("SELECT COUNT(*) FROM admin_access_log WHERE admin_id = :a AND mode = 'operator'"),
             {"a": str(admin_id)},
         ).scalar_one()
 
@@ -97,12 +89,8 @@ def test_clients_list_excludes_admin_role(
     to impersonate a fellow admin — the impersonate endpoint refuses
     that, but the list is the right place to omit it.
     """
-    make_user(
-        migrated_postgres_h, "admin_excludes_admins@example.com", role="admin"
-    )
-    other_admin = make_user(
-        migrated_postgres_h, "other_admin_excluded@example.com", role="admin"
-    )
+    make_user(migrated_postgres_h, "admin_excludes_admins@example.com", role="admin")
+    other_admin = make_user(migrated_postgres_h, "other_admin_excluded@example.com", role="admin")
     client_email = "client_visible_in_list@example.com"
     make_user(migrated_postgres_h, client_email, role="client")
 

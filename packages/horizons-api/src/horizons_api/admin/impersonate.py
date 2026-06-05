@@ -112,9 +112,7 @@ async def begin_impersonation(  # noqa: PLR0913 — each parameter is a wire fie
     body: ImpersonateRequest,
     response: Response,
     admin: Annotated[Principal, Depends(require_admin_principal)],
-    operator_session: Annotated[
-        AsyncSession, Depends(admin_operator_session_for_request)
-    ],
+    operator_session: Annotated[AsyncSession, Depends(admin_operator_session_for_request)],
     provider: Annotated[TokenProvider, Depends(get_token_provider)],
 ) -> ImpersonateResponse:
     """Mint an audited impersonation token for ``body.target_user_id``.
