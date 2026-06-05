@@ -136,15 +136,24 @@ append-only trigger — corrections to metadata are recorded as a new
 | `content_sha256` | `bytea NOT NULL` | 32-byte SHA-256 of the blob (CHECK) |
 | `content_bytes` | `int NOT NULL` | byte count (CHECK `>= 0`) |
 | `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
+| `version_no` | `int NULL` | monotonic within a document (WU3.1; populated by WU3.4) |
+| `valid_from` | `timestamptz NULL` | first poll at which this version was observed live |
+| `valid_to` | `timestamptz NULL` | upper bound of when this version was observed live; extended by the worker on every unchanged poll |
 
 Constraints: `UNIQUE(document_id, version_label)` so the
 `(document, label)` pair is the natural identity an ingester can be
-idempotent against. `CHECK(octet_length(content_sha256) = 32)` rejects
-malformed digests at the database layer.
+idempotent against. `UNIQUE(document_id, version_no)` adds a second
+identity axis for the integer numbering the ingestion worker assigns.
+`CHECK(octet_length(content_sha256) = 32)` rejects malformed digests
+at the database layer.
 
-Index: `idx_document_versions_doc_effective` on
-`(document_id, effective_date)` supports the temporal primitive ("what
-was in force at time T for document X").
+Indexes:
+- `idx_document_versions_doc_effective` on `(document_id, effective_date)`
+  supports the temporal primitive ("what was in force at time T for
+  document X").
+- `idx_document_versions_doc_valid_to` on `(document_id, valid_to DESC)`
+  supports the "current live version" lookup the ingestion worker runs on
+  every poll: `WHERE document_id = ? ORDER BY valid_to DESC LIMIT 1`.
 
 `publication_date` and `effective_date` are intentionally nullable —
 some upstream feeds omit one or both, and the ingester is allowed to
@@ -160,9 +169,13 @@ account / endpoint is environment configuration, not row data. The
 SHA-256 and byte count are kept in-row for integrity checks and to
 avoid a round-trip when computing diffs.
 
-**Writes:** `INSERT` is permitted. `UPDATE` is rejected outright by the
-append-only trigger — content corrections are a new version, not a
-rewrite of an existing one.
+**Writes:** `INSERT` is permitted. `UPDATE` is rejected by the
+append-only trigger *except* when `valid_to` is the only column that
+changed — that single carve-out is the path the ingestion worker uses
+on every unchanged poll, per `docs/4. services.md` §"Ingestion service".
+Content, metadata, and `valid_from` are immutable; corrections are a
+new version. `ingestion_worker` carries `GRANT UPDATE (valid_to)` as
+the cheap outer fence; the trigger is the substantive rule.
 
 ### `clauses` — heading-anchored fragments of a version
 
@@ -200,6 +213,51 @@ human-readable address.
 **Writes:** `INSERT` is permitted. `UPDATE` is rejected outright by the
 append-only trigger — clauses are recorded per version, not mutated in
 place.
+
+### `document_poll_schedule` — per-document polling state (WU3.1)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `document_id` | `uuid PRIMARY KEY REFERENCES documents(id) ON DELETE RESTRICT` | 1:1 with `documents` |
+| `cadence_interval` | `interval NOT NULL` | how often the worker should re-poll |
+| `next_poll_at` | `timestamptz NOT NULL` | next due time; the claim-loop hot column |
+| `last_polled_at` | `timestamptz NULL` | last poll attempt's wall-clock time |
+| `failure_count` | `int NOT NULL DEFAULT 0` | consecutive failures; `>5` parks the row (CHECK `>= 0`) |
+
+Index: `idx_document_poll_schedule_next_poll_at` on `(next_poll_at)`
+serves the SKIP LOCKED claim loop spec'd in
+[ADR-0001](../../../../../docs/adrs/0001-worker-shape.md).
+
+The kill-switch rule lives in the worker, not the schema: when
+`failure_count > 5` the worker writes an `ingestion_incident` and
+leaves the row in place (no auto-recovery). Admin tooling resets the
+counter to bring a parked document back into rotation.
+
+**Writes:** `SELECT, INSERT, UPDATE` are granted to
+`ingestion_worker`. No client role has any grant. No append-only
+trigger — by design, the worker mutates `next_poll_at`,
+`last_polled_at`, and `failure_count` on every tick.
+
+### `ingestion_incident` — failure / parking log (WU3.1)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `bigserial PRIMARY KEY` | sequential id (matches `change_events` precedent) |
+| `document_id` | `uuid NOT NULL REFERENCES documents(id) ON DELETE RESTRICT` | the affected document |
+| `error_class` | `text NOT NULL` | short symbolic class (e.g. `transient`, `persistent`, `parked`) |
+| `payload` | `jsonb NOT NULL` | upstream error body, HTTP status, retry count, etc. |
+| `occurred_at` | `timestamptz NOT NULL DEFAULT now()` | when the worker recorded it |
+
+Indexes:
+- `idx_ingestion_incident_doc_occurred` on `(document_id, occurred_at DESC)`
+  for "recent incidents for document X" admin queries.
+- `idx_ingestion_incident_occurred_at` on `(occurred_at DESC)` for the
+  global `/v1/admin/health/ingestion` feed.
+
+**Writes:** `SELECT, INSERT` are granted to `ingestion_worker`. The
+log is append-only by grant — no `UPDATE` / `DELETE` privilege, no
+trigger needed because the schema exposes no mutation path. Surfaced
+by the admin health endpoints (Track 7); never visible to `client`.
 
 ### `admin_access_log` — audit trail for admin sessions (WU1.9)
 
@@ -278,9 +336,13 @@ opens `psql`. The shape is:
 - `admin_access_log_no_update` / `_no_delete` — `BEFORE UPDATE` and
   `BEFORE DELETE` on `admin_access_log`. Reject every mutation. The
   audit trail is irreducibly append-only.
-- `documents_no_update`, `document_versions_no_update`,
-  `clauses_no_update` — `BEFORE UPDATE` on the corpus tables. Reject
-  every `UPDATE`. Corpus rows are immutable; corrections are a new row.
+- `documents_no_update`, `clauses_no_update` — `BEFORE UPDATE` on the
+  corpus tables. Reject every `UPDATE`. Corpus rows are immutable;
+  corrections are a new row.
+- `document_versions_no_update` — `BEFORE UPDATE` on `document_versions`.
+  Permits the `valid_to`-only update path the ingestion worker uses on
+  every unchanged poll; rejects every other `UPDATE`. Narrowed from the
+  strict reject-all shape by WU3.1.
 - `users` has no trigger. `UPDATE` is allowed (password / email).
 
 The triggers share one PL/pgSQL function each
@@ -357,6 +419,14 @@ the three corpus tables; `api_app` policies enforce both isolation
 axes (owner-keyed for `watchlists`, subscription-scope for the corpus);
 `ingestion_worker` carries explicit pass-through policies on the
 corpus tables so it can keep writing without being filtered.
+
+WU3.1 adds the ingestion-side surface: `document_poll_schedule` and
+`ingestion_incident` are operator-only — `ingestion_worker` reads /
+writes, no other role has any grant, no RLS (defence is grant-based,
+the tables are unreachable from client code paths). `document_versions`
+gains the `valid_from` / `valid_to` / `version_no` columns the worker
+populates, and its append-only trigger is narrowed so `valid_to` is
+mutable while every other column stays immutable.
 
 The tenancy tables (`users`, `subscriptions`, `subscription_scopes`)
 remain un-RLS'd in WU1.4 — they have no direct `api_app` reader today;

@@ -79,10 +79,12 @@ migrations grant per-table:
 | `subscriptions` | SELECT, INSERT, UPDATE *(trigger-policed)* | — | — |
 | `subscription_scopes` | SELECT, INSERT | — | — |
 | `documents` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
-| `document_versions` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
+| `document_versions` | SELECT *(RLS: in-scope)* | SELECT, INSERT, UPDATE *(valid_to only — trigger-policed)* | SELECT *(BYPASSRLS)* |
 | `clauses` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
 | `watchlists` | SELECT, INSERT, UPDATE, DELETE *(RLS: owner-only)* | — | SELECT *(BYPASSRLS)* |
 | `admin_access_log` | — | — | SELECT, INSERT *(RLS enabled, no policy)* |
+| `document_poll_schedule` | — | SELECT, INSERT, UPDATE | — |
+| `ingestion_incident` | — | SELECT, INSERT | — |
 
 `admin_bypass` carries SELECT on the RLS-protected tables only —
 **no INSERT, no UPDATE, no DELETE anywhere**, with one exception:
@@ -100,14 +102,27 @@ are deliberately omitted from `admin_bypass` until a real admin
 reader exists — adding the grant is cheap and small-blast-radius if
 and when WU2.x needs it.
 
-The corpus grants follow the same shape across all three tables:
+The corpus grants follow the same shape across `documents` and `clauses`:
 `api_app` reads (the public API exposes corpus rows to clients —
 subscription-scope filtering is the API's job today, RLS will be the
 second layer in WU1.4); `ingestion_worker` reads and writes (the
 worker inserts new rows and reads its own prior writes during the
-alignment pass that assigns `clause_uid`). Neither role gets UPDATE —
-the append-only triggers would reject it anyway, but absent grants is
-the cheaper first layer.
+alignment pass that assigns `clause_uid`). Neither role gets UPDATE on
+those two — the append-only triggers reject it anyway, but absent
+grants is the cheaper first layer.
+
+`document_versions` is the one exception. WU3.1 adds three
+ingestion-side columns (`version_no`, `valid_from`, `valid_to`) and
+narrows the append-only trigger so it permits `UPDATE` iff `valid_to`
+is the only column that changed. `ingestion_worker` is granted
+`UPDATE (valid_to)` (column-scoped — the trigger is the substantive
+rule; the column grant is the cheap outer fence). This supports the
+ingestion path documented in `docs/4. services.md` §"Ingestion
+service": on an unchanged poll the worker extends the live version's
+`valid_to`, and on a changed poll it closes the previous version's
+`valid_to` before inserting the new row. No other role gets `UPDATE`
+on `document_versions` — `api_app` is read-only, `admin_bypass` has
+no static write.
 
 The corpus grants are now the **outer** layer of a two-layer surface:
 RLS policies (WU1.4) filter `api_app`'s SELECTs down to the

@@ -349,7 +349,10 @@ def test_clauses_reject_update(migrated_engine: Engine) -> None:
 
 @pytest.mark.integration
 def test_per_role_grants_match_design(migrated_engine: Engine) -> None:
-    """api_app has SELECT only; ingestion_worker has SELECT+INSERT;
+    """api_app has SELECT only; ingestion_worker has SELECT+INSERT on
+    documents and clauses; SELECT+INSERT+UPDATE on document_versions
+    (UPDATE column-scoped to ``valid_to`` by WU3.1 — see the dedicated
+    column-grant test in ``test_ingestion_tables_migration``).
     admin_bypass has SELECT only (added by WU1.4 so BYPASSRLS reads
     are functional — BYPASSRLS does not override table-level GRANTs).
     """
@@ -381,8 +384,13 @@ def test_per_role_grants_match_design(migrated_engine: Engine) -> None:
 
     for table in CORPUS_TABLES:
         assert grants.get(("api_app", table)) == {"SELECT"}
-        assert grants.get(("ingestion_worker", table)) == {"SELECT", "INSERT"}
         assert grants.get(("admin_bypass", table)) == {"SELECT"}
+        # ingestion_worker's UPDATE on document_versions is column-scoped
+        # to ``valid_to`` (added by WU3.1) and lives in
+        # information_schema.column_privileges, not role_table_grants.
+        # The dedicated column-grant assertion lives in
+        # test_ingestion_tables_migration.
+        assert grants.get(("ingestion_worker", table)) == {"SELECT", "INSERT"}
 
 
 @pytest.mark.integration
