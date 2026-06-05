@@ -39,3 +39,10 @@ dist/
 .idea/
 .DS_Store
 *.swp
+
+# Bicep — `az bicep build` output is a transient artefact; the .bicep
+# sources are the truth. The .example.json parameters file is hand-written
+# and IS tracked, so exclude only the compiled ARM JSON next to .bicep
+# sources.
+infra/main.json
+infra/modules/*.json
