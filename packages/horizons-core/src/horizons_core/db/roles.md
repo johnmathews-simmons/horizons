@@ -98,6 +98,24 @@ and ingestion layers. RLS policies and read-scope narrowing for the
 corpus tables land in **WU1.4**; see [schema.md](schema.md)
 "Multi-tenant access (current state)" for the boundary.
 
+## Per-function grants (`app_private` schema)
+
+The `app_private` schema (added in WU1.3) carries SECURITY DEFINER
+helpers that RLS policies will invoke. The schema itself is owned by
+`schema_owner`. `PUBLIC` is revoked from the schema; only the explicit
+EXECUTE grants below let any role reach in.
+
+| Function | `api_app` | `ingestion_worker` | `admin_bypass` |
+| --- | --- | --- | --- |
+| `app_private.current_scope() -> (jurisdiction, sector)` | EXECUTE | — | — |
+
+`current_scope()` is the only function in `app_private` today. WU1.4's
+corpus-scope RLS policies invoke it under `api_app`'s session; the
+function runs with `schema_owner`'s privileges via SECURITY DEFINER so
+it can read `subscriptions` / `subscription_scopes` even though
+`api_app` itself does not have those rows under RLS. See
+[rls.md](rls.md) for the full architecture.
+
 ## Running the migration
 
 The role-model migration is `migrations/versions/0001_role_model.py`.

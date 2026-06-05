@@ -228,22 +228,77 @@ cancellation timestamp must be in the future). Admin tooling that
 imports historical state would have to bypass such a rule; the trade-off
 isn't worth the protection.
 
+## Schemas: `public` and `app_private`
+
+The database has two application schemas. `public` holds every
+application table. `app_private` holds SECURITY DEFINER helpers that
+RLS policies invoke — today, just `current_scope()`.
+
+`api_app` has the per-table grants documented above on `public.*` and
+EXECUTE on individual functions inside `app_private`. It has no
+`USAGE` on `app_private` beyond what is needed to invoke explicitly
+granted functions, and no tables live inside `app_private` to grant on
+anyway. The two-schema split lets the SECURITY DEFINER contract stay
+narrow: the function runs with `schema_owner`'s privileges (so it can
+read `public.subscriptions` and `public.subscription_scopes`) and is
+called by `api_app`, but the table grants for `api_app` itself are
+unchanged.
+
+### `app_private.current_scope()` — subscription scope for the current request
+
+A SECURITY DEFINER set-returning function that takes no arguments,
+reads the session GUC `app.user_id`, and returns the
+`(jurisdiction, sector)` pairs that the calling user is currently
+entitled to read:
+
+```sql
+app_private.current_scope() RETURNS TABLE(jurisdiction text, sector text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+```
+
+"Currently entitled" means: rows in `subscription_scopes` whose parent
+`subscription` has `valid_from <= now() AND (valid_to IS NULL OR
+valid_to > now())`. Overlapping subscriptions are folded with
+`SELECT DISTINCT` — scope is set-semantics, duplicates would be noise.
+
+If `app.user_id` is unset, the function **raises** rather than
+returning zero rows. RLS-protected queries that forgot to bracket the
+transaction with `SET LOCAL app.user_id` are bugs; loud failure beats
+silently-empty results that look like "no data" to the caller.
+
+`STABLE` lets Postgres cache the result within a single statement.
+`SECURITY DEFINER` lets the function read `subscriptions` and
+`subscription_scopes` even when invoked under `api_app`'s grants.
+`SET search_path = ''` is mandatory for SECURITY DEFINER — without it,
+a malicious search_path could redirect references like `subscriptions`
+to an attacker-controlled table.
+
+**Ownership and grants.** The function is owned by `schema_owner` (the
+SECURITY DEFINER privilege is `schema_owner`'s reach). `EXECUTE` is
+granted to `api_app` only. `PUBLIC` is revoked. `ingestion_worker` and
+`admin_bypass` have no need for it.
+
 ## Multi-tenant access (current state)
 
 WU1.1 grants `SELECT, INSERT` on the tenancy tables to `api_app`.
 WU1.2 grants `SELECT` on the corpus tables to `api_app` and `SELECT,
-INSERT` to `ingestion_worker`. RLS policies and per-role read-scope
-narrowing (subscription-scoped corpus filtering, client-private state
-isolation) land in **WU1.4** when the isolation spine is wired up
-properly. Until then, treat the grants as the loosest workable surface
-for the immediate API and ingestion layers to depend on, *not* as the
-final story. `admin_bypass` receives no static grants on any table —
-admin reach is assumed per-operation via `SET LOCAL ROLE` and its
-`BYPASSRLS` attribute.
+INSERT` to `ingestion_worker`. WU1.3 adds the `app_private` schema and
+`current_scope()` helper that the next WU's RLS policies will invoke.
+
+RLS policies and per-role read-scope narrowing
+(subscription-scoped corpus filtering, client-private state isolation)
+land in **WU1.4** when the isolation spine is wired up properly. Until
+then, treat the grants as the loosest workable surface for the
+immediate API and ingestion layers to depend on, *not* as the final
+story. `admin_bypass` receives no static grants on any table — admin
+reach is assumed per-operation via `SET LOCAL ROLE` and its
+`BYPASSRLS` attribute. See [rls.md](rls.md) for the full RLS
+architecture spec.
 
 ## Related
 
 - [roles.md](roles.md) — the four-role security model these grants key off.
+- [rls.md](rls.md) — the planned RLS policies and defence-in-depth layers.
 - [design doc 3](../../../../../docs/3.%20database-design.md) — schema
   principles (append-only, clause-level granularity, RLS posture).
 - [design doc 4](../../../../../docs/4.%20services.md) — how the three
