@@ -33,6 +33,34 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/WatchlistsView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/admin',
+    component: () => import('@/views/AdminLayout.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      {
+        path: '',
+        name: 'admin-dashboard',
+        component: () => import('@/views/AdminDashboardView.vue'),
+      },
+      {
+        path: 'clients',
+        name: 'admin-clients',
+        component: () => import('@/views/AdminClientsView.vue'),
+      },
+      {
+        path: 'clients/:id',
+        name: 'admin-client-detail',
+        component: () => import('@/views/AdminClientDetailView.vue'),
+        props: true,
+      },
+      {
+        path: 'audit',
+        name: 'admin-audit',
+        component: () => import('@/views/AdminAuditView.vue'),
+      },
+    ],
+  },
 ]
 
 export function createAppRouter(): Router {
@@ -45,6 +73,11 @@ export function createAppRouter(): Router {
   // access token is gone but the HttpOnly refresh cookie may still be
   // valid; try once to recover it before redirecting. Without this the
   // guard would always boot reload-from-an-authed-route users to /login.
+  //
+  // [[adversary class 4]] — cold-bootstrap restores the *original admin's*
+  // access token via the cookie, NOT the impersonation token (which was
+  // in-memory only and is now gone). A reload during support view re-enters
+  // the SPA as the original admin.
   let attemptedColdRefresh = false
   router.beforeEach(async (to) => {
     const auth = useAuthStore()
@@ -59,8 +92,15 @@ export function createAppRouter(): Router {
     if (to.meta.requiresAuth && !auth.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
-    if (to.name === 'login' && auth.isAuthenticated) {
+    if (to.meta.requiresAdmin && !auth.isAdmin) {
+      // Non-admin attempting an /admin/* route. Either a real client
+      // (role='client', kind='access') or a mid-impersonation admin
+      // (role='client', kind='impersonation'). Either way: home, not
+      // login — they ARE authenticated, just not authorised here.
       return { name: 'home' }
+    }
+    if (to.name === 'login' && auth.isAuthenticated) {
+      return auth.isAdmin ? { name: 'admin-clients' } : { name: 'home' }
     }
     return true
   })

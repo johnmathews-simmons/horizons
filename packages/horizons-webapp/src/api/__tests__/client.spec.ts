@@ -18,8 +18,10 @@ describe('apiClient refresh interceptor', () => {
     let observed: string | null = null
     setAuthBridge({
       getAccessToken: () => 'access-1',
+      getKind: () => 'access',
       refresh: vi.fn<() => Promise<void>>(async () => undefined),
       onAuthFailure: vi.fn<() => void>(),
+      onImpersonationExpired: vi.fn<() => void>(),
     })
 
     server.use(
@@ -42,8 +44,10 @@ describe('apiClient refresh interceptor', () => {
     })
     setAuthBridge({
       getAccessToken: () => (tokenAfterRefresh ? 'access-rotated' : 'access-stale'),
+      getKind: () => 'access',
       refresh,
       onAuthFailure: vi.fn<() => void>(),
+      onImpersonationExpired: vi.fn<() => void>(),
     })
 
     let attempts = 0
@@ -70,8 +74,10 @@ describe('apiClient refresh interceptor', () => {
     const onAuthFailure = vi.fn<() => void>()
     setAuthBridge({
       getAccessToken: () => 'access-stale',
+      getKind: () => 'access',
       refresh,
       onAuthFailure,
+      onImpersonationExpired: vi.fn<() => void>(),
     })
 
     server.use(
@@ -95,8 +101,10 @@ describe('apiClient refresh interceptor', () => {
     const onAuthFailure = vi.fn<() => void>()
     setAuthBridge({
       getAccessToken: () => 'access-stale',
+      getKind: () => 'access',
       refresh,
       onAuthFailure,
+      onImpersonationExpired: vi.fn<() => void>(),
     })
 
     server.use(
@@ -117,8 +125,10 @@ describe('apiClient refresh interceptor', () => {
     })
     setAuthBridge({
       getAccessToken: () => (tokenAfterRefresh ? 'access-rotated' : 'access-stale'),
+      getKind: () => 'access',
       refresh,
       onAuthFailure: vi.fn<() => void>(),
+      onImpersonationExpired: vi.fn<() => void>(),
     })
 
     server.use(

@@ -6,6 +6,7 @@ import RootApp from '@/App.vue'
 import router from '@/router'
 import { configureApiClient, setAuthBridge } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 import { fetchAndValidateConfig, setRuntimeConfig } from '@/config/runtime'
 
 export interface BootstrapResult {
@@ -46,12 +47,21 @@ export async function bootstrap(rootSelector: string = '#app'): Promise<Bootstra
   app.use(VueQueryPlugin)
 
   const auth = useAuthStore()
+  const toast = useToast()
   setAuthBridge({
     getAccessToken: () => auth.accessToken,
+    getKind: () => auth.kind,
     refresh: () => auth.refresh(),
     onAuthFailure: () => {
       auth.clear()
       void router.push({ name: 'login' })
+    },
+    onImpersonationExpired: () => {
+      // [[adversary class 6]] — drop impersonation state, restore admin
+      // context from the captured in-memory snapshot, surface the event.
+      auth.exitSupportView()
+      toast.error('Support view expired', 'The impersonation token has expired. You are back in your admin session.')
+      void router.push({ name: 'admin-clients' })
     },
   })
 
