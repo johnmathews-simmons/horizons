@@ -123,9 +123,29 @@ jobs:
           tail -100 /tmp/preview.log || true
           exit 1
 
+      - name: Resolve Playwright version
+        id: pw-version
+        working-directory: packages/horizons-webapp
+        run: |
+          version=$(node -p "require('@playwright/test/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-browsers-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+
       - name: Install Playwright browsers
         working-directory: packages/horizons-webapp
-        run: npx playwright install --with-deps chromium
+        run: |
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            # Browsers cached; still need OS-level deps the runner doesn't have.
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Run Playwright tests
         working-directory: packages/horizons-webapp

@@ -18,12 +18,15 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false, // The test seeds shared DB rows; one worker keeps the assertions deterministic.
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // No retries even in CI: this is a deterministic smoke test against a
+  // freshly-seeded DB. A flake should fail hard and surface the cause,
+  // not get retried until it accidentally passes.
+  retries: 0,
   workers: 1,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: BASE_URL,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },

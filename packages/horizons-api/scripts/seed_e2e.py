@@ -179,6 +179,22 @@ def _teardown(conn: Connection) -> None:
         ),
         params_email,
     )
+    # admin_access_log has two ON DELETE RESTRICT FKs to users (admin_id,
+    # target_user_id). In CI the service container is fresh per run, but
+    # local dev DBs survive between runs and an earlier admin code path
+    # (WU4.5+) may have written a row referencing one of the e2e users.
+    # Without this step a re-run on a non-fresh DB blows up on the
+    # users DELETE with a 23503 FK violation.
+    conn.execute(
+        sqlalchemy.text(
+            "DELETE FROM admin_access_log WHERE admin_id IN ("
+            "  SELECT id FROM users WHERE email LIKE :p"
+            ") OR target_user_id IN ("
+            "  SELECT id FROM users WHERE email LIKE :p"
+            ")"
+        ),
+        params_email,
+    )
     conn.execute(
         sqlalchemy.text("DELETE FROM users WHERE email LIKE :p"),
         params_email,
@@ -356,16 +372,22 @@ def main() -> int:
 
     engine = create_engine(url, future=True)
     try:
+        # Teardown and seed run in separate transactions on purpose: the
+        # ``SET LOCAL session_replication_role = 'replica'`` in
+        # ``_teardown`` is transaction-scoped, and we don't want that
+        # trigger bypass to silently cover seed-side INSERTs as the
+        # schema acquires more invariants over time.
         with engine.begin() as conn:
             _teardown(conn)
-            if args.teardown:
-                print("e2e fixtures removed.")
-                return 0
+        if args.teardown:
+            print("e2e fixtures removed.")
+            return 0
+        with engine.begin() as conn:
             _seed(conn)
-            print(
-                f"e2e fixtures seeded: {UK_EMAIL} (UK/BANKING), "
-                f"{EU_EMAIL} (EU/BANKING)."
-            )
+        print(
+            f"e2e fixtures seeded: {UK_EMAIL} (UK/BANKING), "
+            f"{EU_EMAIL} (EU/BANKING)."
+        )
     finally:
         engine.dispose()
     return 0

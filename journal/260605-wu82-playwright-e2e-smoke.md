@@ -230,6 +230,44 @@ and `e2e-server-logs` (uvicorn + vite preview output).
 | WU8.3 | not yet (demo runbook) |
 | WU8.4 | not yet (final journal + CLAUDE.md `Commands` section) |
 
+## Post-merge follow-ups (same session, second commit on `main`)
+
+`/done` ran an independent code-reviewer pass after the WU8.2 merge. Four
+real issues surfaced; all landed in a follow-up commit before the first
+CI run.
+
+1. **`admin_access_log` FK violation on re-run.** The teardown deleted
+   users but left `admin_access_log` rows whose `admin_id` /
+   `target_user_id` pointed at the e2e users. Both FKs are
+   `ON DELETE RESTRICT` (migration 0006), so the `users` DELETE would
+   error 23503 on the second run against any DB that had previously
+   exercised the WU4.5 admin code path. Fresh CI containers are safe;
+   shared dev DBs were not. Added a
+   `DELETE FROM admin_access_log WHERE admin_id IN (...) OR
+   target_user_id IN (...)` step ahead of the `users` delete — covered
+   by the existing `session_replication_role = 'replica'` trigger
+   bypass (the table also has a `BEFORE DELETE` reject trigger from
+   migration 0006).
+2. **`SET LOCAL session_replication_role` bleed.** The seed and
+   teardown shared one transaction, so the bypass intended only for
+   the `change_events` / `admin_access_log` DELETEs also covered every
+   seed-side INSERT. Currently a no-op (no INSERT triggers exist) but
+   a latent footgun the moment one is added. Split into two
+   `engine.begin()` blocks; `SET LOCAL` now dies with the teardown
+   transaction.
+3. **`retries: 2` in CI was wrong for a smoke test.** A retry would
+   re-run the whole serial flow against the same DB state and any
+   accumulated cookies; a flake could mask a genuine ordering bug.
+   Smoke tests must fail hard. Dropped to `retries: 0`. Also moved
+   `trace` to `retain-on-failure` so the trace artefact stays useful
+   under the new policy.
+4. **Playwright browser cache in CI.** The workflow re-downloaded the
+   ~130 MB Chromium bundle on every run. Added an
+   `actions/cache@v4` keyed on the resolved `@playwright/test` version
+   from `node_modules/@playwright/test/package.json`. Cache hit →
+   `install-deps` only (OS-level apt packages); cache miss → full
+   `install --with-deps`. Standard pattern from Playwright's docs.
+
 ## Cadence note
 
 Worktree `wu8.2-playwright-e2e-smoke`. Fast-forward merge into `main` per
