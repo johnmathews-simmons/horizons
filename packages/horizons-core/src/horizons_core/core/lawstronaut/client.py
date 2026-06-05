@@ -141,11 +141,11 @@ class LawstronautClient:
         )
         if not isinstance(payload, dict):
             raise LawstronautAuthError("login response was not a JSON object")
-        payload_d = cast(dict[str, Any], payload)
+        payload_d = cast("dict[str, Any]", payload)
         data_raw = payload_d.get("data")
-        data = cast(dict[str, Any], data_raw) if isinstance(data_raw, dict) else payload_d
+        data = cast("dict[str, Any]", data_raw) if isinstance(data_raw, dict) else payload_d
         token_raw = data.get("token")
-        token_blob = cast(dict[str, Any], token_raw) if isinstance(token_raw, dict) else data
+        token_blob = cast("dict[str, Any]", token_raw) if isinstance(token_raw, dict) else data
         bearer = (
             token_blob.get("refresh_token")
             or token_blob.get("access_token")
@@ -321,11 +321,11 @@ class LawstronautClient:
     def _extract_data(payload: Any) -> list[dict[str, Any]]:
         if not isinstance(payload, dict):
             return []
-        payload_d = cast(dict[str, Any], payload)
+        payload_d = cast("dict[str, Any]", payload)
         data = payload_d.get("data")
         if isinstance(data, list):
-            data_list = cast(list[Any], data)
-            return [cast(dict[str, Any], r) for r in data_list if isinstance(r, dict)]
+            data_list = cast("list[Any]", data)
+            return [cast("dict[str, Any]", r) for r in data_list if isinstance(r, dict)]
         if isinstance(data, dict):
-            return [cast(dict[str, Any], data)]
+            return [cast("dict[str, Any]", data)]
         return []
