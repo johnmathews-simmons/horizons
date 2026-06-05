@@ -1,0 +1,21 @@
+# Curated set for the WU3.5 bootstrap. Read by scripts/seed_curated_set.py.
+# Picks 6 documents across 6 jurisdictions and 2 sectors so the multi-tenant
+# isolation path has rows to exercise. WU8.0 grows this to ~50 documents for
+# the demo. See docs/seeding.md for schema + semantics.
+
+jurisdictions: [IE, GB, EU, BE, AT, DE]
+sectors: [financial-services, employment]
+default_cadence_hours: 24
+
+documents:
+  # The "always changing" demo signal — short cadence so the claim loop
+  # touches it every demo session. Title is the fixture's title; included
+  # here only for the cadence override.
+  - id: "8064194"
+    cadence_hours: 1
+
+  # Employment-sector overrides. Both fixtures are labour-related.
+  - id: "19194112"   # BE — FPS Labour psychosocial risks questionnaire
+    sector: employment
+  - id: "28914588"   # GB — Foat v DWP (work-and-pensions case)
+    sector: employment

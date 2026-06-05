@@ -25,7 +25,12 @@ SRC_TREES: tuple[Path, ...] = (
     REPO_ROOT / "packages/horizons-api/src",
 )
 ALLOWED_FILES: frozenset[Path] = frozenset(
-    {REPO_ROOT / "packages/horizons-core/src/horizons_core/db/session.py"}
+    {
+        REPO_ROOT / "packages/horizons-core/src/horizons_core/db/session.py",
+        # Bootstrap script (WU3.5): runs once per environment as the DDL
+        # owner, outside the RLS session bracket. Not application code.
+        REPO_ROOT / "packages/horizons-ingestion/src/horizons_ingestion/seed.py",
+    }
 )
 ALLOWED_DIRS: tuple[Path, ...] = (REPO_ROOT / "packages/horizons-core/src/horizons_core/db/models",)
 
