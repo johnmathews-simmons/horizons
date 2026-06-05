@@ -41,8 +41,21 @@ export function createAppRouter(): Router {
     routes,
   })
 
-  router.beforeEach((to) => {
+  // On a cold SPA bootstrap (F5, direct URL, page.goto) the in-memory
+  // access token is gone but the HttpOnly refresh cookie may still be
+  // valid; try once to recover it before redirecting. Without this the
+  // guard would always boot reload-from-an-authed-route users to /login.
+  let attemptedColdRefresh = false
+  router.beforeEach(async (to) => {
     const auth = useAuthStore()
+    if (!attemptedColdRefresh && !auth.isAuthenticated) {
+      attemptedColdRefresh = true
+      try {
+        await auth.refresh()
+      } catch {
+        // Expected when the cookie is absent or expired; fall through.
+      }
+    }
     if (to.meta.requiresAuth && !auth.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
