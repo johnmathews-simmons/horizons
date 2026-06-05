@@ -39,8 +39,8 @@ from typing import TYPE_CHECKING
 
 from horizons_core.db.models.admin_access_log import AdminAccessMode
 from horizons_core.db.session import (
-    get_engine,
     bind_impersonation_admin_id,
+    get_engine,
     session_for_user,
     set_local_role,
 )
