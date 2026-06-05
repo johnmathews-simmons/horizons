@@ -1,0 +1,461 @@
+name: Deploy
+
+# WU6.3 — staging deploy pipeline with revision-based rollback.
+#
+# Trigger model:
+#   * `workflow_run`: fires when the "Build and push container images"
+#     workflow (WU6.2) completes on `main`. We gate the rest of the pipeline
+#     on a successful upstream conclusion — workflow_run fires regardless of
+#     outcome, so the `if:` on the `gate` job is the actual filter.
+#   * `workflow_dispatch`: manual re-run; takes an `environment` input.
+#     Only `staging` is wired today (the `production` GitHub Environment
+#     exists per WU6.1 but no `horizons-prod` resource group is provisioned
+#     — production cutover is the follow-up flagged in
+#     docs/runbooks/deploy.md).
+#
+# What it does, in order:
+#   prepare-infra  → Bicep deploy (idempotent infra reconciliation) +
+#                    `az containerapp job start` for the migration Job
+#                    (WU6.4). Captures the storage account name from Bicep
+#                    outputs for the SPA job.
+#   deploy-services → blue/green of the API container app:
+#                       1. Capture the currently-100% revision (PREV).
+#                       2. Pin traffic explicitly to PREV so the new
+#                          revision doesn't auto-take traffic (the API's
+#                          ingress block omits `traffic[]` precisely so
+#                          this imperative step is the source of truth —
+#                          see container-app-api.bicep).
+#                       3. `az containerapp update` with
+#                          --revision-suffix sha-<short> creates a fresh
+#                          revision off the new image. PREV stays at 100%.
+#                       4. Smoke-test the new revision via its unique
+#                          `<app>--sha-<short>.<env-domain>` FQDN.
+#                       5. On smoke green: shift traffic 100% to the new
+#                          revision, 0% to PREV (PREV stays warm for
+#                          instant rollback).
+#                       6. On any failure between (3) and (5): shift
+#                          traffic back to PREV and fail the workflow.
+#                       7. Worker update — same `--revision-suffix sha-X`
+#                          pattern but no traffic shift (the worker has
+#                          one always-on replica per ADR-0001).
+#   deploy-spa    → parallel job: build the Vue bundle, upload to the
+#                   storage account's $web container, purge Front Door
+#                   cache for /, /index.html, /config.json. Non-blocking
+#                   on deploy-services: if the API deploy fails, the SPA
+#                   deploy still runs (`needs:` lists `prepare-infra`,
+#                   not `deploy-services`).
+#
+# Secrets / vars consumed:
+#   vars.AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#     — provisioned by WU6.1 (OIDC federation).
+#   secrets.POSTGRES_ADMIN_PASSWORD
+#     — must be set on the `staging` GitHub Environment before this
+#       workflow runs. Until WU6.4's UAMI-based passwordless step
+#       lands, the migration job and Bicep deployment use this fallback.
+#
+# Manual-rollback procedure and the production cutover follow-up live in
+# docs/runbooks/deploy.md.
+
+on:
+  workflow_run:
+    workflows: ['Build and push container images']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target GitHub Environment. Only `staging` is wired; `production` requires a prod resource group + per-env parameter file first.'
+        type: choice
+        options:
+          - staging
+        default: staging
+
+permissions:
+  id-token: write
+  contents: read
+
+# One deploy per environment at a time. cancel-in-progress: false keeps
+# in-flight deploys from being aborted mid-traffic-shift, which would
+# strand a revision at a partial weight.
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  # Resource group + Bicep `environmentName` for the staging deploy.
+  # Hard-coded for now; both flip to prod equivalents when the production
+  # follow-up lands.
+  AZURE_RESOURCE_GROUP: horizons-nonprod
+  WORKLOAD_PREFIX: horizons
+  ENV_NAME: dev
+  # Derived from the Bicep naming convention
+  # `${workloadPrefix}-${environmentName}-<resource>`. Keeping these as
+  # workflow env vars (vs querying Bicep outputs every job) cuts an
+  # `az deployment group show` per job and makes the job logs greppable.
+  API_APP_NAME: horizons-dev-api
+  WORKER_APP_NAME: horizons-dev-worker
+  MIGRATION_JOB_NAME: horizons-dev-migrate
+  FRONT_DOOR_PROFILE: horizons-dev-fd
+  FRONT_DOOR_ENDPOINT: horizons-dev
+
+jobs:
+  gate:
+    # `workflow_run` fires on every upstream completion (including
+    # failures); this `if:` is the filter that drops failed builds.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    name: gate (compute SHA, verify upstream)
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.sha.outputs.short }}
+      head_sha: ${{ steps.sha.outputs.head }}
+    steps:
+      - name: Compute short SHA
+        id: sha
+        # Use the build's SHA (the same one tagged on the GHCR images)
+        # rather than github.sha so a manual re-dispatch still targets
+        # the artifact that's actually in the registry.
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          echo "head=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "short=$(printf '%s' "$HEAD_SHA" | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
+  prepare-infra:
+    name: Bicep deploy + migrations
+    needs: gate
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    outputs:
+      storage_account_name: ${{ steps.deploy.outputs.storage_account_name }}
+    env:
+      SHORT_SHA: ${{ needs.gate.outputs.short_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.gate.outputs.head_sha }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure az CLI for extension auto-install
+        # `az containerapp` is built into az ≥ 2.53 (ubuntu-latest's
+        # default), but `az afd` lives in the `front-door` extension.
+        # Enable dynamic install so the SPA job's cache-purge step
+        # doesn't prompt.
+        run: az config set extension.use_dynamic_install=yes_without_prompt
+
+      - name: Set up Bicep CLI
+        run: az bicep install
+
+      - name: Bicep deploy
+        id: deploy
+        # The Bicep deployment is incremental: existing resources are
+        # left as-is unless their declared shape changed. The API's
+        # ingress block deliberately omits `traffic[]` so this step
+        # doesn't reset traffic management — see
+        # infra/modules/container-app-api.bicep.
+        #
+        # Image parameters override the example file's `:latest` so the
+        # migration Job (which reuses the API image) and any image-only
+        # resource updates land on `:sha-<short>`, not whatever the
+        # moving `:latest` tag points at right now.
+        env:
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+        run: |
+          set -euo pipefail
+          STORAGE_NAME=$(az deployment group create \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "deploy-$SHORT_SHA" \
+            --template-file infra/main.bicep \
+            --parameters @infra/main.parameters.example.json \
+            --parameters postgresAdminPassword="$POSTGRES_ADMIN_PASSWORD" \
+            --parameters tenantId="$TENANT_ID" \
+            --parameters apiImage="ghcr.io/johnmathews/horizons-api:sha-$SHORT_SHA" \
+            --parameters workerImage="ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \
+            --query "properties.outputs.storageAccountName.value" \
+            -o tsv)
+          echo "storage_account_name=$STORAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "Bicep deploy complete. Storage account: $STORAGE_NAME"
+
+      - name: Start migration ACA Job
+        # The job is `triggerType: Manual` per WU6.4; nothing else fires
+        # it. Wait synchronously and fail the workflow on a non-zero exit
+        # so the traffic shift downstream never runs against an
+        # un-migrated schema.
+        run: |
+          set -euo pipefail
+          EXEC=$(az containerapp job start \
+            --name "$MIGRATION_JOB_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "name" -o tsv)
+          echo "Started migration execution: $EXEC"
+          # Poll for completion. replicaTimeout in the Job is 600s; we
+          # poll for slightly longer to catch the wind-down. 65 * 10 =
+          # 650s total wall-clock.
+          for i in $(seq 1 65); do
+            STATUS=$(az containerapp job execution show \
+              --name "$MIGRATION_JOB_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --job-execution-name "$EXEC" \
+              --query "properties.status" -o tsv)
+            echo "[$i/65] migration status: $STATUS"
+            case "$STATUS" in
+              Succeeded)
+                echo "Migration succeeded."
+                exit 0
+                ;;
+              Failed|Stopped|Degraded)
+                echo "::error::Migration job ended non-success: $STATUS"
+                az containerapp job execution show \
+                  --name "$MIGRATION_JOB_NAME" \
+                  --resource-group "$AZURE_RESOURCE_GROUP" \
+                  --job-execution-name "$EXEC" \
+                  --query "properties" -o json
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Migration job timed out (>650s); execution=$EXEC"
+          exit 1
+
+  deploy-services:
+    name: Deploy API (blue/green) + worker
+    needs: [gate, prepare-infra]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    env:
+      SHORT_SHA: ${{ needs.gate.outputs.short_sha }}
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Capture previous active API revision
+        id: prev
+        # PREV is whichever revision is currently serving 100% of
+        # traffic. On the very first deploy (no active revisions yet),
+        # this returns empty and the pin-and-shift dance becomes a
+        # simple "set 100% to the new revision" — handled below.
+        run: |
+          set -euo pipefail
+          PREV=$(az containerapp revision list \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "[?properties.active && properties.trafficWeight==\`100\`] | [0].name" \
+            -o tsv 2>/dev/null || true)
+          echo "name=$PREV" >> "$GITHUB_OUTPUT"
+          if [[ -z "$PREV" ]]; then
+            echo "::warning::No 100%-traffic revision found; treating as bootstrap deploy."
+          else
+            echo "Previous active revision: $PREV"
+          fi
+
+      - name: Pin traffic to previous revision
+        # Before creating the new revision, explicitly pin traffic to
+        # PREV by name. This converts the (possibly platform-default)
+        # `latestRevision: true` traffic config into a named-revision
+        # config so the imminent `az containerapp update` does NOT
+        # cause the new revision to auto-take traffic before smoke-
+        # testing. Skipped on the bootstrap deploy.
+        if: steps.prev.outputs.name != ''
+        env:
+          PREV: ${{ steps.prev.outputs.name }}
+        run: |
+          set -euo pipefail
+          az containerapp ingress traffic set \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --revision-weight "$PREV=100"
+
+      - name: Create new API revision (0% traffic)
+        id: api_update
+        # `az containerapp update --revision-suffix` creates a new
+        # revision named `<app>--<suffix>`. With traffic pinned to PREV,
+        # this revision starts at 0% weight. Use the immutable
+        # `:sha-<short>` tag — never `:latest` — so a re-run of this
+        # workflow against the same SHA targets a deterministic image.
+        run: |
+          set -euo pipefail
+          az containerapp update \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "ghcr.io/johnmathews/horizons-api:sha-$SHORT_SHA" \
+            --revision-suffix "sha-$SHORT_SHA"
+          NEW_REVISION="${API_APP_NAME}--sha-$SHORT_SHA"
+          echo "name=$NEW_REVISION" >> "$GITHUB_OUTPUT"
+          echo "Created revision: $NEW_REVISION"
+
+      - name: Smoke test new revision
+        id: smoke
+        # Each ACA revision exposes its own FQDN of the form
+        # `<app>--<suffix>.<env-defaultDomain>` which routes
+        # specifically to that revision regardless of the app's traffic
+        # config. Hit it directly to verify the new code works before
+        # shifting any user traffic.
+        #
+        # `--fail-with-body` returns the response body on non-2xx so the
+        # workflow log captures the failure reason (vs `--fail` which
+        # discards the body).
+        env:
+          NEW: ${{ steps.api_update.outputs.name }}
+        run: |
+          set -euo pipefail
+          REVISION_FQDN=$(az containerapp revision show \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --revision "$NEW" \
+            --query "properties.fqdn" -o tsv)
+          echo "Smoke-testing https://$REVISION_FQDN"
+
+          # ACA cold-start can take 30–60s; the readiness probe lags
+          # behind /healthz being live. Poll until 200 OK, cap at ~5 min.
+          for i in $(seq 1 60); do
+            if curl --fail-with-body --silent --max-time 5 \
+                "https://$REVISION_FQDN/healthz" > /dev/null; then
+              echo "[$i/60] /healthz OK"
+              break
+            fi
+            echo "[$i/60] /healthz not ready yet"
+            sleep 5
+          done
+
+          # Final asserts — these fail the step (and the workflow) if
+          # /healthz still isn't returning 2xx.
+          curl --fail-with-body --max-time 10 \
+            "https://$REVISION_FQDN/healthz"
+          echo
+          curl --fail-with-body --silent --max-time 10 \
+            "https://$REVISION_FQDN/openapi.json" > /dev/null
+          echo "/openapi.json reachable"
+
+      - name: Shift traffic to new revision
+        id: shift
+        # On smoke green: 100% → NEW, 0% → PREV. PREV stays warm so a
+        # subsequent manual rollback (see docs/runbooks/deploy.md) is
+        # instant — just flip the weights back.
+        env:
+          NEW: ${{ steps.api_update.outputs.name }}
+          PREV: ${{ steps.prev.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$PREV" && "$PREV" != "$NEW" ]]; then
+            az containerapp ingress traffic set \
+              --name "$API_APP_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --revision-weight "$NEW=100" "$PREV=0"
+            echo "Shifted: $NEW=100, $PREV=0"
+          else
+            az containerapp ingress traffic set \
+              --name "$API_APP_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --revision-weight "$NEW=100"
+            echo "Shifted: $NEW=100 (no previous revision)"
+          fi
+
+      - name: Rollback traffic on failure
+        # Fires only when:
+        #   * the job is failing (`failure()`),
+        #   * the new revision was created (`api_update` succeeded),
+        #   * there is a PREV to roll back to (bootstrap deploy excluded),
+        #   * the shift step did NOT succeed (avoid touching traffic
+        #     when the failure is downstream of a successful shift —
+        #     i.e. the worker update step).
+        if: failure() && steps.api_update.conclusion == 'success' && steps.prev.outputs.name != '' && steps.shift.conclusion != 'success'
+        env:
+          PREV: ${{ steps.prev.outputs.name }}
+          NEW: ${{ steps.api_update.outputs.name }}
+        run: |
+          set -euo pipefail
+          echo "::error::Deploy failed after revision creation; reverting traffic to $PREV"
+          az containerapp ingress traffic set \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --revision-weight "$PREV=100" "$NEW=0"
+
+      - name: Update worker revision
+        # No traffic shift — worker has one always-on replica per
+        # ADR-0001 and no ingress to load-balance over. ACA promotes
+        # the new revision once it's healthy and deactivates the old.
+        run: |
+          set -euo pipefail
+          az containerapp update \
+            --name "$WORKER_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \
+            --revision-suffix "sha-$SHORT_SHA"
+
+  deploy-spa:
+    name: Build + upload SPA, purge Front Door cache
+    # SPA deploy is independent of the API blue/green sequence. By
+    # depending on `prepare-infra` (not `deploy-services`), this job
+    # runs in parallel with `deploy-services` and still ships even if
+    # the API deploy fails.
+    needs: [gate, prepare-infra]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    env:
+      STORAGE_ACCOUNT: ${{ needs.prepare-infra.outputs.storage_account_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.gate.outputs.head_sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: packages/horizons-webapp/package-lock.json
+
+      - name: Install + build webapp
+        working-directory: packages/horizons-webapp
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload SPA bundle to $web
+        # `--overwrite` keeps the upload idempotent across re-runs of the
+        # same SHA. `--auth-mode login` uses the OIDC-federated identity's
+        # AAD token rather than a storage account key.
+        run: |
+          set -euo pipefail
+          az storage blob upload-batch \
+            --account-name "$STORAGE_ACCOUNT" \
+            --source packages/horizons-webapp/dist \
+            --destination '$web' \
+            --overwrite \
+            --auth-mode login
+
+      - name: Purge Front Door cache
+        # Only `/`, `/index.html`, and `/config.json` need active purges
+        # — the rest of the bundle is hashed by Vite so the URLs change
+        # per build and the CDN's cache misses on its own. `/config.json`
+        # is the per-environment runtime config (WU5.1) and is not
+        # content-hashed.
+        run: |
+          set -euo pipefail
+          az afd endpoint purge \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --profile-name "$FRONT_DOOR_PROFILE" \
+            --endpoint-name "$FRONT_DOOR_ENDPOINT" \
+            --content-paths '/' '/index.html' '/config.json'

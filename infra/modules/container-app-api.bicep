@@ -67,12 +67,19 @@ resource api 'Microsoft.App/containerApps@2024-10-02-preview' = {
         targetPort: targetPort
         transport: 'auto'
         allowInsecure: false
-        traffic: [
-          {
-            latestRevision: true
-            weight: 100
-          }
-        ]
+        // `traffic` is intentionally NOT declared here. WU6.3's deploy.yml
+        // manages traffic imperatively via `az containerapp ingress traffic
+        // set` so it can stand up a new revision at 0 % weight, smoke-test
+        // it, and only then shift to 100 % (with the previous revision held
+        // at 0 % as the rollback target). Declaring a traffic block would
+        // either (a) re-pin `latestRevision: true` on every Bicep deploy —
+        // bypassing the smoke gate — or (b) drift to whichever named
+        // revision the template happens to know about. ARM incremental
+        // mode preserves the live traffic state when the property is
+        // absent; on the very first deploy ACA defaults the traffic config
+        // to `latestRevision: true, weight: 100` (the platform default),
+        // which is the correct bootstrap behaviour. Subsequent deploys
+        // leave traffic untouched.
       }
       secrets: []
       registries: []
