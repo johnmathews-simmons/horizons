@@ -279,9 +279,71 @@ step.
 
 ## Status by suite
 
-- Webapp: 16 tests passing, lint clean, build clean (0 TS errors).
+- Webapp: 16 tests passing, lint clean, build clean (0 TS errors) at the
+  initial WU5.0 merge. After the three security-fix follow-ups (see
+  below) and the README/`.env.example` cleanup landed during `/done`,
+  the suite is at 49 tests passing.
 - Python: 319 unit tests passing (no Python touched in this WU; the gate
   is run defensively per the prompt).
+
+## Follow-ups landed in this session
+
+Three rounds of automated post-push security review caught real issues
+in the login redirect flow. Each was fixed as a small follow-up commit on
+the same day, all on `main`:
+
+1. **`7ea4416` — sanitise `?redirect=` to block open redirect after
+   login (MEDIUM).** The initial WU5.0 LoginView used
+   `router.push(route.query.redirect ?? '/')` straight from the URL
+   bar. `router.push('//evil.com')` would protocol-relative navigate
+   off-origin. Extracted a `sanitiseRedirect()` helper in
+   `src/router/redirect.ts` that initially accepted only paths starting
+   with exactly one `/` and not `//` or `/\`. 22 regression cases
+   covered the obvious shapes (protocol-relative, backslash-prefixed,
+   absolute, `javascript:` / `data:`).
+2. **`017ef3f` — close URL-parser whitespace bypass (MEDIUM).**
+   Reviewer caught a parser/validator differential: `/\t/evil.com`
+   survived the regex (the byte after `/` is `\t`, not `\` or `/`) but
+   the browser strips `\t` per WHATWG basic URL parser step 1 and
+   navigates to `//evil.com`. Switched to parser-equivalence: parse
+   through `new URL(raw, window.location.origin)` and require the
+   parsed origin to match. Added 7 regression cases covering `\t`,
+   `\r`, `\n`, doubled-whitespace, and leading-whitespace forms.
+3. **`23a238f` — output-side check + restore input check (HIGH).**
+   Reviewer found that `.` / `..` path segments collapse but empty
+   segments are preserved, so `/.//evil.com` resolves to a same-origin
+   URL whose `pathname` is `//evil.com`. The round-two impl trusted
+   the origin check and returned that pathname; `router.push` would
+   then protocol-relative navigate. Two fixes: (a) re-apply the
+   `^/(?![\\/])` check to the computed `pathname + search + hash`
+   after URL normalisation, (b) restore the dropped
+   `raw.startsWith('/')` check on the input (otherwise bare strings
+   like `evil.com` and `?redirect=foo` parse as relative to `origin/`
+   and resolve to a same-origin path the URL constructor invented).
+   Probed jsdom's URL parser directly to confirm `/.//evil.com`,
+   `/..//evil.com`, `/././/evil.com`, and `/foo/../..//evil.com` all
+   normalise to a `//evil.com` pathname; the output check rejects all
+   four.
+
+The third pass also surfaced one lesson worth keeping: when a check
+chain includes both regex shape checks and a URL parser, the regex MUST
+be applied to whatever string is *actually* used at the navigation
+boundary (the output), not just to the input — because the URL parser
+can produce a structurally-different string from what the input looked
+like. Documented at length in the file's module docstring so the
+threat model is visible at the call site.
+
+## Documentation cleanup landed during `/done`
+
+- `packages/horizons-webapp/README.md` rewritten to reflect axios (not
+  fetch), the auth-bridge seam, the in-memory access token, and the
+  redirect-sanitisation defence. Old setup snippet referenced
+  `VITE_API_BASE_URL` which no longer exists.
+- `packages/horizons-webapp/.env.example` removed. Its only var
+  (`VITE_API_BASE_URL`) was unused after the WU5.0 client.ts rewrite
+  hardcoded the base URL with a `TODO(WU5.1)` marker. WU5.1's
+  `/config.json` story replaces the env-var approach entirely, so
+  re-adding the file in that work unit would be a fresh contract.
 
 ## Track 5 status
 
