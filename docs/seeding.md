@@ -96,21 +96,48 @@ It exits zero on:
 - A successful run (newly inserted rows reported, with counts).
 - A re-run where nothing is new (zero inserts reported).
 
-## WU8.0 hand-off
+## WU8.0 — demo corpus expansion + synthetic v2 staging
 
-The curated-set bootstrap is the substrate WU8.0 grows for the demo period.
-WU8.0 expands `data/curated_set.yaml` to roughly 50 documents × 10
-jurisdictions × 5 sectors and stages synthesised v2 documents — the
-"always changing" demo signal — through a separate admin tool, not through
-this script. WU3.5's responsibility ends at `(documents, document_poll_schedule)`
-rows for the v1 corpus; WU8.0 owns the v2 injection path that produces
-visible `change_events` without waiting on Lawstronaut.
+WU8.0 grew the curated set to **10 jurisdictions × 5 sectors** and added a
+synthetic v2 staging path. The ~50-document acceptance target is gapped by
+the current fixture inventory: `data/samples/fixtures.json` (captured
+2026-06-04) holds one capture per jurisdiction, so the in-scope seed tops
+out at ~10. Growing to ~50 requires re-running
+`scripts/fetch_fixtures.py` with a higher target so each jurisdiction
+contributes multiple documents — the seed picks up the extras
+idempotently on the next run.
 
-The hand-off contract: WU8.0's admin tool reads the same `data/curated_set.yaml`
-as a source of truth for which documents exist in the demo corpus. The seed
-script does not need to know about WU8.0 — its idempotency means WU8.0 can
-re-run it before the demo to top up any documents the operator added to the
-YAML after the original seed.
+The v2 injection path lives in this same module rather than a separate
+admin tool:
+
+- `data/samples/synthetic_v2/<iso>-<docid>-v2.md` — hand-authored
+  revisions of selected v1 fixtures, each with one ADD / one MODIFY /
+  one REMOVE so the alignment pipeline emits all three event families.
+  See `data/samples/synthetic_v2/README.md` for the per-document diff
+  intent.
+- `horizons_ingestion.seed.stage_synthetic_v2(pairs, …)` — for each
+  `(lawstronaut_document_id, v1_path, v2_path)` pair, inserts the v1
+  row in `document_versions` (closed at `now`), the v1 leaves in
+  `clauses` with fresh UUIDs, the v2 row in `document_versions`
+  (live; `valid_to=NULL`), the v2 leaves in `clauses` with UIDs
+  inherited via the same rules as
+  `horizons_ingestion.poll._build_clause_uid_map`, and the
+  alignment-derived `change_events`. Idempotent per document — rows
+  whose `document_versions` already has entries are skipped.
+- `scripts/seed_curated_set.py --stage-synthetic-v2` runs the WU3.5
+  seed and then the v2 staging in a single invocation.
+
+**Operational rule:** the worker must not be run against documents that
+have staged synthetic v2s. The worker uses Lawstronaut HTTP, which
+returns the real v1 — sha mismatch with the staged v2 would push a
+spurious v3. The demo runbook (`docs/runbooks/demo-accounts.md`)
+documents the operator guidance; a future tightening could bump
+`next_poll_at` to a far-future date on staged documents to enforce this
+in code.
+
+**Demo accounts** are a separate concern handled by
+`packages/horizons-api/scripts/create_demo_accounts.py`. See
+`docs/runbooks/demo-accounts.md` for the operator-facing steps.
 
 ## Related
 
