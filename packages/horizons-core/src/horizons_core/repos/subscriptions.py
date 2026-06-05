@@ -32,7 +32,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import and_, select, tuple_
+from sqlalchemy import and_, func, or_, select, tuple_
 from sqlalchemy import update as sql_update
 
 from horizons_core.db.models.subscriptions import Subscription, SubscriptionScope
@@ -222,9 +222,9 @@ class SubscriptionsRepository:
         *,
         subscription_id: uuid.UUID,
         scopes: list[tuple[str, str]],
-        ended_at: datetime,
     ) -> int:
-        """Mark each ``(jurisdiction, sector)`` as ended at ``ended_at``.
+        """Mark each ``(jurisdiction, sector)`` as ended at the current
+        server-side transaction time; return the number of rows touched.
 
         Append-only: the row stays, only ``valid_to`` moves. The WU4.5
         trigger enforces the same shape — any UPDATE other than
@@ -233,7 +233,19 @@ class SubscriptionsRepository:
         Idempotent: only rows currently active (``valid_to IS NULL``)
         are touched; previously ended rows are skipped silently.
 
-        Returns the number of rows soft-deleted.
+        Why server-side ``now()`` and not a Python-supplied timestamp:
+        ``app_private.current_scope()`` filters by ``valid_to >
+        pg_catalog.now()``, which is ``transaction_timestamp()`` — the
+        time the *transaction* started, not the current statement. A
+        Python ``datetime.now(UTC)`` taken in the route runs later than
+        the admin transaction's ``now()``, so an UPDATE that writes
+        ``valid_to = <python now>`` produces a row that
+        ``current_scope()`` would still consider in-scope inside the
+        same admin transaction (and only stop including once the next
+        transaction's ``now()`` catches up). Using ``func.now()`` here
+        anchors ``valid_to`` to the same clock both ``current_scope()``
+        and ``active_scope_documents`` read, so the inside-transaction
+        and post-commit views agree on which scopes are ended.
         """
         if not scopes:
             return 0
@@ -247,7 +259,7 @@ class SubscriptionsRepository:
                     tuple_(SubscriptionScope.jurisdiction, SubscriptionScope.sector).in_(pairs),
                 )
             )
-            .values(valid_to=ended_at)
+            .values(valid_to=func.now())
             .returning(SubscriptionScope.subscription_id)
         )
         result = await self._session.execute(stmt)
@@ -261,19 +273,39 @@ class SubscriptionsRepository:
         """Document ids visible under the user's *current* scope.
 
         Used by the reduction path to compute which watchlists to
-        soft-hide. The query is a join from the user's active
-        subscription scope rows to ``documents``; the WU4.5 update to
-        ``current_scope()`` already filters by ``valid_to``, so the
-        active-scope set here matches what the client's session would
-        see after the reduction lands.
+        soft-hide. The result MUST agree with what
+        ``app_private.current_scope()`` would return for the same
+        ``user_id``: if this function reports a tighter scope than the
+        client sees, the soft-hide pass would inactivate watchlists
+        that the client still has reads on (data loss). If it reports
+        a wider scope, soft-hidden rows would linger past their
+        expiry. We mirror ``current_scope()``'s predicates exactly so
+        the two stay in lock-step:
 
-        We reach the result via the SQLAlchemy expression layer rather
-        than ``app_private.current_scope()`` (which requires a bound
-        ``app.user_id``) because admin sessions are bound to the admin's
-        id, not the target's.
+        - ``subscriptions.valid_from <= now()`` excludes
+          not-yet-active subscriptions.
+        - ``subscriptions.valid_to IS NULL OR valid_to > now()`` keeps
+          subscriptions whose end is scheduled but not yet reached.
+        - ``subscription_scopes.valid_to IS NULL OR valid_to > now()``
+          allows a scope row that has been soft-deleted with a future
+          ``valid_to`` to remain in scope until its expiry.
+
+        Two paths to one definition would have been ideal — calling
+        ``app_private.current_scope()`` directly. The function reads
+        ``current_setting('app.user_id')`` and the admin session is
+        bound to the admin's id, not the target's. Re-binding
+        ``app.user_id`` mid-transaction would taint every subsequent
+        statement in the admin's session bracket; the cure is worse
+        than the disease. The fix is to keep this function and
+        ``current_scope()`` in lock-step by sharing the predicate
+        shape, with this docstring as the visible link between them.
+        Any change to ``current_scope()`` (see
+        ``migrations/versions/0011_admin_subscription_endpoints_support.py``)
+        must update this function as well.
         """
         from horizons_core.db.models.documents import Document
 
+        now = func.now()
         stmt = (
             select(Document.id)
             .join(
@@ -281,7 +313,10 @@ class SubscriptionsRepository:
                 and_(
                     SubscriptionScope.jurisdiction == Document.jurisdiction,
                     SubscriptionScope.sector == Document.sector,
-                    SubscriptionScope.valid_to.is_(None),
+                    or_(
+                        SubscriptionScope.valid_to.is_(None),
+                        SubscriptionScope.valid_to > now,
+                    ),
                 ),
             )
             .join(
@@ -290,7 +325,11 @@ class SubscriptionsRepository:
             )
             .where(
                 Subscription.user_id == user_id,
-                Subscription.valid_to.is_(None),
+                Subscription.valid_from <= now,
+                or_(
+                    Subscription.valid_to.is_(None),
+                    Subscription.valid_to > now,
+                ),
             )
             .distinct()
         )

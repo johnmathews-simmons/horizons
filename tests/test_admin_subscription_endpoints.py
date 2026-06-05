@@ -404,3 +404,110 @@ def test_admin_write_creates_one_audit_row_per_request(
         ).all()
     assert [r[0] for r in rows] == ["operator", "operator"]
     assert all(r[1] is None for r in rows), "operator rows must have NULL target_user_id"
+
+
+# ---- 5. Scope-symmetry regression -------------------------------------------
+
+
+@pytest.mark.integration
+def test_reduction_respects_future_valid_to_subscription(
+    client: TestClient,
+    migrated_postgres_a: Engine,
+) -> None:
+    """Reduction must not soft-hide watchlists the client still reads.
+
+    A subscription with a future ``valid_to`` (planned end, not yet
+    reached) is visible to the client via ``app_private.current_scope()``
+    — it filters by ``valid_to IS NULL OR valid_to > now()``. If
+    ``SubscriptionsRepository.active_scope_documents`` only accepts
+    ``valid_to IS NULL``, the PATCH reduction pass would conclude the
+    document is out of scope and soft-hide the watchlist that the
+    client can still legitimately access. The fix is for both functions
+    to share the same predicate shape.
+
+    This test seeds the asymmetric case directly: subscription A has
+    ``valid_to = now() + 1 day`` (still active per ``current_scope``),
+    subscription B is the one the admin patches. The patch on B should
+    not touch the watchlist that A covers.
+    """
+    _make_user(migrated_postgres_a, "admin_sym@example.com", role="admin")
+    target_id = _make_user(migrated_postgres_a, "client_sym@example.com", role="client")
+
+    # Two subscriptions for the same user:
+    # - sub_a: uk/banking, valid_to = now() + 1 day (future end).
+    # - sub_b: uk/fintech, valid_to NULL (the one we'll PATCH).
+    with migrated_postgres_a.begin() as conn:
+        sub_a = conn.execute(
+            text(
+                "INSERT INTO subscriptions (user_id, valid_from, valid_to) "
+                "VALUES (:u, now() - interval '1 day', now() + interval '1 day') "
+                "RETURNING id"
+            ),
+            {"u": target_id},
+        ).scalar_one()
+        conn.execute(
+            text(
+                "INSERT INTO subscription_scopes "
+                "(subscription_id, jurisdiction, sector) VALUES (:s, 'uk', 'banking')"
+            ),
+            {"s": sub_a},
+        )
+        sub_b = conn.execute(
+            text(
+                "INSERT INTO subscriptions (user_id, valid_from) "
+                "VALUES (:u, now() - interval '1 day') RETURNING id"
+            ),
+            {"u": target_id},
+        ).scalar_one()
+        conn.execute(
+            text(
+                "INSERT INTO subscription_scopes "
+                "(subscription_id, jurisdiction, sector) VALUES (:s, 'uk', 'fintech')"
+            ),
+            {"s": sub_b},
+        )
+
+    keep_doc = _seed_document(
+        migrated_postgres_a,
+        "future_keep",
+        jurisdiction="uk",
+        sector="banking",
+        title="Bank Act",
+    )
+    drop_doc = _seed_document(
+        migrated_postgres_a,
+        "future_drop",
+        jurisdiction="uk",
+        sector="fintech",
+        title="Fintech Rule",
+    )
+
+    client_token = _login(client, "client_sym@example.com")
+    for doc in (keep_doc, drop_doc):
+        r = client.post(
+            "/v1/me/watchlists",
+            headers=_bearer(client_token),
+            json={"document_id": str(doc)},
+        )
+        assert r.status_code == 201, r.text
+
+    # Admin removes the uk/fintech scope from sub_b. Only the
+    # fintech watchlist should be soft-hidden; the banking watchlist
+    # is protected by sub_a (future-valid_to but still active).
+    admin_token = _login(client, "admin_sym@example.com")
+    patch = client.patch(
+        f"/v1/admin/subscriptions/{sub_b}",
+        headers=_bearer(admin_token),
+        json={"remove_scopes": [{"jurisdiction": "uk", "sector": "fintech"}]},
+    )
+    assert patch.status_code == 200, patch.text
+    body = patch.json()
+    assert body["scopes_removed"] == 1
+    # The regression bug would soft-hide BOTH watchlists (keep_doc's
+    # subscription a invisible to active_scope_documents under the old
+    # predicates). The fix keeps it at 1.
+    assert body["watchlists_soft_hidden"] == 1
+
+    # Client still sees the banking watchlist (sub_a still active).
+    post = client.get("/v1/me/watchlists", headers=_bearer(client_token)).json()
+    assert {row["document_id"] for row in post} == {str(keep_doc)}

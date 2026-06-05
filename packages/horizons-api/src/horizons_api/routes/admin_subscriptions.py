@@ -298,13 +298,18 @@ async def patch_subscription(  # noqa: PLR0913 — each parameter is a wire fiel
             scopes=sorted(add_pairs),
         )
 
-    now = datetime.now(UTC)
     scopes_removed = 0
     if remove_pairs:
+        # ``soft_delete_scopes`` uses server-side ``now()`` so the
+        # ``valid_to`` it writes anchors to the same clock
+        # ``app_private.current_scope()`` reads. The python-side time
+        # used to be passed here; that produced a subtle asymmetry
+        # where, inside the admin transaction, just-soft-deleted scope
+        # rows still looked active to ``active_scope_documents`` —
+        # see the secfix journal for the details.
         scopes_removed = await repo.soft_delete_scopes(
             subscription_id=subscription_id,
             scopes=sorted(remove_pairs),
-            ended_at=now,
         )
 
     in_scope_docs = await repo.active_scope_documents(user_id=existing.user_id)
