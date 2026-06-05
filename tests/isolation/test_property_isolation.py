@@ -90,10 +90,16 @@ def _client_blueprint(draw: st.DrawFn) -> ClientBlueprint:
             max_size=3,
         )
     )
-    n_watch = draw(st.integers(min_value=0, max_value=3))
     n_docs = draw(st.integers(min_value=0, max_value=3))
     scope_list = sorted(scopes)
     doc_scopes = tuple(draw(st.sampled_from(scope_list)) for _ in range(n_docs))
+    # Watchlists FK to documents (WU4.3 / migration 0009: document_id NOT NULL,
+    # UNIQUE (user_id, document_id)). Cap n_watchlists at n_docs so every
+    # generated watchlist can point at a distinct seeded document for this
+    # client. With n_docs == 0 the client has no watchlists either; the
+    # universal isolation invariant is shape-independent so the strategy
+    # still exercises the empty-client case via the other clients in the plan.
+    n_watch = draw(st.integers(min_value=0, max_value=n_docs))
     return ClientBlueprint(scopes=scopes, n_watchlists=n_watch, doc_scopes=doc_scopes)
 
 
@@ -141,10 +147,17 @@ def _seed_subscription(
     )
 
 
-def _seed_watchlist(conn: Connection, user_id: uuid.UUID, name: str) -> uuid.UUID:
+def _seed_watchlist(
+    conn: Connection,
+    user_id: uuid.UUID,
+    document_id: uuid.UUID,
+    name: str,
+) -> uuid.UUID:
     return conn.execute(
-        sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n) RETURNING id"),
-        {"u": user_id, "n": name},
+        sqlalchemy.text(
+            "INSERT INTO watchlists (user_id, document_id, name) VALUES (:u, :d, :n) RETURNING id"
+        ),
+        {"u": user_id, "d": document_id, "n": name},
     ).scalar_one()
 
 
@@ -219,14 +232,25 @@ def _apply_plan(
             for j, s in bp.scopes:
                 _seed_subscription(conn, user_id, j, s)
 
-            watchlist_ids = frozenset(
-                _seed_watchlist(conn, user_id, f"property_{suffix}_c{i}_w{w}")
-                for w in range(bp.n_watchlists)
-            )
-
+            # Docs MUST land before watchlists — migration 0009 made
+            # watchlists.document_id NOT NULL with a FK to documents, so
+            # each watchlist references one of this client's own docs.
             docs = tuple(
                 _seed_doc_chain(conn, jur, sec, f"{suffix}_c{i}_d{d_idx}")
                 for d_idx, (jur, sec) in enumerate(bp.doc_scopes)
+            )
+
+            # The strategy guarantees n_watchlists <= len(docs), so docs[w]
+            # is always defined; distinct w → distinct document_id satisfies
+            # the watchlists_user_document_unique constraint.
+            watchlist_ids = frozenset(
+                _seed_watchlist(
+                    conn,
+                    user_id,
+                    docs[w].doc_id,
+                    f"property_{suffix}_c{i}_w{w}",
+                )
+                for w in range(bp.n_watchlists)
             )
 
             seeded.append(
@@ -240,7 +264,6 @@ def _apply_plan(
     return tuple(seeded)
 
 
-@pytest.mark.integration
 @pytest.mark.nightly
 @given(plan=_isolation_plan())
 @settings(
