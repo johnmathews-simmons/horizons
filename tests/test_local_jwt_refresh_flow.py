@@ -173,14 +173,10 @@ async def test_revoke_marks_row_revoked_and_is_idempotent(
 
     async with session_for_user(async_engine, user_id) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
-        first = await provider.revoke_token(
-            principal.jti, user_id=user_id, session=session
-        )
+        first = await provider.revoke_token(principal.jti, user_id=user_id, session=session)
     async with session_for_user(async_engine, user_id) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
-        second = await provider.revoke_token(
-            principal.jti, user_id=user_id, session=session
-        )
+        second = await provider.revoke_token(principal.jti, user_id=user_id, session=session)
         row = await RefreshTokensRepository(session).get_by_jti(principal.jti)
 
     assert first is True
@@ -213,9 +209,7 @@ async def test_other_user_cannot_revoke_my_refresh_token(
 
     async with session_for_user(async_engine, attacker_id) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
-        changed = await provider.revoke_token(
-            principal.jti, user_id=attacker_id, session=session
-        )
+        changed = await provider.revoke_token(principal.jti, user_id=attacker_id, session=session)
 
     async with session_for_user(async_engine, owner_id) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
@@ -238,8 +232,6 @@ async def test_revoke_unknown_jti_returns_false(
 
     async with session_for_user(async_engine, user_id) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
-        changed = await provider.revoke_token(
-            unknown_jti, user_id=user_id, session=session
-        )
+        changed = await provider.revoke_token(unknown_jti, user_id=user_id, session=session)
 
     assert changed is False

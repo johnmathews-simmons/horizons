@@ -3,7 +3,12 @@ name = "horizons-api"
 version = "0.0.0"
 description = "Public REST API: the single HTTP surface the webapp and external clients talk to."
 requires-python = ">=3.13"
-dependencies = ["horizons-core"]
+dependencies = [
+    "fastapi>=0.115",
+    "horizons-core",
+    "structlog>=24.4",
+    "uvicorn>=0.32",
+]
 
 [build-system]
 requires = ["hatchling"]

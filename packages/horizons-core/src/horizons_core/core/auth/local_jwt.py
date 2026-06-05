@@ -71,9 +71,7 @@ class LocalJwtProvider:
             # signing key, which makes the JWK distribution model
             # different. Reject at construction so a misconfiguration
             # fails fast and obviously instead of weakening the seam.
-            raise ValueError(
-                f"LocalJwtProvider requires an RSA algorithm; got {algorithm!r}"
-            )
+            raise ValueError(f"LocalJwtProvider requires an RSA algorithm; got {algorithm!r}")
         self._private_key = private_key
         self._public_key = public_key
         self._issuer = issuer

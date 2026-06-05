@@ -116,10 +116,7 @@ def test_refresh_tokens_index_present(migrated_engine: Engine) -> None:
             indexes = {
                 row.indexname
                 for row in conn.execute(
-                    text(
-                        "SELECT indexname FROM pg_indexes "
-                        "WHERE tablename = 'refresh_tokens'"
-                    )
+                    text("SELECT indexname FROM pg_indexes WHERE tablename = 'refresh_tokens'")
                 )
             }
     finally:
@@ -178,10 +175,7 @@ def test_refresh_tokens_rls_forced_and_policies_present(
             policies = {
                 row.policyname
                 for row in conn.execute(
-                    text(
-                        "SELECT policyname FROM pg_policies "
-                        "WHERE tablename = 'refresh_tokens'"
-                    )
+                    text("SELECT policyname FROM pg_policies WHERE tablename = 'refresh_tokens'")
                 )
             }
     finally:

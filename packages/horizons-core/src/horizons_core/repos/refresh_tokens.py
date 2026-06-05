@@ -79,9 +79,7 @@ class RefreshTokensRepository:
     async def get_by_jti(self, jti: uuid.UUID) -> RefreshTokenDTO | None:
         """Look up by ``jti``; returns ``None`` if absent or out of scope."""
         row = (
-            await self._session.execute(
-                select(RefreshToken).where(RefreshToken.jti == jti)
-            )
+            await self._session.execute(select(RefreshToken).where(RefreshToken.jti == jti))
         ).scalar_one_or_none()
         return RefreshTokenDTO.model_validate(row) if row is not None else None
 
