@@ -74,6 +74,9 @@ migrations grant per-table:
 | `users` | SELECT, INSERT, UPDATE | — | — |
 | `subscriptions` | SELECT, INSERT, UPDATE *(trigger-policed)* | — | — |
 | `subscription_scopes` | SELECT, INSERT | — | — |
+| `documents` | SELECT | SELECT, INSERT | — |
+| `document_versions` | SELECT | SELECT, INSERT | — |
+| `clauses` | SELECT | SELECT, INSERT | — |
 
 `admin_bypass` deliberately has no static grants. Code paths that need
 admin reach assume the role per-operation (`SET LOCAL ROLE
@@ -81,10 +84,19 @@ admin_bypass`) and rely on its `BYPASSRLS` to read across tenants
 through the same `api_app`-granted tables. This keeps the grant surface
 small and the elevation auditable.
 
+The corpus grants follow the same shape across all three tables:
+`api_app` reads (the public API exposes corpus rows to clients —
+subscription-scope filtering is the API's job today, RLS will be the
+second layer in WU1.4); `ingestion_worker` reads and writes (the
+worker inserts new rows and reads its own prior writes during the
+alignment pass that assigns `clause_uid`). Neither role gets UPDATE —
+the append-only triggers would reject it anyway, but absent grants is
+the cheaper first layer.
+
 These grants are the loosest workable surface for the **WU1.x** API
-layer. RLS policies and read-scope narrowing for the corpus tables land
-in **WU1.4**; see [schema.md](schema.md) "Multi-tenant access (current
-state)" for the boundary.
+and ingestion layers. RLS policies and read-scope narrowing for the
+corpus tables land in **WU1.4**; see [schema.md](schema.md)
+"Multi-tenant access (current state)" for the boundary.
 
 ## Running the migration
 

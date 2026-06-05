@@ -96,6 +96,111 @@ subscription (set `valid_to`) and insert a new one with its new scopes.
 `DELETE` cascades from the parent `subscriptions` row, which is itself
 forbidden by foreign-key absence (no `DELETE` path lands here today).
 
+### `documents` — stable identity for an upstream legal text
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid PRIMARY KEY` | `uuidv7()` default |
+| `jurisdiction` | `text NOT NULL` | e.g. `IE`, `UK`, `EU` |
+| `sector` | `text NOT NULL` | e.g. `BANKING`, `INSURANCE` |
+| `lawstronaut_document_id` | `text NOT NULL UNIQUE` | upstream key — the join back into Lawstronaut |
+| `title` | `text NOT NULL` | human-readable name |
+| `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
+
+Index: `idx_documents_jurisdiction_sector` on `(jurisdiction, sector)`
+supports the dominant filter ("documents in my subscription scope").
+`lawstronaut_document_id` is the durable join key against the upstream
+feed; uniqueness is enforced as a column constraint so re-ingest is
+idempotent.
+
+A `documents` row is the long-lived handle for a single statute /
+regulation / guidance document. Content lives on attached
+[`document_versions`](#document_versions--time-stamped-re-issues) rows;
+the `documents` row itself is metadata only.
+
+**Writes:** `INSERT` is permitted. `UPDATE` is rejected outright by the
+append-only trigger — corrections to metadata are recorded as a new
+`document_versions` row, not by mutating the parent.
+
+### `document_versions` — time-stamped re-issues
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid PRIMARY KEY` | `uuidv7()` default |
+| `document_id` | `uuid NOT NULL REFERENCES documents(id) ON DELETE RESTRICT` | FK |
+| `version_label` | `text NOT NULL` | e.g. `v1`, `2024-consolidated` |
+| `publication_date` | `timestamptz NULL` | when the issuer published the version |
+| `effective_date` | `timestamptz NULL` | when the version comes into force |
+| `content_blob_container` | `text NOT NULL` | storage container / bucket |
+| `content_blob_key` | `text NOT NULL` | object key within the container |
+| `content_sha256` | `bytea NOT NULL` | 32-byte SHA-256 of the blob (CHECK) |
+| `content_bytes` | `int NOT NULL` | byte count (CHECK `>= 0`) |
+| `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
+
+Constraints: `UNIQUE(document_id, version_label)` so the
+`(document, label)` pair is the natural identity an ingester can be
+idempotent against. `CHECK(octet_length(content_sha256) = 32)` rejects
+malformed digests at the database layer.
+
+Index: `idx_document_versions_doc_effective` on
+`(document_id, effective_date)` supports the temporal primitive ("what
+was in force at time T for document X").
+
+`publication_date` and `effective_date` are intentionally nullable —
+some upstream feeds omit one or both, and the ingester is allowed to
+record a row with the dates it has. Effective-date inference (publication
++ per-jurisdiction default lag — see [design doc 3 §Principles
+3](../../../../../docs/3.%20database-design.md#principles)) lives in the
+ingester, not in the schema; this table just stores whatever the
+ingester computes.
+
+Content is stored externally. `(content_blob_container,
+content_blob_key)` is a provider-agnostic pointer: the storage host /
+account / endpoint is environment configuration, not row data. The
+SHA-256 and byte count are kept in-row for integrity checks and to
+avoid a round-trip when computing diffs.
+
+**Writes:** `INSERT` is permitted. `UPDATE` is rejected outright by the
+append-only trigger — content corrections are a new version, not a
+rewrite of an existing one.
+
+### `clauses` — heading-anchored fragments of a version
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid PRIMARY KEY` | `uuidv7()` default |
+| `document_version_id` | `uuid NOT NULL REFERENCES document_versions(id) ON DELETE RESTRICT` | FK |
+| `clause_uid` | `uuid NOT NULL` | identity across versions; assigned by the alignment pipeline |
+| `clause_path` | `text NOT NULL` | positional label, e.g. `Part 1 / Section 4 / (a) / (i)` |
+| `text_content` | `text NOT NULL` | the clause body, in markdown |
+| `ord` | `int NOT NULL` | sequence number within the version |
+
+Constraints: `UNIQUE(document_version_id, clause_path)` so a given
+positional address resolves to one row per version.
+
+Indexes:
+- `idx_clauses_version_ord` on `(document_version_id, ord)` for
+  reading a version's clauses in document order.
+- `idx_clauses_clause_uid` on `(clause_uid)` for the cross-version
+  clause-identity lookup the differential primitive depends on.
+
+`clause_uid` is the **stable identity** that carries a clause across
+re-issues of its parent document — see [design doc 2 §Clause
+identity](../../../../../docs/2.%20clause-alignment.md). The alignment
+pipeline assigns the uid when a new version lands: matching clauses
+inherit the prior uid, genuinely new clauses get a fresh one. The
+pipeline itself lands in a later WU; for now the column exists and
+indexes are in place, so the ingester can populate it as soon as
+alignment is wired.
+
+`clause_path` is the positional label and is free to renumber as
+neighbours change between versions — it is **not** an identity, it is a
+human-readable address.
+
+**Writes:** `INSERT` is permitted. `UPDATE` is rejected outright by the
+append-only trigger — clauses are recorded per version, not mutated in
+place.
+
 ## Append-only enforcement
 
 The trigger lives at the database layer for one reason: it must hold
@@ -107,11 +212,16 @@ opens `psql`. The shape is:
   other columns unchanged. Rejects everything else.
 - `subscription_scopes_no_update` — `BEFORE UPDATE` on
   `subscription_scopes`. Rejects every `UPDATE`.
+- `documents_no_update`, `document_versions_no_update`,
+  `clauses_no_update` — `BEFORE UPDATE` on the corpus tables. Reject
+  every `UPDATE`. Corpus rows are immutable; corrections are a new row.
 - `users` has no trigger. `UPDATE` is allowed (password / email).
 
-The triggers share one PL/pgSQL function `reject_subscription_update()`
-and `reject_subscription_scope_update()` respectively; the bodies are
-short and self-documenting in the migration.
+The triggers share one PL/pgSQL function each
+(`reject_subscription_update`, `reject_subscription_scope_update`,
+`reject_document_update`, `reject_document_version_update`,
+`reject_clause_update`); the bodies are short and self-documenting in
+the migration.
 
 There is no "monotonic guard" on `valid_to` (no rule that the
 cancellation timestamp must be in the future). Admin tooling that
@@ -120,12 +230,16 @@ isn't worth the protection.
 
 ## Multi-tenant access (current state)
 
-WU1.1 grants `SELECT, INSERT` on all three tables to `api_app`. RLS
-policies and per-role read-scope narrowing land in **WU1.4** when the
-isolation spine is wired up properly. Until then, treat the grants as
-the loosest workable surface for the immediate API layer to depend on,
-*not* as the final story. `ingestion_worker` and `admin_bypass` receive
-no grants on these tables — they are private state, not corpus.
+WU1.1 grants `SELECT, INSERT` on the tenancy tables to `api_app`.
+WU1.2 grants `SELECT` on the corpus tables to `api_app` and `SELECT,
+INSERT` to `ingestion_worker`. RLS policies and per-role read-scope
+narrowing (subscription-scoped corpus filtering, client-private state
+isolation) land in **WU1.4** when the isolation spine is wired up
+properly. Until then, treat the grants as the loosest workable surface
+for the immediate API and ingestion layers to depend on, *not* as the
+final story. `admin_bypass` receives no static grants on any table —
+admin reach is assumed per-operation via `SET LOCAL ROLE` and its
+`BYPASSRLS` attribute.
 
 ## Related
 

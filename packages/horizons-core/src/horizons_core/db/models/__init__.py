@@ -13,11 +13,17 @@ live database to produce the next migration.
 from __future__ import annotations
 
 from horizons_core.db.models.base import Base
+from horizons_core.db.models.clauses import Clause
+from horizons_core.db.models.documents import Document
 from horizons_core.db.models.subscriptions import Subscription, SubscriptionScope
 from horizons_core.db.models.users import User, UserRole
+from horizons_core.db.models.versions import DocumentVersion
 
 __all__ = [
     "Base",
+    "Clause",
+    "Document",
+    "DocumentVersion",
     "Subscription",
     "SubscriptionScope",
     "User",
