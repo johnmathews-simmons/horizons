@@ -1,12 +1,14 @@
 # Row-Level Security architecture
 
-This is the spec the RLS spine executes against. As of WU1.4 the spine
-is live: the `app_private` schema and `current_scope()` SECURITY DEFINER
-function from WU1.3, the `watchlists` private-state table created in
-WU1.4, and policies on `watchlists` plus the three corpus tables. All
-protected tables also carry `FORCE ROW LEVEL SECURITY` so the schema
-owner is subject to policies too — `admin_bypass` (BYPASSRLS) is the
-only way out.
+This is the spec the RLS spine executes against. As of WU1.5 the
+spine and its bracket are live: the `app_private` schema and
+`current_scope()` SECURITY DEFINER function from WU1.3, the
+`watchlists` private-state table created in WU1.4, policies on
+`watchlists` plus the three corpus tables, and the
+`horizons_core.db.session.get_session()` bracket from WU1.5 that binds
+`app.user_id` per request. All protected tables also carry `FORCE ROW
+LEVEL SECURITY` so the schema owner is subject to policies too —
+`admin_bypass` (BYPASSRLS) is the only way out.
 
 Read this alongside [roles.md](roles.md) (the four-role grant model) and
 [schema.md](schema.md) (the tables RLS will protect).

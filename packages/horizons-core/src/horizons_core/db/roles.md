@@ -51,13 +51,17 @@ through an explicit, logged code path (e.g. an admin support tool).
 The default admin operator user does **not** have `BYPASSRLS`; it
 escalates to `admin_bypass` per-operation via `SET LOCAL ROLE`.
 
-## How `SET LOCAL app.user_id` will work (WU1.5)
+## How `app.user_id` is bound per request (WU1.5)
 
-RLS policies will key on `current_setting('app.user_id', true)`. The
-repository layer will wrap every API request in a transaction and call
-`SET LOCAL app.user_id = '<requesting client id>'` as the first
-statement. `SET LOCAL` scopes the GUC to the current transaction so
-connection-pool reuse cannot leak it between requests.
+RLS policies key on `current_setting('app.user_id')::uuid` (watchlists)
+or `current_setting('app.user_id', true)` (via `current_scope()`).
+`horizons_core.db.session.get_session()` is the sanctioned binder: it
+opens a transaction and issues `SELECT set_config('app.user_id', :u,
+true)` before yielding the session. `is_local => true` scopes the GUC
+to the transaction so connection-pool reuse cannot leak it between
+requests; `DISCARD ALL` on pool checkin is the defence-in-depth second
+layer. See [rls.md](rls.md) §Session contract for the full bracket
+shape and the SQLAlchemy/asyncpg implementation notes.
 
 The session-GUC + RLS-predicate pair is one layer; the role-level GRANT
 narrowing (above) is the second. Both must independently prevent a
