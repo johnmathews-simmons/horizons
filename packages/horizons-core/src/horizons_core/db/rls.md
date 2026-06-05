@@ -273,7 +273,7 @@ policy, so it does not appear in any policy's `TO` clause. Sessions
 that `SET LOCAL ROLE admin_bypass` see every row on every table —
 audited per-operation, never granted statically.
 
-## Status by gate (end of WU1.7)
+## Status by gate (end of WU1.8)
 
 The repository layer ([repos.md](../repos/repos.md)) is the third
 defence-in-depth layer; the WU1.7 two-client integration gate
@@ -284,6 +284,16 @@ both axes hold end-to-end through `get_session()` →
 `DocumentsRepository` / `DocumentVersionsRepository` /
 `ClausesRepository`. The plan flags this as the gate for Tracks 2 / 3 /
 4 — no work in those tracks merges while either file is red.
+
+WU1.8 generalises that gate to a Hypothesis property test
+(`tests/isolation/test_property_isolation.py`) that draws `N ∈ [2, 5]`
+clients with arbitrary `(jurisdiction, sector)` scopes and arbitrary
+write interleavings, and asserts the same invariant: every row a
+client reads belongs to them (private state) or is in one of their
+scopes (corpus). The property test is `@pytest.mark.nightly` and runs
+in the dedicated `.github/workflows/nightly.yml` workflow (04:00 UTC
+schedule + `workflow_dispatch`); it is non-gating by design — branch
+protection on `main` does not require it.
 
 ## Related
 
