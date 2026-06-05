@@ -462,3 +462,214 @@ def test_logout_browser_clears_cookie(
 def test_logout_missing_token_returns_401(client: TestClient) -> None:
     response = client.post("/v1/auth/logout")
     assert response.status_code == 401
+
+
+# ---- security regressions ----------------------------------------------------
+
+
+@pytest.mark.integration
+def test_refresh_via_cookie_never_echoes_token_even_without_x_client_type(
+    client: TestClient,
+    migrated_postgres: Engine,
+) -> None:
+    """Regression: an XSS-driven ``fetch('/v1/auth/refresh')`` from the
+    SPA's origin attaches the ``HttpOnly`` cookie automatically. Even
+    when the call deliberately *omits* ``X-Client-Type: browser`` (to
+    coerce the JSON-tokens shape), the server must shape the response
+    from the *token source*, not the header. Cookie source ->
+    browser-shaped response (no ``refresh_token`` in body, ``Set-Cookie``
+    on rotation) regardless of any client-controlled header.
+    """
+    _seed_user(migrated_postgres, "refresh_xss@example.com", "pw")
+    # Log in as a browser so the cookie is established.
+    client.post(
+        "/v1/auth/login",
+        json={"email": "refresh_xss@example.com", "password": "pw"},
+        headers={"X-Client-Type": "browser"},
+    )
+    assert client.cookies.get("refresh_token")
+
+    # Attacker shape: explicitly *not* signalling browser. Cookie still
+    # rides along automatically. Server must ignore the header here.
+    response = client.post("/v1/auth/refresh")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["access_token"]
+    # CRITICAL ASSERTION: refresh token must NOT be in the JS-readable
+    # JSON body when the cookie was the source.
+    assert body.get("refresh_token") is None
+    # And the rotation Set-Cookie must still be emitted.
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "refresh_token=" in set_cookie
+    assert "httponly" in set_cookie.lower()
+
+
+@pytest.mark.integration
+def test_logout_via_cookie_clears_cookie_even_without_x_client_type(
+    client: TestClient,
+    migrated_postgres: Engine,
+) -> None:
+    """Symmetric to the refresh regression: a cookie-sourced logout
+    must clear the cookie regardless of ``X-Client-Type``. Without
+    this, an XSS attacker could revoke the refresh row server-side but
+    leave the cookie alive in the browser, opening a re-attack window
+    where the next refresh call would 401 (revoked) but the cookie
+    would still be exfiltrable through any future cookie-bearing flow.
+    """
+    _seed_user(migrated_postgres, "logout_xss@example.com", "pw")
+    client.post(
+        "/v1/auth/login",
+        json={"email": "logout_xss@example.com", "password": "pw"},
+        headers={"X-Client-Type": "browser"},
+    )
+    assert client.cookies.get("refresh_token")
+
+    response = client.post("/v1/auth/logout")  # no X-Client-Type
+    assert response.status_code == 204
+    set_cookie = response.headers.get("set-cookie", "")
+    # Cookie must be cleared (Max-Age=0) since the source was a cookie.
+    assert "refresh_token=" in set_cookie
+    assert "max-age=0" in set_cookie.lower()
+
+
+@pytest.mark.integration
+def test_login_missing_user_runs_argon2_for_timing_parity(
+    client: TestClient,
+    migrated_postgres: Engine,
+) -> None:
+    """Regression: the missing-user branch must consume the same
+    argon2-verify CPU budget as the wrong-password branch so response
+    time does not leak account existence.
+
+    The assertion is structural: hash a known plaintext, then measure
+    that an unknown-email login and a wrong-password login take
+    comparable wall-clock time. We allow a generous ratio (the argon2
+    verify dominates both paths) so the test is robust to CI jitter.
+    """
+    import time
+
+    _seed_user(migrated_postgres, "timing_known@example.com", "the-right-pw")
+
+    # Warm-up to absorb JIT / argon2 lazy state; result discarded.
+    client.post(
+        "/v1/auth/login",
+        json={"email": "timing_known@example.com", "password": "wrong-warmup"},
+    )
+
+    def _measure(email: str, password: str) -> float:
+        t0 = time.perf_counter()
+        client.post(
+            "/v1/auth/login",
+            json={"email": email, "password": password},
+        )
+        return time.perf_counter() - t0
+
+    miss_ms = _measure("nobody-at-all-here@example.com", "anything") * 1000
+    wrong_ms = _measure("timing_known@example.com", "the-wrong-pw") * 1000
+
+    # Both must take real argon2 time (>=10ms is generous; argon2-cffi
+    # default lands ~50-200ms). The miss branch with no defence used to
+    # complete in <5ms — that's the signal we want to be impossible.
+    assert miss_ms >= 10, f"miss too fast ({miss_ms:.1f}ms) — argon2 sentinel missing?"
+    assert wrong_ms >= 10, f"wrong-password unexpectedly fast ({wrong_ms:.1f}ms)"
+
+    # And the ratio between the two should not blow out — we want both
+    # within ~5x of each other (very generous; the real point is that
+    # neither path skips argon2 entirely).
+    ratio = max(miss_ms, wrong_ms) / max(min(miss_ms, wrong_ms), 1.0)
+    assert ratio < 5.0, (
+        f"timing asymmetry too large (miss={miss_ms:.1f}ms, "
+        f"wrong_pw={wrong_ms:.1f}ms, ratio={ratio:.1f})"
+    )
+
+
+@pytest.mark.integration
+def test_refresh_picks_up_role_change_at_rotation_boundary(
+    client: TestClient,
+    migrated_postgres: Engine,
+    configured_env: tuple[bytes, bytes],
+) -> None:
+    """Regression: the refresh endpoint must re-read the user's role
+    so a demotion (or removal) takes effect at the next rotation
+    rather than waiting for the refresh-token TTL to expire.
+
+    Seeds a user as ``admin``, logs in (access + refresh both carry
+    ``role=admin``), then mutates ``users.role`` to ``client`` and
+    refreshes. The new access token's ``role`` claim must be
+    ``client``.
+    """
+    _, public_pem = configured_env
+    _seed_user(migrated_postgres, "role_refresh@example.com", "pw", role="admin")
+    login = client.post(
+        "/v1/auth/login",
+        json={"email": "role_refresh@example.com", "password": "pw"},
+    )
+    assert login.status_code == 200
+    refresh_token = login.json()["refresh_token"]
+
+    # Confirm the access carried role=admin at issuance.
+    import jwt
+
+    pre = jwt.decode(
+        login.json()["access_token"],
+        public_pem,
+        algorithms=["RS256"],
+        options={"verify_aud": False, "verify_iss": False},
+    )
+    assert pre["role"] == "admin"
+
+    # Now demote.
+    with migrated_postgres.begin() as conn:
+        conn.execute(
+            text("UPDATE users SET role = 'client' WHERE email = :e"),
+            {"e": "role_refresh@example.com"},
+        )
+
+    response = client.post(
+        "/v1/auth/refresh",
+        headers={"Authorization": f"Bearer {refresh_token}"},
+    )
+    assert response.status_code == 200
+    post = jwt.decode(
+        response.json()["access_token"],
+        public_pem,
+        algorithms=["RS256"],
+        options={"verify_aud": False, "verify_iss": False},
+    )
+    assert post["role"] == "client", (
+        "refresh must re-read users.role; stale claim survived rotation"
+    )
+
+
+@pytest.mark.integration
+def test_refresh_returns_401_if_user_row_disappeared(
+    client: TestClient,
+    migrated_postgres: Engine,
+) -> None:
+    """If the user is deleted between login and refresh, the refresh
+    endpoint must 401 even though the refresh token's signature is
+    valid. Account removal is the boundary that should kill the
+    session even before the refresh TTL would.
+    """
+    _seed_user(migrated_postgres, "deleted_user@example.com", "pw")
+    login = client.post(
+        "/v1/auth/login",
+        json={"email": "deleted_user@example.com", "password": "pw"},
+    )
+    refresh_token = login.json()["refresh_token"]
+
+    with migrated_postgres.begin() as conn:
+        # ON DELETE CASCADE on refresh_tokens / watchlists handles the
+        # FK; subscriptions has ON DELETE RESTRICT but this user has
+        # none, so the row removal succeeds directly.
+        conn.execute(
+            text("DELETE FROM users WHERE email = :e"),
+            {"e": "deleted_user@example.com"},
+        )
+
+    response = client.post(
+        "/v1/auth/refresh",
+        headers={"Authorization": f"Bearer {refresh_token}"},
+    )
+    assert response.status_code == 401

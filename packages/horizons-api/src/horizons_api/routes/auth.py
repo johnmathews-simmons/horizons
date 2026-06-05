@@ -5,12 +5,21 @@ unauthenticated entry point; refresh and logout depend on a valid
 refresh-kind JWT presented either as a cookie (browser) or as a bearer
 header (programmatic).
 
-The browser / programmatic distinction is signalled by an explicit
-``X-Client-Type: browser`` header — see ``docs/api/auth.md`` for the
-contract. Browser-shaped responses set / clear the
-``HttpOnly; Secure; SameSite=Lax; Path=/v1/auth`` cookie and omit the
-refresh token from the JSON body; programmatic-shaped responses return
-both tokens in JSON and never touch cookies.
+Response-shape contract (see ``docs/api/auth.md`` for the prose):
+
+- **Login** picks the shape from the client-controlled
+  ``X-Client-Type: browser`` header. Login has no prior context the
+  server can trust, so an explicit opt-in is the only available
+  signal; mis-signalling at login risks at most echoing tokens the
+  caller just produced through their own credentials.
+- **Refresh / logout** pick the shape from the *token source* — cookie
+  or Authorization header — recorded by ``require_refresh_principal``.
+  ``X-Client-Type`` is **ignored** on these endpoints. Letting it
+  drive the shape here would allow XSS-driven JS to call
+  ``fetch('/v1/auth/refresh')`` (the browser attaches the ``HttpOnly``
+  cookie automatically) without the header and coerce the server into
+  returning the rotated refresh token in JSON, defeating ``HttpOnly``.
+  Same exposure applies to logout's clearing cookie.
 
 All three responses carry ``Cache-Control: private, no-store`` because
 the body contains tokens that must not be cached anywhere.
@@ -18,6 +27,7 @@ the body contains tokens that must not be cached anywhere.
 
 from __future__ import annotations
 
+import secrets
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -26,6 +36,7 @@ from horizons_core.core.auth import (
     Principal,
     TokenKind,
     TokenProvider,
+    hash_password,
     verify_password,
 )
 from horizons_core.db.session import bind_app_user_id
@@ -41,6 +52,7 @@ from horizons_api.deps import (
     require_refresh_principal,
     session_for_refresh,
 )
+from horizons_api.deps.refresh import RefreshTokenSource
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -71,21 +83,30 @@ class TokenPair(BaseModel):
     refresh_token: str | None = None
 
 
+# ---- timing-equalising sentinel hash -----------------------------------------
+
+# Argon2-id verify burns ~100 ms by design. The "user not found" branch
+# would otherwise return immediately, so an attacker could probe emails
+# and read account existence from the response-time histogram. Always
+# verify against a fixed sentinel hash on the missing-user branch so
+# both branches consume the same CPU budget. The plaintext used to mint
+# this hash is a fresh random token; nothing in the system knows it, so
+# it can never match a real password.
+_TIMING_DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
+
+
 # ---- helpers -----------------------------------------------------------------
 
 
 _REFRESH_COOKIE_PATH = "/v1/auth"
 
 
-def _is_browser_client(client_type: str | None) -> bool:
-    """``True`` iff the call is shaped for the browser flow.
+def _is_browser_login(client_type: str | None) -> bool:
+    """``True`` iff the *login* call opts into the browser shape.
 
-    Anything other than the literal ``browser`` value (including a
-    missing header, capitalisation variants, or extra whitespace after
-    stripping) is treated as programmatic. The header is the
-    *opt-in*; defaulting to programmatic keeps reverse-proxy
-    misconfiguration from accidentally turning a programmatic client's
-    response into a cookie-bearing one.
+    Login is the only flow that consults ``X-Client-Type``; refresh and
+    logout derive the shape from the token source instead (see module
+    docstring).
     """
     return client_type is not None and client_type.strip().lower() == "browser"
 
@@ -178,11 +199,19 @@ async def login(
 ) -> TokenPair:
     """Exchange email + password for an access / refresh token pair."""
     user = await UsersRepository(session).find_by_email(body.email)
-    if user is None or not verify_password(
-        plaintext=body.password, password_hash=user.password_hash
-    ):
-        # Same body for both branches so the response cannot be used to
-        # enumerate accounts.
+
+    if user is None:
+        # Constant-time defence against account-enumeration via response
+        # timing. Run argon2 verify against a fixed sentinel hash so the
+        # missing-user branch consumes the same CPU budget as a real
+        # wrong-password verify. The result is discarded.
+        verify_password(plaintext=body.password, password_hash=_TIMING_DUMMY_HASH)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid credentials",
+        )
+
+    if not verify_password(plaintext=body.password, password_hash=user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid credentials",
@@ -199,17 +228,19 @@ async def login(
         user_id=user.id,
         role=user.role.value,
         response=response,
-        is_browser=_is_browser_client(x_client_type),
+        is_browser=_is_browser_login(x_client_type),
     )
 
 
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(
     response: Response,
-    principal: Annotated[Principal, Depends(require_refresh_principal)],
+    verified: Annotated[
+        tuple[Principal, RefreshTokenSource],
+        Depends(require_refresh_principal),
+    ],
     session: Annotated[AsyncSession, Depends(session_for_refresh)],
     provider: Annotated[TokenProvider, Depends(get_token_provider)],
-    x_client_type: Annotated[str | None, Header()] = None,
 ) -> TokenPair:
     """Rotate the refresh token; mint a fresh access / refresh pair.
 
@@ -217,7 +248,18 @@ async def refresh(
     stays pure-crypto. A token whose ``jti`` is absent from
     ``refresh_tokens`` or already revoked is rejected with the uniform
     401.
+
+    Two security points worth being explicit about:
+
+    1. Response shape is bound to the token *source* (cookie vs
+       header), not to ``X-Client-Type``. See module docstring.
+    2. The caller's *current* role is re-read from ``users`` before
+       issuing the new pair. Refresh is the boundary at which a role
+       demotion (admin → client) or account removal takes effect; the
+       stale claim in the refresh token is ignored. A missing user
+       row returns 401 even though the refresh's signature was valid.
     """
+    principal, source = verified
     repo = RefreshTokensRepository(session)
     revoked = await repo.revoke(
         jti=principal.jti,
@@ -233,24 +275,36 @@ async def refresh(
             detail="invalid refresh token",
         )
 
+    # Re-read the user to bind the freshest role. The token's ``role``
+    # claim is from issuance time and may be stale by minutes-to-days.
+    user = await UsersRepository(session).get_by_id(principal.user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid refresh token",
+        )
+
     return await _issue_pair_and_shape(
         provider=provider,
         session=session,
-        user_id=principal.user_id,
-        role=principal.role,
+        user_id=user.id,
+        role=user.role.value,
         response=response,
-        is_browser=_is_browser_client(x_client_type),
+        is_browser=source is RefreshTokenSource.COOKIE,
     )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     response: Response,
-    principal: Annotated[Principal, Depends(require_refresh_principal)],
+    verified: Annotated[
+        tuple[Principal, RefreshTokenSource],
+        Depends(require_refresh_principal),
+    ],
     session: Annotated[AsyncSession, Depends(session_for_refresh)],
-    x_client_type: Annotated[str | None, Header()] = None,
 ) -> Response:
-    """Revoke the active refresh token; clear the cookie if browser."""
+    """Revoke the active refresh token; clear the cookie when it was the source."""
+    principal, source = verified
     repo = RefreshTokensRepository(session)
     revoked = await repo.revoke(
         jti=principal.jti,
@@ -264,7 +318,9 @@ async def logout(
         )
 
     _no_store(response)
-    if _is_browser_client(x_client_type):
+    if source is RefreshTokenSource.COOKIE:
+        # Cookie was the source → clear it. ``X-Client-Type`` is
+        # deliberately ignored here, see module docstring.
         _clear_refresh_cookie(response)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response

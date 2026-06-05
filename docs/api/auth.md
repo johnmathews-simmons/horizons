@@ -18,12 +18,17 @@ The same three flows — login, refresh, logout — serve two client postures:
   a `HttpOnly; Secure; SameSite=Lax` cookie the browser cannot read. Refresh
   / logout do not send the refresh token explicitly — it rides on the cookie.
 
-One endpoint per flow serves both postures. The server distinguishes them
-by an explicit request header.
+One endpoint per flow serves both postures. The server's signal differs
+by flow:
 
-## Client-type signal: `X-Client-Type: browser`
+- **Login** uses the explicit `X-Client-Type: browser` request header.
+- **Refresh / logout** use the *source* of the refresh token (cookie or
+  `Authorization` header). `X-Client-Type` is **ignored** on these
+  endpoints.
 
-Browser clients send `X-Client-Type: browser` on every auth call. Anything
+## Client-type signal: `X-Client-Type: browser` (login only)
+
+Browser clients send `X-Client-Type: browser` on the login call. Anything
 else — header absent, header value other than `browser` — is treated as
 programmatic.
 
@@ -32,6 +37,22 @@ by intermediaries (proxies, CDNs may rewrite it) and the browser flow needs
 a side-effect (`Set-Cookie`) the response body does not encode. The header
 makes the choice explicit at the call site and survives any reasonable
 proxy.
+
+### Why refresh / logout do NOT consult `X-Client-Type`
+
+On `/v1/auth/refresh` and `/v1/auth/logout` the response shape is bound
+to the *source* of the refresh token. Cookie → browser-shaped response
+(no refresh in body, `Set-Cookie` on rotation, clearing cookie on
+logout); header → programmatic-shaped response (refresh in body, no
+cookie touched).
+
+This is a defence against an XSS-driven response-shape downgrade. If the
+shape were chosen by `X-Client-Type` here, malicious JS on the SPA's
+origin could call `fetch('/v1/auth/refresh')` — the browser attaches the
+`HttpOnly` cookie automatically — and *omit* the header to coerce the
+server into returning the rotated refresh token in JSON, where JS can
+read it. `HttpOnly` would be effectively bypassed. Binding to the token
+source closes the channel.
 
 ## `POST /v1/auth/login`
 
