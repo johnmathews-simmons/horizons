@@ -13,6 +13,10 @@ for designing the change-watching tool.
 - `endpoints.md` — every v2 endpoint: path, params, example request/response, notes.
 - `operational-notes.md` — refresh cadence, deployment, pricing, MCP, and other facts that shape tool design.
 
+**Horizons public API** (separate from upstream — we *expose*, we don't proxy):
+
+- `horizons-primitives.md` — the three primitives (`/v1/discovery`, `/v1/temporal`, `/v1/differential`) at corpus / document / clause scope, scope discriminator, opaque-cursor pagination, `include_content` rules. WU4.6 will publish an OpenAPI-generated reference; this is the design-of-record until then.
+
 ## Quick facts
 
 - **API base URL:** `https://api.lawstronaut.com/v2`

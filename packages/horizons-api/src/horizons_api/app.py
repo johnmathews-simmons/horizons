@@ -24,7 +24,7 @@ from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 from horizons_api.config import load_settings  # noqa: E402
-from horizons_api.routes import auth, health, me, watchlists  # noqa: E402
+from horizons_api.routes import auth, health, me, primitives, watchlists  # noqa: E402
 
 
 def create_app() -> FastAPI:
@@ -57,5 +57,6 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(me.router)
     app.include_router(watchlists.router)
+    app.include_router(primitives.discovery_router)
 
     return app

@@ -11,6 +11,15 @@ from horizons_core.repos.admin_access_log import (
     AdminAccessLogRepository,
 )
 from horizons_core.repos.base import Repository
+from horizons_core.repos.change_events import (
+    ChangeEventDTO,
+    ChangeEventScope,
+    ChangeEventsRepository,
+    ClauseScope,
+    CorpusScope,
+    CursorError,
+    DocumentScope,
+)
 from horizons_core.repos.clauses import ClauseDTO, ClausesRepository
 from horizons_core.repos.documents import DocumentDTO, DocumentsRepository
 from horizons_core.repos.refresh_tokens import RefreshTokenDTO, RefreshTokensRepository
@@ -24,9 +33,16 @@ from horizons_core.repos.watchlists import WatchlistDTO, WatchlistsRepository
 __all__ = [
     "AdminAccessLogDTO",
     "AdminAccessLogRepository",
+    "ChangeEventDTO",
+    "ChangeEventScope",
+    "ChangeEventsRepository",
     "ClauseDTO",
+    "ClauseScope",
     "ClausesRepository",
+    "CorpusScope",
+    "CursorError",
     "DocumentDTO",
+    "DocumentScope",
     "DocumentVersionDTO",
     "DocumentVersionsRepository",
     "DocumentsRepository",
