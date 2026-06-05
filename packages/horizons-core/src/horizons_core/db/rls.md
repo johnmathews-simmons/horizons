@@ -251,7 +251,7 @@ For each axis, three independent layers must each prevent a leak:
 | --- | --- | --- |
 | 1. Postgres grants | `api_app` granted on private-state tables; one-DB-user-per-tenant is not used. Grant alone is **insufficient**. | `api_app` SELECT on corpus tables. Grant alone is **insufficient**. |
 | 2. RLS policy | `user_id = current_setting('app.user_id')::uuid`. | `EXISTS(... app_private.current_scope() ...)`. |
-| 3. Repository / app layer | Repository sets `SET LOCAL app.user_id` per request; lint bans raw SQL outside repo. | Repository filters by subscription scope at query construction time (visibility on top of RLS). |
+| 3. Repository / app layer | The [repository layer](../repos/repos.md) reads through ORM `select()` only; writes name their owner via mandatory keyword `*, user_id`. Raw SQL outside `session.py` is AST-banned (`tests/test_raw_sql_isolation.py`). | The corpus repos return Pydantic DTOs from ORM queries on tables protected by `*_in_scope`; the role-bound session is what makes scope effective. |
 
 Test discipline: multi-user integration tests run two concurrent
 sessions with different `app.user_id` values and assert non-leakage at
@@ -273,11 +273,25 @@ policy, so it does not appear in any policy's `TO` clause. Sessions
 that `SET LOCAL ROLE admin_bypass` see every row on every table —
 audited per-operation, never granted statically.
 
+## Status by gate (end of WU1.7)
+
+The repository layer ([repos.md](../repos/repos.md)) is the third
+defence-in-depth layer; the WU1.7 two-client integration gate
+(`tests/isolation/test_private_state_isolation.py` and
+`tests/isolation/test_corpus_subscription_isolation.py`) asserts that
+both axes hold end-to-end through `get_session()` →
+`SET LOCAL ROLE api_app` → `WatchlistsRepository` /
+`DocumentsRepository` / `DocumentVersionsRepository` /
+`ClausesRepository`. The plan flags this as the gate for Tracks 2 / 3 /
+4 — no work in those tracks merges while either file is red.
+
 ## Related
 
 - [roles.md](roles.md) — the role model, grants table, `app_private`
   function-EXECUTE grants.
 - [schema.md](schema.md) — table definitions and `app_private` section.
+- [repos/repos.md](../repos/repos.md) — the repository layer shape,
+  `user_id` discipline, ORM-only rule.
 - [design doc 3 §Multi-tenant isolation](../../../../../docs/3.%20database-design.md)
   — the principle.
 - [design doc 4 §Defence-in-depth for isolation](../../../../../docs/4.%20services.md)

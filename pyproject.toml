@@ -50,6 +50,10 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "TC"]
 # SQLAlchemy 2.x mapped_column resolves ``Mapped[T]`` annotations at
 # runtime via module globals, so type-only imports there must NOT live
 # in a TYPE_CHECKING block — TC003 would break the mapper.
+# Pydantic v2 (used by repository DTOs in horizons_core.repos) resolves
+# annotations via ``get_type_hints()`` at model-build time and needs
+# the same runtime-import discipline.
+"packages/horizons-core/src/horizons_core/repos/*.py" = ["TC003"]
 "packages/horizons-core/src/horizons_core/db/models/*.py" = ["TC003"]
 
 [tool.pyright]
