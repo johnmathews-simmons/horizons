@@ -18,6 +18,7 @@ from horizons_core.core.alignment.config import (
     StructuralPattern,
     default_parser_config,
 )
+from horizons_core.core.alignment.portal_config import load_portal_config
 
 if TYPE_CHECKING:
     from markdown_it.token import Token
@@ -26,13 +27,28 @@ if TYPE_CHECKING:
 _TERMINATORS = frozenset('.!?;:)"“”„—')
 
 
-def parse(markdown_text: str, *, config: ParserConfig | None = None) -> Clause:
+def parse(
+    markdown_text: str,
+    *,
+    config: ParserConfig | None = None,
+    portal_slug: str | None = None,
+) -> Clause:
     """Parse markdown into a :class:`Clause` tree.
 
     The returned root clause has empty ``path`` and no body; its
     ``children`` are the document's top-level structural clauses.
+
+    If ``config`` is given it is used directly. Otherwise, when
+    ``portal_slug`` is supplied the matching bundled config is loaded
+    (see :func:`portal_config.load_portal_config`); the default config
+    is used when neither is supplied.
     """
-    cfg = config or default_parser_config()
+    if config is not None:
+        cfg = config
+    elif portal_slug is not None:
+        cfg = load_portal_config(portal_slug)
+    else:
+        cfg = default_parser_config()
     builder = _TreeBuilder(cfg)
     md = MarkdownIt("commonmark")
     tokens = md.parse(markdown_text)
@@ -178,6 +194,9 @@ class _TreeBuilder:
         self._compiled: list[tuple[StructuralPattern, re.Pattern[str]]] = [
             (p, re.compile(p.regex)) for p in cfg.patterns
         ]
+        self._compiled_ignore: list[re.Pattern[str]] = [
+            re.compile(p.regex) for p in cfg.ignore_patterns
+        ]
         self._root = _MutClause(
             depth=0,
             path=(),
@@ -190,12 +209,15 @@ class _TreeBuilder:
         self._pending_heading: str | None = None
 
     def consume_paragraph(self, text: str, bold_ranges: list[tuple[int, int]]) -> None:
+        stripped = text.strip()
+        if any(rx.fullmatch(stripped) for rx in self._compiled_ignore):
+            return
         matches = _find_matches(text, self._compiled)
         if not matches:
             if self._cfg.treat_unmatched_bold_as_heading and _is_bold_only(text, bold_ranges):
-                self._absorb_bold_heading(text.strip())
+                self._absorb_bold_heading(stripped)
             else:
-                self._add_leaf(text.strip())
+                self._add_leaf(stripped)
             return
         first_start = matches[0][1]
         if first_start > 0:

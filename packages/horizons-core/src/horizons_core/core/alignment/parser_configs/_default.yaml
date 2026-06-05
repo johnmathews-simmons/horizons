@@ -1,0 +1,36 @@
+# Snapshot of `default_parser_config()` for documentation and drift detection.
+# Tests assert this YAML round-trips against the Python defaults so they
+# can't silently diverge. The canonical source remains `default_patterns()`
+# in `config.py` — edit there first, then update this snapshot.
+patterns:
+  - name: ie_part
+    regex: 'PART\s+\d+'
+    depth: 1
+    requires_boundary: false
+  - name: cz_cast
+    regex: 'ČÁST\s+\S+'
+    depth: 1
+    requires_boundary: false
+  - name: cz_clanek
+    regex: 'Čl\.\s+[IVXLCDM]+'
+    depth: 2
+    requires_boundary: false
+  - name: section
+    regex: '\d+[A-Z]?\.'
+    depth: 4
+    requires_boundary: true
+  - name: subsection
+    regex: '\(\d+\)'
+    depth: 5
+    requires_boundary: true
+  - name: roman_subpara
+    regex: '\((?:i+|[ivxlcdm]{2,})\)'
+    depth: 7
+    requires_boundary: true
+  - name: letter_para
+    regex: '\([a-z]\)'
+    depth: 6
+    requires_boundary: true
+ignore_patterns: []
+treat_unmatched_bold_as_heading: true
+heading_depth_offset: 0

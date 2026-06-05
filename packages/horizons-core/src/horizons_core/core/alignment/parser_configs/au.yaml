@@ -1,0 +1,28 @@
+# Australia — Federal Register of Legislation (legislation.gov.au).
+#
+# AU Legislative Instruments label sections as "N  Heading" — a bare
+# number, two spaces, then the title — with no trailing period.
+# Overrides the `section` regex to match the number followed by run of
+# spaces and an uppercase letter (lookahead so the heading word stays
+# in the body for downstream extraction). Subsections (`(N)`) and
+# paren-letter (`(a)`) subparagraphs follow the default conventions.
+patterns:
+  - name: section
+    regex: '\d+(?=\s{2,}[A-Z])'
+    depth: 4
+    requires_boundary: true
+  - name: subsection
+    regex: '\(\d+\)'
+    depth: 5
+    requires_boundary: true
+  - name: roman_subpara
+    regex: '\((?:i+|[ivxlcdm]{2,})\)'
+    depth: 7
+    requires_boundary: true
+  - name: letter_para
+    regex: '\([a-z]\)'
+    depth: 6
+    requires_boundary: true
+ignore_patterns: []
+treat_unmatched_bold_as_heading: true
+heading_depth_offset: 0

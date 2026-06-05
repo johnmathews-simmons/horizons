@@ -1,0 +1,11 @@
+# EU institutional sites — BEREC news, EBA / ECB press releases, etc.
+#
+# These are news / press substrates, not statutory text. Structure
+# comes entirely from markdown headings (h1 / h2). No paren or
+# bare-number conventions apply, and the bold-paragraph-as-heading
+# heuristic would mis-classify pull-quote emphasis as titles — so it
+# is disabled too.
+patterns: []
+ignore_patterns: []
+treat_unmatched_bold_as_heading: false
+heading_depth_offset: 0

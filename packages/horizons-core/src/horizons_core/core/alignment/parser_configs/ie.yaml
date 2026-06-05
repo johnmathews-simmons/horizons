@@ -1,0 +1,33 @@
+# Irish Statute Book (irishstatutebook.ie).
+#
+# Same pattern ladder as `_default`. The override is `ignore_patterns`:
+# Acts begin with an enacting formula paragraph between the long-title
+# block and PART 1. Without suppression the formula becomes PART 1's
+# `heading_text`, displacing the actual part title ("Preliminary and
+# General").
+patterns:
+  - name: ie_part
+    regex: 'PART\s+\d+'
+    depth: 1
+    requires_boundary: false
+  - name: section
+    regex: '\d+[A-Z]?\.'
+    depth: 4
+    requires_boundary: true
+  - name: subsection
+    regex: '\(\d+\)'
+    depth: 5
+    requires_boundary: true
+  - name: roman_subpara
+    regex: '\((?:i+|[ivxlcdm]{2,})\)'
+    depth: 7
+    requires_boundary: true
+  - name: letter_para
+    regex: '\([a-z]\)'
+    depth: 6
+    requires_boundary: true
+ignore_patterns:
+  - name: oireachtas_enacting_formula
+    regex: 'Be it enacted by the Oireachtas as follows:'
+treat_unmatched_bold_as_heading: true
+heading_depth_offset: 0

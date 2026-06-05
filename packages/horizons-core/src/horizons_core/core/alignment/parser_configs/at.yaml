@@ -1,0 +1,31 @@
+# Austria — Rechtsinformationssystem des Bundes (RIS) (ris.bka.gv.at).
+#
+# Adds a `§ N` paragraph marker to the default ladder. AT court
+# decisions and statutes reference their own laws via Paragraphen
+# symbols. Boundary is required so inline citations ("gemäß § 17
+# VwGVG") inside a sentence don't open new clauses — only § markers
+# at sentence boundaries do.
+patterns:
+  - name: at_paragraph
+    regex: '§\s*\d+[a-z]?'
+    depth: 3
+    requires_boundary: true
+  - name: section
+    regex: '\d+[A-Z]?\.'
+    depth: 4
+    requires_boundary: true
+  - name: subsection
+    regex: '\(\d+\)'
+    depth: 5
+    requires_boundary: true
+  - name: roman_subpara
+    regex: '\((?:i+|[ivxlcdm]{2,})\)'
+    depth: 7
+    requires_boundary: true
+  - name: letter_para
+    regex: '\([a-z]\)'
+    depth: 6
+    requires_boundary: true
+ignore_patterns: []
+treat_unmatched_bold_as_heading: true
+heading_depth_offset: 0

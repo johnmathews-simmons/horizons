@@ -1,0 +1,27 @@
+# Czech e-Sbírka (e-sbirka.gov.cz).
+#
+# Czech amending laws use ČÁST + Čl. for top-level structure and bare
+# `N.` for items, with paren-digit `(N)` for subsections. Latin
+# `(a)`/`(i)` parenthetical subparagraphs are not part of the
+# convention, so dropping them avoids false matches inside citation
+# clauses like "podle § 5 odst. 1 písm. a)".
+patterns:
+  - name: cz_cast
+    regex: 'ČÁST\s+\S+'
+    depth: 1
+    requires_boundary: false
+  - name: cz_clanek
+    regex: 'Čl\.\s+[IVXLCDM]+'
+    depth: 2
+    requires_boundary: false
+  - name: section
+    regex: '\d+[A-Z]?\.'
+    depth: 4
+    requires_boundary: true
+  - name: subsection
+    regex: '\(\d+\)'
+    depth: 5
+    requires_boundary: true
+ignore_patterns: []
+treat_unmatched_bold_as_heading: true
+heading_depth_offset: 0

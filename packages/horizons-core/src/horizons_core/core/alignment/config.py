@@ -30,6 +30,26 @@ class StructuralPattern(BaseModel):
     requires_boundary: bool = True
 
 
+class IgnorePattern(BaseModel):
+    """A paragraph-suppression rule.
+
+    A paragraph whose plain text (after stripping) ``re.fullmatch``-es
+    ``regex`` is dropped before it enters the tree — no leaf, no pending
+    heading. Used to suppress boilerplate (e.g. the Irish enacting
+    formula) that would otherwise get absorbed as the next clause's
+    heading.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    regex: str
+
+
+def _empty_ignore_patterns() -> list[IgnorePattern]:
+    return []
+
+
 def default_patterns() -> list[StructuralPattern]:
     return [
         StructuralPattern(name="ie_part", regex=r"PART\s+\d+", depth=1, requires_boundary=False),
@@ -56,6 +76,8 @@ class ParserConfig(BaseModel):
     """Top-level parser configuration.
 
     ``patterns`` controls which structural markers the parser recognises.
+    ``ignore_patterns`` drops whole paragraphs that fullmatch any rule —
+    boilerplate suppression (e.g. Irish enacting formula).
     ``treat_unmatched_bold_as_heading`` turns bold-only paragraphs (with
     no structural match) into headings attached to the next-opened clause;
     disable for portals where bold paragraphs are emphasis, not titles.
@@ -66,6 +88,7 @@ class ParserConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     patterns: list[StructuralPattern] = Field(default_factory=default_patterns)
+    ignore_patterns: list[IgnorePattern] = Field(default_factory=_empty_ignore_patterns)
     treat_unmatched_bold_as_heading: bool = True
     heading_depth_offset: int = 0
 
