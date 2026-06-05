@@ -102,9 +102,7 @@ class TwoClients:
     async_engine: AsyncEngine
 
     @asynccontextmanager
-    async def session_for(
-        self, user_id: uuid.UUID
-    ) -> AsyncGenerator[AsyncSession]:
+    async def session_for(self, user_id: uuid.UUID) -> AsyncGenerator[AsyncSession]:
         """The Track-4-shaped session: GUC bound + role assumed as api_app."""
         async with session_for_user(self.async_engine, user_id) as session:
             await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
@@ -160,14 +158,9 @@ def _subscribe(
     )
 
 
-def _make_watchlist(
-    conn: Connection, user_id: uuid.UUID, name: str
-) -> uuid.UUID:
+def _make_watchlist(conn: Connection, user_id: uuid.UUID, name: str) -> uuid.UUID:
     return conn.execute(
-        sqlalchemy.text(
-            "INSERT INTO watchlists (user_id, name) "
-            "VALUES (:u, :n) RETURNING id"
-        ),
+        sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n) RETURNING id"),
         {"u": user_id, "n": name},
     ).scalar_one()
 

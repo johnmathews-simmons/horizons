@@ -53,8 +53,6 @@ class DocumentsRepository:
     async def get_by_id(self, document_id: uuid.UUID) -> DocumentDTO | None:
         """Fetch one document by PK, or ``None`` if RLS filters it out."""
         row = (
-            await self._session.execute(
-                select(Document).where(Document.id == document_id)
-            )
+            await self._session.execute(select(Document).where(Document.id == document_id))
         ).scalar_one_or_none()
         return DocumentDTO.model_validate(row) if row is not None else None

@@ -254,12 +254,8 @@ async def test_versions_list_for_document_ordered_by_effective_date(
         uid = _make_user(conn, "repo_corpus_ver_list@example.com")
         _subscribe(conn, uid, [("UK", "BANKING")])
         doc = _insert_document(conn, "UK", "BANKING", "repo_ver_doc")
-        later = _insert_version(
-            conn, doc, "v2", datetime(2026, 1, 1, tzinfo=UTC)
-        )
-        earlier = _insert_version(
-            conn, doc, "v1", datetime(2025, 1, 1, tzinfo=UTC)
-        )
+        later = _insert_version(conn, doc, "v2", datetime(2026, 1, 1, tzinfo=UTC))
+        earlier = _insert_version(conn, doc, "v1", datetime(2025, 1, 1, tzinfo=UTC))
 
     async with session_for_user(async_engine, uid) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))

@@ -41,9 +41,7 @@ class DocumentVersionsRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def list_for_document(
-        self, document_id: uuid.UUID
-    ) -> list[DocumentVersionDTO]:
+    async def list_for_document(self, document_id: uuid.UUID) -> list[DocumentVersionDTO]:
         """Every version of ``document_id`` the current scope can see.
 
         If the parent document is out of scope the RLS policy filters
@@ -51,17 +49,19 @@ class DocumentVersionsRepository:
         repo therefore returns an empty list rather than raising.
         """
         rows = (
-            await self._session.execute(
-                select(DocumentVersion)
-                .where(DocumentVersion.document_id == document_id)
-                .order_by(DocumentVersion.effective_date)
+            (
+                await self._session.execute(
+                    select(DocumentVersion)
+                    .where(DocumentVersion.document_id == document_id)
+                    .order_by(DocumentVersion.effective_date)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [DocumentVersionDTO.model_validate(r) for r in rows]
 
-    async def get_by_id(
-        self, version_id: uuid.UUID
-    ) -> DocumentVersionDTO | None:
+    async def get_by_id(self, version_id: uuid.UUID) -> DocumentVersionDTO | None:
         row = (
             await self._session.execute(
                 select(DocumentVersion).where(DocumentVersion.id == version_id)

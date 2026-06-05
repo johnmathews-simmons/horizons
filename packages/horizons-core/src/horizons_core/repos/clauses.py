@@ -36,9 +36,7 @@ class ClausesRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def list_for_version(
-        self, version_id: uuid.UUID
-    ) -> list[ClauseDTO]:
+    async def list_for_version(self, version_id: uuid.UUID) -> list[ClauseDTO]:
         """Every clause in ``version_id`` the current scope can see.
 
         Ordered by ``ord`` to give a stable document-order read. RLS
@@ -46,18 +44,20 @@ class ClausesRepository:
         version produces an empty list.
         """
         rows = (
-            await self._session.execute(
-                select(Clause)
-                .where(Clause.document_version_id == version_id)
-                .order_by(Clause.ord)
+            (
+                await self._session.execute(
+                    select(Clause)
+                    .where(Clause.document_version_id == version_id)
+                    .order_by(Clause.ord)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [ClauseDTO.model_validate(r) for r in rows]
 
     async def get_by_id(self, clause_id: uuid.UUID) -> ClauseDTO | None:
         row = (
-            await self._session.execute(
-                select(Clause).where(Clause.id == clause_id)
-            )
+            await self._session.execute(select(Clause).where(Clause.id == clause_id))
         ).scalar_one_or_none()
         return ClauseDTO.model_validate(row) if row is not None else None

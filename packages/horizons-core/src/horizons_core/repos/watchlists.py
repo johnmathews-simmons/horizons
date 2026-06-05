@@ -70,9 +70,7 @@ class WatchlistsRepository:
         prefer 404 over 403 to avoid leaking row existence.
         """
         row = (
-            await self._session.execute(
-                select(Watchlist).where(Watchlist.id == watchlist_id)
-            )
+            await self._session.execute(select(Watchlist).where(Watchlist.id == watchlist_id))
         ).scalar_one_or_none()
         return WatchlistDTO.model_validate(row) if row is not None else None
 
@@ -89,9 +87,7 @@ class WatchlistsRepository:
         await self._session.refresh(row)
         return WatchlistDTO.model_validate(row)
 
-    async def delete(
-        self, *, user_id: uuid.UUID, watchlist_id: uuid.UUID
-    ) -> bool:
+    async def delete(self, *, user_id: uuid.UUID, watchlist_id: uuid.UUID) -> bool:
         """Delete the named watchlist; return whether anything matched.
 
         ``user_id`` belongs in the ``WHERE`` so the call site's
