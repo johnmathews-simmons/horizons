@@ -98,9 +98,7 @@ async def test_bracket_sets_app_user_id(
 
     async with session_for_user(async_engine, u) as session:
         got = (
-            await session.execute(
-                sqlalchemy.text("SELECT current_setting('app.user_id', true)")
-            )
+            await session.execute(sqlalchemy.text("SELECT current_setting('app.user_id', true)"))
         ).scalar_one()
     assert got == str(u)
 
@@ -144,9 +142,7 @@ async def test_bracket_rolls_back_on_exception(
     with pytest.raises(_Boom):
         async with session_for_user(async_engine, u) as session:
             await session.execute(
-                sqlalchemy.text(
-                    "INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"
-                ),
+                sqlalchemy.text("INSERT INTO watchlists (user_id, name) VALUES (:u, :n)"),
                 {"u": u, "n": "sess_rollback_row"},
             )
             raise _Boom
@@ -209,19 +205,13 @@ async def test_rls_protected_read_is_user_scoped_through_bracket(
     async with session_for_user(async_engine, a) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
         a_names = sorted(
-            r.name
-            for r in await session.execute(
-                sqlalchemy.text("SELECT name FROM watchlists")
-            )
+            r.name for r in await session.execute(sqlalchemy.text("SELECT name FROM watchlists"))
         )
 
     async with session_for_user(async_engine, b) as session:
         await session.execute(sqlalchemy.text("SET LOCAL ROLE api_app"))
         b_names = sorted(
-            r.name
-            for r in await session.execute(
-                sqlalchemy.text("SELECT name FROM watchlists")
-            )
+            r.name for r in await session.execute(sqlalchemy.text("SELECT name FROM watchlists"))
         )
 
     assert a_names == ["sess_e2e_a_row"]
@@ -242,9 +232,7 @@ async def test_get_session_uses_lazy_global_engine(
     u = uuid.uuid4()  # not a real user; we just need the GUC echoed back
     async with get_session(u) as session:
         got = (
-            await session.execute(
-                sqlalchemy.text("SELECT current_setting('app.user_id', true)")
-            )
+            await session.execute(sqlalchemy.text("SELECT current_setting('app.user_id', true)"))
         ).scalar_one()
     assert got == str(u)
 
@@ -253,9 +241,7 @@ async def test_get_session_uses_lazy_global_engine(
     v = uuid.uuid4()
     async with get_session(v) as session:
         got2 = (
-            await session.execute(
-                sqlalchemy.text("SELECT current_setting('app.user_id', true)")
-            )
+            await session.execute(sqlalchemy.text("SELECT current_setting('app.user_id', true)"))
         ).scalar_one()
     assert got2 == str(v)
 

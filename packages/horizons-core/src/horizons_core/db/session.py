@@ -81,9 +81,7 @@ def _get_engine() -> AsyncEngine:
 
 
 @asynccontextmanager
-async def session_for_user(
-    engine: AsyncEngine, user_id: uuid.UUID
-) -> AsyncGenerator[AsyncSession]:
+async def session_for_user(engine: AsyncEngine, user_id: uuid.UUID) -> AsyncGenerator[AsyncSession]:
     """Yield a session inside a transaction with ``app.user_id`` bound.
 
     Commits on normal exit, rolls back on any exception. ``set_config``

@@ -27,9 +27,7 @@ SRC_TREES: tuple[Path, ...] = (
 ALLOWED_FILES: frozenset[Path] = frozenset(
     {REPO_ROOT / "packages/horizons-core/src/horizons_core/db/session.py"}
 )
-ALLOWED_DIRS: tuple[Path, ...] = (
-    REPO_ROOT / "packages/horizons-core/src/horizons_core/db/models",
-)
+ALLOWED_DIRS: tuple[Path, ...] = (REPO_ROOT / "packages/horizons-core/src/horizons_core/db/models",)
 
 
 def _is_text_call(node: ast.Call) -> bool:
