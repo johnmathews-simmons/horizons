@@ -183,6 +183,31 @@ module containerWorker 'modules/container-app-worker.bicep' = {
 }
 
 // ---------------------------------------------------------------------
+// 7c. Migration ACA Job — one-shot `alembic upgrade head` runner.
+//     WU6.4. Same managed environment as the API/worker. Triggered
+//     manually by `deploy.yml` (WU6.3) immediately before a traffic
+//     shift; does NOT run on schedule. Reuses the API image with a
+//     command override — see infra/modules/migration-job.bicep.
+// ---------------------------------------------------------------------
+module migrationJob 'modules/migration-job.bicep' = {
+  name: 'migration-job'
+  params: {
+    location: location
+    workloadPrefix: workloadPrefix
+    environmentName: environmentName
+    environmentId: containerEnv.outputs.environmentId
+    image: apiImage
+    postgresFqdn: postgres.outputs.serverFqdn
+    postgresUser: postgresAdminLogin
+    // Password is the demo fallback — see migration-job.bicep header.
+    // Once the UAMI is registered as a Postgres AAD principal, this
+    // becomes the empty string and the connection runs passwordless.
+    postgresAdminPassword: postgresAdminPassword
+    tags: tags
+  }
+}
+
+// ---------------------------------------------------------------------
 // 8. Front Door Standard — fronts the SPA on storage $web.
 //    The originHostName is the storage web endpoint with the scheme
 //    stripped; substring(8) drops `https://`.
@@ -207,5 +232,6 @@ output containerEnvName string = containerEnv.outputs.environmentName
 output apiContainerAppName string = containerApi.outputs.appName
 output apiFqdn string = containerApi.outputs.fqdn
 output workerContainerAppName string = containerWorker.outputs.appName
+output migrationJobName string = migrationJob.outputs.jobName
 output frontDoorHostName string = frontDoor.outputs.endpointHostName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
