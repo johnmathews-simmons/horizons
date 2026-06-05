@@ -1,0 +1,14 @@
+// TSConfig for Playwright end-to-end tests (e2e/). Playwright runs them
+// through its own loader at runtime, but vue-tsc still needs a target so
+// `npm run build` doesn't pick them up as application code.
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "include": ["e2e/**/*", "playwright.config.*"],
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.e2e.tsbuildinfo"
+  }
+}

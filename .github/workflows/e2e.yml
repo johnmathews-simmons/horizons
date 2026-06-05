@@ -1,0 +1,168 @@
+name: E2E smoke
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  playwright:
+    name: playwright (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      # Postgres 18 — uuidv7() is a v18 built-in; the schema depends on it.
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: horizons_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      HORIZONS_DB_URL: postgresql+psycopg://postgres:postgres@localhost:5432/horizons_e2e
+      HORIZONS_CORS_ORIGINS: http://localhost:5173
+      HORIZONS_JWT_ISSUER: horizons-e2e
+      HORIZONS_JWT_AUDIENCE: horizons-e2e
+      HORIZONS_E2E_BASE_URL: http://localhost:5173
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.27"
+          enable-cache: true
+
+      - name: Sync workspace (frozen lockfile)
+        run: uv sync --frozen
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/horizons-webapp/package-lock.json
+
+      - name: Install webapp dependencies
+        working-directory: packages/horizons-webapp
+        run: npm ci
+
+      - name: Generate ephemeral JWT keypair
+        run: |
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/e2e-private.pem
+          openssl rsa -in /tmp/e2e-private.pem -pubout -out /tmp/e2e-public.pem
+          {
+            echo "HORIZONS_JWT_PRIVATE_KEY_PEM<<EOF"
+            cat /tmp/e2e-private.pem
+            echo "EOF"
+            echo "HORIZONS_JWT_PUBLIC_KEY_PEM<<EOF"
+            cat /tmp/e2e-public.pem
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Apply database migrations
+        run: uv run alembic upgrade head
+
+      - name: Seed e2e fixtures
+        run: uv run packages/horizons-api/scripts/seed_e2e.py
+
+      - name: Build webapp
+        working-directory: packages/horizons-webapp
+        run: npm run build
+
+      - name: Start API (background)
+        run: |
+          uv run uvicorn 'horizons_api.app:create_app' --factory \
+            --host 0.0.0.0 --port 8000 \
+            > /tmp/uvicorn.log 2>&1 &
+          echo $! > /tmp/uvicorn.pid
+
+      - name: Wait for API to be ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8000/healthz > /dev/null; then
+              echo "API ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become ready in 60s"
+          tail -100 /tmp/uvicorn.log || true
+          exit 1
+
+      - name: Start webapp preview (background)
+        working-directory: packages/horizons-webapp
+        run: |
+          npx vite preview --host 0.0.0.0 --port 5173 \
+            > /tmp/preview.log 2>&1 &
+          echo $! > /tmp/preview.pid
+
+      - name: Wait for webapp preview to be ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5173 > /dev/null; then
+              echo "Preview ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Preview did not become ready in 60s"
+          tail -100 /tmp/preview.log || true
+          exit 1
+
+      - name: Install Playwright browsers
+        working-directory: packages/horizons-webapp
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        working-directory: packages/horizons-webapp
+        run: npm run test:e2e
+
+      - name: Stop background services
+        if: always()
+        run: |
+          for f in /tmp/uvicorn.pid /tmp/preview.pid; do
+            [ -f "$f" ] && kill "$(cat "$f")" || true
+          done
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/horizons-webapp/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: packages/horizons-webapp/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-logs
+          path: |
+            /tmp/uvicorn.log
+            /tmp/preview.log
+          if-no-files-found: ignore
+          retention-days: 7
