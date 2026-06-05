@@ -11,6 +11,7 @@ infra/
 ├── main.bicep
 ├── main.parameters.example.json
 └── modules/
+    ├── alerts.bicep                  Action Group + 3 scheduledQueryRules (WU7.3)
     ├── application-insights.bicep    Workspace + App Insights
     ├── container-app-api.bicep       Public REST API (external ingress)
     ├── container-app-env.bicep       ACA environment, OTEL bound
@@ -41,6 +42,11 @@ infra/
   2026.
 - **Observability (locked-in plan §12):** Workspace-based App Insights
   bound to the ACA managed OTEL agent.
+- **Alerts (WU7.3):** Three `scheduledQueryRules` (5xx ratio, p95 latency,
+  ingestion failures) routed through a single Action Group with one
+  email receiver. All three ship with `alertsEnabled: false`; arm
+  per-environment after WU6.3 deploys the API + worker. See
+  `journal/260605-wu73-alert-rules.md` for the enable commands.
 
 ## Verification
 
@@ -100,7 +106,5 @@ improvement plan before adding any of them here:
 - **Migrations ACA Job (WU6.4).** The schema-migration runner is its
   own resource and gets added by WU6.4, after WU3.1 has tables to
   migrate.
-- **Alert rules (WU7.3).** Azure Monitor alert rules over App Insights
-  metrics ship in Track 7.
 - **Drift check (WU6.6).** A separate workflow runs `what-if`
   nightly; the Bicep itself doesn't change.
