@@ -64,7 +64,8 @@ def create_app() -> FastAPI:
             allow_origins=list(settings.cors_origins),
             allow_credentials=True,
             allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-            allow_headers=["Authorization", "Content-Type"],
+            # X-Client-Type is the webapp's opt-in on /v1/auth/login for the cookie-shaped response.
+            allow_headers=["Authorization", "Content-Type", "X-Client-Type"],
         )
 
     app.add_middleware(RequestContextMiddleware)
