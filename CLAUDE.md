@@ -92,6 +92,29 @@ cd packages/horizons-webapp && npm install && cd -
 
 Docker image / GHCR workflow land in later work units (per the global rule in `~/.claude/CLAUDE.md`).
 
+## CI / merge cadence
+
+The merge cadence is **worktree → fast-forward main → direct push**. Branch protection on `main` (ruleset `protect-main`, ID 17308903) keeps linear history, blocks force pushes, and blocks deletions, but does **not** require remote status checks — the local sweep (`uv run pytest`, `ruff check`, `pyright`, `pre-commit run --all-files`, and the webapp's `npm run lint:check && npm run build && npm run test:unit -- --run`) is the actual gate before pushing main. Remote CI runs as verification, not as a precondition.
+
+Step-by-step from a finished worktree on branch `<feature>`:
+
+```bash
+# 1. From the worktree, after the local sweep is green:
+git push -u origin <feature>      # triggers CI on the feature branch (early signal)
+
+# 2. From the main checkout (or via -C):
+git -C /Users/john/projects/syncthing/agent-lxc/horizons merge --ff-only <feature>
+git -C /Users/john/projects/syncthing/agent-lxc/horizons push origin main
+git push origin --delete <feature>  # remove the now-merged remote branch
+# Then ExitWorktree(action="remove") to drop the local worktree + branch.
+```
+
+Workflows (`.github/workflows/ci.yml`, `webapp.yml`) trigger on `pull_request`, `push` (any branch — no filter), and `workflow_dispatch`. Feature-branch pushes therefore get the same CI runs as PRs and pushes to main; status checks accumulate against the commit SHA but are **not** gating because the ruleset no longer requires them.
+
+PRs remain available — `gh pr create` works the same way — but the routine is direct merge, not PR.
+
+History (for posterity): an earlier version of `protect-main` required two status checks (`lint, typecheck, test` and `lint, build, test`) before any push to main. That rule made direct push impossible because GitHub keys required checks to a check_suite's `head_branch`, so checks run on a feature branch (or via `workflow_dispatch`) don't count for main even when they're green on the same SHA. The rule was dropped on 2026-06-05; local CI is the gate now.
+
 ## Journal cadence
 
 Global rule (`~/.claude/CLAUDE.md`): each project has a `/journal/` with dated entries (`yymmdd-descriptive-name.md`). Start an entry per session of substantive work — what was decided, what was learned, what's next. The first entry is `journal/260604-initial-design-and-fixtures.md`; read it before resuming work so you know which decisions are load-bearing and what next-session priorities the previous session left behind.
