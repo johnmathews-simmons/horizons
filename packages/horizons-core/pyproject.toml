@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "Shared library: domain types, schema models, repository base classes, Lawstronaut client."
 requires-python = ">=3.13"
 dependencies = [
+    "markdown-it-py>=3.0",
     "pydantic>=2.9",
     "sqlalchemy[asyncio]>=2.0",
 ]
