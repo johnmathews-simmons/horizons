@@ -45,6 +45,69 @@ Conventions:
 
 ## admin
 
+### `GET /v1/admin/audit`
+
+Search Admin Audit
+
+Filtered, paginated reads of the admin audit log.
+
+**Parameters**
+
+| In | Name | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `query` | `action` | `AdminAccessMode?` | no | Restrict to 'operator' or 'impersonation' rows. |
+| `query` | `admin_id` | `string (uuid)?` | no | Restrict to one admin's writes. |
+| `query` | `limit` | `integer` | no | Page size cap. Silently clamped to 500. |
+| `query` | `since` | `string (date-time)?` | no | Inclusive lower bound on granted_at; defaults to now - 24h. |
+| `query` | `target_user_id` | `string (uuid)?` | no | Restrict to impersonation rows targeting this user id. |
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `AdminAuditResponse` | Successful Response |
+| `422` | `HTTPValidationError` | Validation Error |
+
+
+### `GET /v1/admin/health/api`
+
+Api Health
+
+Request rate / p95 / error rate over 1h and 24h.
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `ApiHealthResponse` | Successful Response |
+
+
+### `GET /v1/admin/health/db`
+
+Db Health
+
+Connection count + replication lag + slow queries.
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `DbHealthResponse` | Successful Response |
+
+
+### `GET /v1/admin/health/ingestion`
+
+Ingestion Health
+
+Overdue polls + recent incidents.
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `IngestionHealthResponse` | Successful Response |
+
+
 ### `GET /v1/admin/subscriptions`
 
 List Subscriptions

@@ -420,9 +420,12 @@ def test_per_role_grants_match_design(migrated_engine: Engine) -> None:
     assert grants.get(("api_app", "document_poll_schedule")) is None
     assert grants.get(("api_app", "ingestion_incident")) is None
 
-    # admin_bypass — no static grants on either of the operator-only tables.
-    assert grants.get(("admin_bypass", "document_poll_schedule")) is None
-    assert grants.get(("admin_bypass", "ingestion_incident")) is None
+    # admin_bypass — WU7.2 grants read-only SELECT on the operator
+    # tables so ``/v1/admin/health/ingestion`` can surface the poll
+    # backlog + the rolling incident window. Read-only is the
+    # invariant: no INSERT / UPDATE / DELETE on either table.
+    assert grants.get(("admin_bypass", "document_poll_schedule")) == {"SELECT"}
+    assert grants.get(("admin_bypass", "ingestion_incident")) == {"SELECT"}
 
 
 @pytest.mark.integration

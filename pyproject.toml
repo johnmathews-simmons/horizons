@@ -65,6 +65,12 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "TC"]
 # Pydantic / SQLAlchemy carve-outs above.
 "packages/horizons-api/src/horizons_api/deps/*.py" = ["TC001", "TC002", "TC003"]
 "packages/horizons-api/src/horizons_api/routes/*.py" = ["TC001", "TC002", "TC003"]
+"packages/horizons-api/src/horizons_api/admin/*.py" = ["TC001", "TC002", "TC003"]
+# pyright's reportUnknownMemberType / Variable flags TestClient and
+# fastapi internals as Unknown under strict mode; the existing top-level
+# tests use a pragma to silence the noise. The two carve-outs below
+# match the existing repo convention.
+"tests/api/*.py" = ["TC001", "TC002", "TC003"]
 
 [tool.pyright]
 pythonVersion = "3.13"
