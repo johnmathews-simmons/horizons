@@ -73,6 +73,7 @@ repo."
 | Repo | Methods | RLS layer |
 | --- | --- | --- |
 | `WatchlistsRepository` | `list_for()`, `get_by_id(id)`, `create(*, user_id, name)`, `delete(*, user_id, watchlist_id) -> bool` | Owner-keyed `watchlists_owner_*` policies |
+| `RefreshTokensRepository` *(WU4.0)* | `record(*, jti, user_id, issued_at, expires_at)`, `get_by_jti(jti)`, `revoke(*, jti, user_id, revoked_at) -> bool` | Owner-keyed `refresh_tokens_owner_*` policies |
 
 `get_by_id` returns `None` when the row exists but belongs to another
 user — the RLS predicate filters the row out, so the repo sees no row,

@@ -83,6 +83,7 @@ migrations grant per-table:
 | `clauses` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
 | `watchlists` | SELECT, INSERT, UPDATE, DELETE *(RLS: owner-only)* | — | SELECT *(BYPASSRLS)* |
 | `admin_access_log` | — | — | SELECT, INSERT *(RLS enabled, no policy)* |
+| `refresh_tokens` | SELECT, INSERT, UPDATE *(RLS: owner-only)* | — | SELECT *(BYPASSRLS, read-only)* |
 | `document_poll_schedule` | — | SELECT, INSERT, UPDATE | — |
 | `ingestion_incident` | — | SELECT, INSERT | — |
 

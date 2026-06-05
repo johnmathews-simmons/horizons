@@ -16,6 +16,7 @@ from horizons_core.db.models.admin_access_log import AdminAccessLog, AdminAccess
 from horizons_core.db.models.base import Base
 from horizons_core.db.models.clauses import Clause
 from horizons_core.db.models.documents import Document
+from horizons_core.db.models.refresh_tokens import RefreshToken
 from horizons_core.db.models.subscriptions import Subscription, SubscriptionScope
 from horizons_core.db.models.users import User, UserRole
 from horizons_core.db.models.versions import DocumentVersion
@@ -28,6 +29,7 @@ __all__ = [
     "Clause",
     "Document",
     "DocumentVersion",
+    "RefreshToken",
     "Subscription",
     "SubscriptionScope",
     "User",

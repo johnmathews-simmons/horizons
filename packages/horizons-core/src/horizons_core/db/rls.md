@@ -313,7 +313,7 @@ Test discipline: multi-user integration tests run two concurrent
 sessions with different `app.user_id` values and assert non-leakage at
 the database boundary. Single-tenant unit tests are not enough.
 
-## Status by table (end of WU1.9)
+## Status by table (end of WU4.0)
 
 | Table | RLS enabled? | FORCE? | Policies |
 | --- | --- | --- | --- |
@@ -323,6 +323,7 @@ the database boundary. Single-tenant unit tests are not enough.
 | `document_versions` | **yes** | **yes** | `document_versions_in_scope` (`TO api_app`, joins through `documents`); `document_versions_ingestion_all` (`TO ingestion_worker`, pass-through). |
 | `clauses` | **yes** | **yes** | `clauses_in_scope` (`TO api_app`, joins through `document_versions` → `documents`); `clauses_ingestion_all` (`TO ingestion_worker`, pass-through). |
 | `admin_access_log` | **yes** | **yes** | No policy. Only `admin_bypass` (BYPASSRLS) reads / writes; default-deny holds for every other role. |
+| `refresh_tokens` | **yes** | **yes** | `refresh_tokens_owner_select` / `_insert` / `_update` — all `TO api_app`, keyed on `app.user_id`. `admin_bypass` reads via BYPASSRLS. |
 | `app_private.current_scope()` | n/a | n/a | EXECUTE granted to `api_app` only. |
 
 `admin_bypass` is not listed: BYPASSRLS is a role attribute, not a

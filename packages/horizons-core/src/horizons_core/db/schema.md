@@ -290,6 +290,41 @@ are rejected by append-only triggers (same shape as
 Only `admin_bypass` (BYPASSRLS) reads / writes here; every other role
 hits the default-deny that a policy-less RLS-enabled table inflicts.
 
+### `refresh_tokens` — server-side refresh-token registry (WU4.0)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `jti` | `uuid PRIMARY KEY` | matches the JWT's `jti` claim |
+| `user_id` | `uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE` | owner |
+| `issued_at` | `timestamptz NOT NULL DEFAULT now()` | |
+| `expires_at` | `timestamptz NOT NULL` | matches the JWT's `exp` claim |
+| `revoked_at` | `timestamptz` | NULL = live; set = retired |
+
+Index: `idx_refresh_tokens_user_id_issued_at` on `(user_id, issued_at
+DESC)` — supports a future "list this user's recent refresh tokens"
+admin view.
+
+One row per issued refresh token. Access tokens are short-lived and
+not revocable individually; refresh tokens are long-lived (30 days by
+default) and need a server-side revocation surface so logout / token
+compromise can drop them out of circulation immediately.
+
+Written by `LocalJwtProvider.issue_token(kind=REFRESH)`; updated to
+flip `revoked_at` by `LocalJwtProvider.revoke_token`. No DELETE —
+retired rows stay on disk as an audit trail; a separate housekeeping
+job (post-demo) will prune by `expires_at`.
+
+**Writes:** `INSERT` and `UPDATE` by `api_app` under owner-scoped
+RLS. No `DELETE` grant on any role.
+
+**Isolation:** RLS is enabled and `FORCE`d. Three policies on
+`TO api_app` (`refresh_tokens_owner_select` / `_insert` / `_update`)
+all key on `user_id = current_setting('app.user_id')::uuid`. The
+`/v1/auth/refresh` endpoint (WU4.2) decodes the bearer first, binds
+the session to the decoded `sub`, then queries by `jti` under RLS.
+`admin_bypass` carries `SELECT` for support tooling; no admin write
+path.
+
 ### `watchlists` — per-user saved queries (private state)
 
 | Column | Type | Notes |
