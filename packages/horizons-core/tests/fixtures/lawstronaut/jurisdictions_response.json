@@ -1,0 +1,7 @@
+{
+  "data": [
+    {"name": "Australia", "iso": "AU", "type": "country"},
+    {"name": "Ireland", "iso": "IE", "type": "country"},
+    {"name": "Alabama", "iso": "US_AL", "type": "state"}
+  ]
+}

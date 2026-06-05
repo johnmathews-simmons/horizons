@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "first_name": "Demo",
+    "last_name": "User",
+    "user_name": "demo",
+    "email": "demo@example.invalid",
+    "avatar": null,
+    "token": {
+      "token_type": "bearer",
+      "refresh_token": "BEARER_TOKEN_B",
+      "expires_in": 1800
+    }
+  }
+}

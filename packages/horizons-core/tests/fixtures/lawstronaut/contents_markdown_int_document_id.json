@@ -1,0 +1,13 @@
+{
+  "pagination": {"total_count": 1, "limit": 1, "offset": 0},
+  "data": [
+    {
+      "document_id": 34659134,
+      "content_markdown": "# Title\n\nBody.\n",
+      "version": 1,
+      "publication_date": "2026-01-15T00:00:00Z",
+      "language": "English",
+      "iso": "GB"
+    }
+  ]
+}

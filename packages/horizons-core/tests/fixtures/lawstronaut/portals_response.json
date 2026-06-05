@@ -1,0 +1,18 @@
+{
+  "data": [
+    {
+      "name": "Irish Statute Book",
+      "url": "www.irishstatutebook.ie",
+      "language": "English",
+      "jurisdiction": {"country": "Ireland", "state": ""},
+      "total_links": "26888"
+    },
+    {
+      "name": "Oireachtas",
+      "url": "www.oireachtas.ie",
+      "language": "English",
+      "jurisdiction": {"country": "Ireland", "state": ""},
+      "total_links": 1234
+    }
+  ]
+}
