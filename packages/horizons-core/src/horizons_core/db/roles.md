@@ -74,15 +74,22 @@ migrations grant per-table:
 | `users` | SELECT, INSERT, UPDATE | — | — |
 | `subscriptions` | SELECT, INSERT, UPDATE *(trigger-policed)* | — | — |
 | `subscription_scopes` | SELECT, INSERT | — | — |
-| `documents` | SELECT | SELECT, INSERT | — |
-| `document_versions` | SELECT | SELECT, INSERT | — |
-| `clauses` | SELECT | SELECT, INSERT | — |
+| `documents` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
+| `document_versions` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
+| `clauses` | SELECT *(RLS: in-scope)* | SELECT, INSERT *(RLS: pass-through)* | SELECT *(BYPASSRLS)* |
+| `watchlists` | SELECT, INSERT, UPDATE, DELETE *(RLS: owner-only)* | — | SELECT *(BYPASSRLS)* |
 
-`admin_bypass` deliberately has no static grants. Code paths that need
-admin reach assume the role per-operation (`SET LOCAL ROLE
-admin_bypass`) and rely on its `BYPASSRLS` to read across tenants
-through the same `api_app`-granted tables. This keeps the grant surface
-small and the elevation auditable.
+`admin_bypass` carries SELECT on the RLS-protected tables only —
+**no INSERT, no UPDATE, no DELETE anywhere**. Postgres' `BYPASSRLS`
+attribute bypasses *row-level* security but does **not** override
+table-level GRANTs, so the role is unusable without at least SELECT
+on whatever it needs to read. Granting SELECT (and nothing else)
+gives the audited-elevation code path enough reach for cross-tenant
+support work without becoming a back-door write surface. The
+tenancy tables (`users`, `subscriptions`, `subscription_scopes`) are
+deliberately omitted from `admin_bypass` until a real admin reader
+exists — adding the grant is cheap and small-blast-radius if and
+when WU2.x needs it.
 
 The corpus grants follow the same shape across all three tables:
 `api_app` reads (the public API exposes corpus rows to clients —
@@ -93,10 +100,14 @@ alignment pass that assigns `clause_uid`). Neither role gets UPDATE —
 the append-only triggers would reject it anyway, but absent grants is
 the cheaper first layer.
 
-These grants are the loosest workable surface for the **WU1.x** API
-and ingestion layers. RLS policies and read-scope narrowing for the
-corpus tables land in **WU1.4**; see [schema.md](schema.md)
-"Multi-tenant access (current state)" for the boundary.
+The corpus grants are now the **outer** layer of a two-layer surface:
+RLS policies (WU1.4) filter `api_app`'s SELECTs down to the
+subscription scope, and the `ingestion_worker` pass-through policies
+let the worker keep writing without RLS filtering. The role-level
+grants are unchanged from WU1.2 — RLS narrows what the grants permit;
+it does not add reach. See [rls.md](rls.md) for the policy shapes and
+[schema.md](schema.md) "Multi-tenant access (current state)" for the
+end-to-end boundary.
 
 ## Per-function grants (`app_private` schema)
 

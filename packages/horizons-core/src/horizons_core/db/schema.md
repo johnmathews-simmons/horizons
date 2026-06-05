@@ -201,6 +201,38 @@ human-readable address.
 append-only trigger — clauses are recorded per version, not mutated in
 place.
 
+### `watchlists` — per-user saved queries (private state)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid PRIMARY KEY` | `uuidv7()` default |
+| `user_id` | `uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE` | owner |
+| `name` | `text NOT NULL` | human-readable label |
+| `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
+
+Index: `idx_watchlists_user_id` on `(user_id)` for the owner-keyed read
+(the dominant access pattern — "show me my watchlists" — and the
+column the RLS policy filters on).
+
+A `watchlists` row is one named saved query / filter for one user. The
+schema is intentionally minimal in WU1.4: the table exists to be the
+canonical private-state shape and the proving ground for the
+cross-client-privacy RLS axis. Richer payload columns (filter spec,
+notification settings) land in later WUs when the API surface for
+watchlists is designed.
+
+**Writes:** `INSERT`, `UPDATE`, `DELETE` are all permitted — renaming
+and deleting a watchlist are real user operations. No append-only
+trigger. The cross-client privacy guarantee is enforced by RLS, not by
+preventing mutation.
+
+**Isolation:** RLS is enabled and `FORCE`d. Four policies on
+`TO api_app` (`watchlists_owner_select` / `_insert` / `_update` /
+`_delete`) all key on `user_id = current_setting('app.user_id')::uuid`.
+A client cannot see, modify, or delete another client's watchlists.
+`ON DELETE CASCADE` from the `users` FK means deleting a user (a
+support-only operation today) tears down all their watchlists.
+
 ## Append-only enforcement
 
 The trigger lives at the database layer for one reason: it must hold
@@ -283,17 +315,23 @@ granted to `api_app` only. `PUBLIC` is revoked. `ingestion_worker` and
 WU1.1 grants `SELECT, INSERT` on the tenancy tables to `api_app`.
 WU1.2 grants `SELECT` on the corpus tables to `api_app` and `SELECT,
 INSERT` to `ingestion_worker`. WU1.3 adds the `app_private` schema and
-`current_scope()` helper that the next WU's RLS policies will invoke.
+`current_scope()` helper that the corpus-scope RLS policies invoke.
 
-RLS policies and per-role read-scope narrowing
-(subscription-scoped corpus filtering, client-private state isolation)
-land in **WU1.4** when the isolation spine is wired up properly. Until
-then, treat the grants as the loosest workable surface for the
-immediate API and ingestion layers to depend on, *not* as the final
-story. `admin_bypass` receives no static grants on any table — admin
-reach is assumed per-operation via `SET LOCAL ROLE` and its
-`BYPASSRLS` attribute. See [rls.md](rls.md) for the full RLS
-architecture spec.
+WU1.4 wires the RLS spine: `watchlists` is created with the canonical
+private-state shape; RLS is enabled and `FORCE`d on `watchlists` plus
+the three corpus tables; `api_app` policies enforce both isolation
+axes (owner-keyed for `watchlists`, subscription-scope for the corpus);
+`ingestion_worker` carries explicit pass-through policies on the
+corpus tables so it can keep writing without being filtered.
+
+The tenancy tables (`users`, `subscriptions`, `subscription_scopes`)
+remain un-RLS'd in WU1.4 — they have no direct `api_app` reader today;
+`current_scope()` reaches them under SECURITY DEFINER. RLS on those
+tables lands when an API surface needs them (WU2.x).
+
+`admin_bypass` receives no static grants on any table — admin reach is
+assumed per-operation via `SET LOCAL ROLE` and its `BYPASSRLS`
+attribute. See [rls.md](rls.md) for the full RLS architecture spec.
 
 ## Related
 

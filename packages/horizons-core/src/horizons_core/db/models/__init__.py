@@ -18,6 +18,7 @@ from horizons_core.db.models.documents import Document
 from horizons_core.db.models.subscriptions import Subscription, SubscriptionScope
 from horizons_core.db.models.users import User, UserRole
 from horizons_core.db.models.versions import DocumentVersion
+from horizons_core.db.models.watchlists import Watchlist
 
 __all__ = [
     "Base",
@@ -28,4 +29,5 @@ __all__ = [
     "SubscriptionScope",
     "User",
     "UserRole",
+    "Watchlist",
 ]

@@ -1,9 +1,12 @@
 # Row-Level Security architecture
 
-This is the spec the next several work units execute against. Today (end
-of WU1.3) the **mechanism** is in place — the `app_private` schema, the
-`current_scope()` SECURITY DEFINER function — but no table yet has
-`ENABLE ROW LEVEL SECURITY` or a policy attached. WU1.4 wires those.
+This is the spec the RLS spine executes against. As of WU1.4 the spine
+is live: the `app_private` schema and `current_scope()` SECURITY DEFINER
+function from WU1.3, the `watchlists` private-state table created in
+WU1.4, and policies on `watchlists` plus the three corpus tables. All
+protected tables also carry `FORCE ROW LEVEL SECURITY` so the schema
+owner is subject to policies too — `admin_bypass` (BYPASSRLS) is the
+only way out.
 
 Read this alongside [roles.md](roles.md) (the four-role grant model) and
 [schema.md](schema.md) (the tables RLS will protect).
@@ -63,28 +66,42 @@ worse than a loud failure.
 
 ### Private state (WU1.4)
 
-The private-state tables — `watchlists` (lands in WU1.4),
+The private-state tables — `watchlists` (created in WU1.4),
 `saved_queries`, `alerts`, future per-client surfaces — each carry a
-`user_id` column and a `USING` policy of the shape:
+`user_id` column and four policies that key off the session GUC. The
+shape for `watchlists`, as shipped in WU1.4:
 
-    CREATE POLICY watchlists_owner_read ON watchlists
+    CREATE POLICY watchlists_owner_select ON watchlists
         FOR SELECT TO api_app
         USING (user_id = current_setting('app.user_id')::uuid);
 
-    CREATE POLICY watchlists_owner_write ON watchlists
+    CREATE POLICY watchlists_owner_insert ON watchlists
         FOR INSERT TO api_app
         WITH CHECK (user_id = current_setting('app.user_id')::uuid);
 
+    CREATE POLICY watchlists_owner_update ON watchlists
+        FOR UPDATE TO api_app
+        USING      (user_id = current_setting('app.user_id')::uuid)
+        WITH CHECK (user_id = current_setting('app.user_id')::uuid);
+
+    CREATE POLICY watchlists_owner_delete ON watchlists
+        FOR DELETE TO api_app
+        USING (user_id = current_setting('app.user_id')::uuid);
+
 The pattern: read-side `USING`, write-side `WITH CHECK`, both keyed
-directly off the GUC. `current_scope()` is not used here — private
+directly off the GUC. `UPDATE` carries both so a row cannot be quietly
+re-keyed to another user. `current_scope()` is not used here — private
 state isolation is a single-column predicate, not a corpus-scope join.
 
-### Corpus scope (WU1.4 or WU1.5)
+Future private-state tables (`saved_queries`, `alerts`, ...) follow the
+same four-policy shape.
+
+### Corpus scope (WU1.4)
 
 The corpus tables (`documents`, `document_versions`, `clauses`, future
 `change_events`) carry `jurisdiction` / `sector` columns (directly on
 `documents`; reachable via FK from `document_versions` and `clauses`).
-The `USING` policy joins through `current_scope()`:
+The `api_app` `USING` policy joins through `current_scope()`:
 
     CREATE POLICY documents_in_scope ON documents
         FOR SELECT TO api_app
@@ -96,9 +113,28 @@ The `USING` policy joins through `current_scope()`:
             )
         );
 
-`ingestion_worker` writes corpus rows under its own role and is
-**exempt** from these policies via the `TO api_app` clause — the worker
-does not know which client will eventually read its writes.
+`document_versions_in_scope` and `clauses_in_scope` reach scope by
+joining through to the parent `documents` row — RLS predicates do not
+transitively apply across tables, so each child table carries its own
+`EXISTS` walking up to `documents` and then into `current_scope()`. The
+schema is kept clean (no `jurisdiction` / `sector` duplicated onto the
+child tables); the planner pushes the `EXISTS` to a hash join at
+demo-scale row counts.
+
+`ingestion_worker` writes corpus rows under its own role and needs an
+**explicit pass-through policy** to bypass scope filtering — the worker
+does not know which client will eventually read its writes, and once
+RLS is enabled a role with no applicable policy is denied by default:
+
+    CREATE POLICY documents_ingestion_all ON documents
+        FOR ALL TO ingestion_worker
+        USING (true) WITH CHECK (true);
+
+`document_versions_ingestion_all` and `clauses_ingestion_all` are the
+analogous policies on the child tables. The `FOR ALL` clause covers
+SELECT/INSERT/UPDATE/DELETE; the append-only triggers from WU1.2 still
+reject `UPDATE`, so the effective permission for the worker is
+`SELECT + INSERT` (which matches the role-level grants).
 
 ### `admin_bypass`
 
@@ -125,14 +161,21 @@ Test discipline: multi-user integration tests run two concurrent
 sessions with different `app.user_id` values and assert non-leakage at
 the database boundary. Single-tenant unit tests are not enough.
 
-## Status by table (end of WU1.3)
+## Status by table (end of WU1.4)
 
-| Table | RLS enabled? | Policy? | Notes |
+| Table | RLS enabled? | FORCE? | Policies |
 | --- | --- | --- | --- |
-| `users`, `subscriptions`, `subscription_scopes` | no | — | Reachable only via `current_scope()` today. RLS posture for these tables itself is a WU1.4 decision (likely `admin_bypass`-only or strict owner-read). |
-| `documents`, `document_versions`, `clauses` | no | — | WU1.4 enables RLS + corpus-scope policy. |
-| `watchlists` (not yet created) | n/a | — | Created in WU1.4 alongside its owner-read policy. |
-| `app_private.current_scope()` | n/a | n/a | **Live** as of WU1.3. EXECUTE granted to `api_app` only. |
+| `users`, `subscriptions`, `subscription_scopes` | no | no | Reachable only via `current_scope()`. Direct-read RLS deferred until an API surface needs it (WU2.x). |
+| `watchlists` | **yes** | **yes** | `watchlists_owner_select` / `_insert` / `_update` / `_delete` — all `TO api_app`, keyed on `app.user_id`. |
+| `documents` | **yes** | **yes** | `documents_in_scope` (`TO api_app`, joins `current_scope()`); `documents_ingestion_all` (`TO ingestion_worker`, pass-through). |
+| `document_versions` | **yes** | **yes** | `document_versions_in_scope` (`TO api_app`, joins through `documents`); `document_versions_ingestion_all` (`TO ingestion_worker`, pass-through). |
+| `clauses` | **yes** | **yes** | `clauses_in_scope` (`TO api_app`, joins through `document_versions` → `documents`); `clauses_ingestion_all` (`TO ingestion_worker`, pass-through). |
+| `app_private.current_scope()` | n/a | n/a | EXECUTE granted to `api_app` only. |
+
+`admin_bypass` is not listed: BYPASSRLS is a role attribute, not a
+policy, so it does not appear in any policy's `TO` clause. Sessions
+that `SET LOCAL ROLE admin_bypass` see every row on every table —
+audited per-operation, never granted statically.
 
 ## Related
 
