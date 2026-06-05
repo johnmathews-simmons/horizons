@@ -71,12 +71,8 @@ def test_impersonate_happy_path_returns_full_banner_payload(
     migrated_postgres_h: Engine,
 ) -> None:
     """The response shape carries everything the SPA banner needs."""
-    admin_id = make_user(
-        migrated_postgres_h, "admin_happy@example.com", role="admin"
-    )
-    target_id = make_user(
-        migrated_postgres_h, "client_happy_target@example.com", role="client"
-    )
+    admin_id = make_user(migrated_postgres_h, "admin_happy@example.com", role="admin")
+    target_id = make_user(migrated_postgres_h, "client_happy_target@example.com", role="client")
     admin_token = login(client, "admin_happy@example.com")
 
     response = _impersonate(
@@ -117,12 +113,8 @@ def test_impersonate_writes_impersonation_audit_row_before_returning(
     would fail because the audit row commit would no longer be on the
     happy path.
     """
-    admin_id = make_user(
-        migrated_postgres_h, "admin_audit_order@example.com", role="admin"
-    )
-    target_id = make_user(
-        migrated_postgres_h, "client_audit_order@example.com", role="client"
-    )
+    admin_id = make_user(migrated_postgres_h, "admin_audit_order@example.com", role="admin")
+    target_id = make_user(migrated_postgres_h, "client_audit_order@example.com", role="client")
     admin_token = login(client, "admin_audit_order@example.com")
 
     response = _impersonate(
@@ -183,9 +175,7 @@ def test_impersonate_missing_target_returns_404(
     impersonation rows; only operator-mode rows (from the
     admin_operator_session_for_request dep) are written.
     """
-    admin_id = make_user(
-        migrated_postgres_h, "admin_missing_target@example.com", role="admin"
-    )
+    admin_id = make_user(migrated_postgres_h, "admin_missing_target@example.com", role="admin")
     admin_token = login(client, "admin_missing_target@example.com")
     bogus_target = uuid.uuid4()
 
@@ -231,9 +221,7 @@ def test_impersonate_admin_target_returns_422(
     admins from the operator UX. This is the second layer.
     """
     make_user(migrated_postgres_h, "admin_a_admin@example.com", role="admin")
-    admin_b = make_user(
-        migrated_postgres_h, "admin_b_admin@example.com", role="admin"
-    )
+    admin_b = make_user(migrated_postgres_h, "admin_b_admin@example.com", role="admin")
     admin_token = login(client, "admin_a_admin@example.com")
 
     response = _impersonate(client, admin_token, target_user_id=admin_b)
@@ -251,9 +239,7 @@ def test_impersonate_non_admin_returns_403(
 ) -> None:
     """A client bearer attempting to mint an impersonation token → 403."""
     make_user(migrated_postgres_h, "client_self_mint@example.com", role="client")
-    target_id = make_user(
-        migrated_postgres_h, "victim_target@example.com", role="client"
-    )
+    target_id = make_user(migrated_postgres_h, "victim_target@example.com", role="client")
     client_token = login(client, "client_self_mint@example.com")
 
     response = _impersonate(client, client_token, target_user_id=target_id)
@@ -266,9 +252,7 @@ def test_impersonate_missing_bearer_returns_401(
     client: TestClient,
     migrated_postgres_h: Engine,
 ) -> None:
-    target_id = make_user(
-        migrated_postgres_h, "victim_missing_bearer@example.com", role="client"
-    )
+    target_id = make_user(migrated_postgres_h, "victim_missing_bearer@example.com", role="client")
     response = client.post(
         "/v1/admin/impersonate",
         json={"target_user_id": str(target_id)},
@@ -295,9 +279,7 @@ def test_minted_token_decodes_as_impersonation_kind_with_target_sub(
     import jwt as pyjwt
 
     make_user(migrated_postgres_h, "admin_kind_check@example.com", role="admin")
-    target_id = make_user(
-        migrated_postgres_h, "client_kind_check@example.com", role="client"
-    )
+    target_id = make_user(migrated_postgres_h, "client_kind_check@example.com", role="client")
     admin_token = login(client, "admin_kind_check@example.com")
 
     response = _impersonate(client, admin_token, target_user_id=target_id)
@@ -329,9 +311,7 @@ def test_impersonation_token_works_on_me_endpoint(
     repository read.
     """
     make_user(migrated_postgres_h, "admin_me_check@example.com", role="admin")
-    target_id = make_user(
-        migrated_postgres_h, "client_me_check@example.com", role="client"
-    )
+    target_id = make_user(migrated_postgres_h, "client_me_check@example.com", role="client")
     admin_token = login(client, "admin_me_check@example.com")
 
     mint = _impersonate(client, admin_token, target_user_id=target_id)
@@ -361,9 +341,7 @@ def test_impersonation_token_cannot_reach_admin_endpoint(
     this 403 is the server-side belt.
     """
     make_user(migrated_postgres_h, "admin_no_loop@example.com", role="admin")
-    target_id = make_user(
-        migrated_postgres_h, "client_no_loop_target@example.com", role="client"
-    )
+    target_id = make_user(migrated_postgres_h, "client_no_loop_target@example.com", role="client")
     admin_token = login(client, "admin_no_loop@example.com")
 
     mint = _impersonate(client, admin_token, target_user_id=target_id)
