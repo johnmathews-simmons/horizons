@@ -125,9 +125,7 @@ def test_setup_otel_is_idempotent(span_exporter: InMemorySpanExporter) -> None:
     from opentelemetry.trace import SpanKind
 
     server_spans = [
-        span
-        for span in span_exporter.get_finished_spans()
-        if span.kind == SpanKind.SERVER
+        span for span in span_exporter.get_finished_spans() if span.kind == SpanKind.SERVER
     ]
     assert len(server_spans) == 1, (
         f"setup_otel double-instrumented FastAPI; got {len(server_spans)} server spans"
