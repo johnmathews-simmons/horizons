@@ -36,9 +36,10 @@ requires an admin bearer. Direct SQL is the documented bootstrap seam.
 ```bash
 export HORIZONS_DB_URL="postgresql+psycopg://postgres:postgres@localhost:5432/horizons"
 
-# Optional. The dev defaults are baked into the script and are NOT
-# secret. Override for any environment that will be reachable from
-# outside localhost.
+# Mandatory. The script refuses to provision unless all three are set.
+# Use a long random string per account — these are the credentials
+# anyone running the public demo can authenticate with for the duration
+# of the showcase.
 export HORIZONS_DEMO_UK_PASSWORD="<a long random string>"
 export HORIZONS_DEMO_EU_PASSWORD="<a long random string>"
 export HORIZONS_DEMO_ADMIN_PASSWORD="<a long random string>"
@@ -46,9 +47,11 @@ export HORIZONS_DEMO_ADMIN_PASSWORD="<a long random string>"
 uv run python packages/horizons-api/scripts/create_demo_accounts.py
 ```
 
-Re-running the script is idempotent — existing accounts are left
-untouched and reported as `skipped`. To wipe and recreate (e.g. between
-demo dry-runs), pass `--reset`:
+Re-running the script rotates the stored password hash to match the
+freshly resolved env-var value — there is no silent "skip if exists"
+path. Re-running with new env-var values rotates without `--reset`. To
+delete watchlist state or otherwise rewind to a clean slate, pass
+`--reset`:
 
 ```bash
 uv run python packages/horizons-api/scripts/create_demo_accounts.py --reset
@@ -58,17 +61,27 @@ uv run python packages/horizons-api/scripts/create_demo_accounts.py --reset
 `subscription_scopes`, and their watchlists. It does not touch any
 non-demo row.
 
-### Dev defaults (not secret)
+### Dev defaults (localhost only)
 
-If the env vars are not set, the script uses:
+For local development the script can fall back to the dev-default
+passwords baked into the source:
 
 - `demo-uk@example.test` / `demo-uk-pass-not-secret`
 - `demo-eu@example.test` / `demo-eu-pass-not-secret`
 - `admin-demo@example.test` / `admin-demo-pass-not-secret`
 
-These are sufficient for local development. They are **not** acceptable
-for any environment exposed beyond localhost; override via env vars in
-the production demo deployment.
+The fallback is opt-in via `--allow-dev-defaults`:
+
+```bash
+uv run python packages/horizons-api/scripts/create_demo_accounts.py --allow-dev-defaults
+```
+
+These defaults are **never** acceptable for any environment exposed
+beyond localhost. The admin account has cross-tenant read access via the
+WU1.9 audit path; a known admin password on a publicly reachable host
+during the 1–2 day demo window is a real risk. The opt-in is
+intentional — operators must consciously decide to use the defaults
+rather than have them silently applied.
 
 ## Logging in
 
@@ -135,8 +148,12 @@ Run the day-of, in order:
    ```bash
    uv run python scripts/seed_curated_set.py --stage-synthetic-v2
    ```
-3. **Demo accounts provisioned** (this runbook):
+3. **Demo accounts provisioned** (this runbook). The three password env
+   vars MUST be set; the script aborts before any DB write otherwise:
    ```bash
+   export HORIZONS_DEMO_UK_PASSWORD="<random>"
+   export HORIZONS_DEMO_EU_PASSWORD="<random>"
+   export HORIZONS_DEMO_ADMIN_PASSWORD="<random>"
    uv run python packages/horizons-api/scripts/create_demo_accounts.py
    ```
 4. **Smoke**: run the curl block above for each of UK / EU / admin and
@@ -162,9 +179,11 @@ WU8.0 seed and are reusable across demo runs.
 - No real bank names, no client names, no firm names in any account or
   copy. The `@example.test` TLD is the IETF reserved domain; do not
   substitute a real domain.
-- The development password defaults are visible in the script source
-  and in this runbook. Set the env-var overrides in any deployment that
-  is reachable beyond localhost.
+- The dev-default passwords are visible in the script source and in
+  this runbook. They are usable only behind `--allow-dev-defaults` and
+  are NEVER appropriate for any environment exposed beyond localhost.
+  The script's default refusal (env vars required) is the substantive
+  guard; do not bypass it on production.
 - The admin account has read access across every tenant's private state
   via the WU1.9 audit path. Use it sparingly during the demo and only
   for the "operator support view" beat.

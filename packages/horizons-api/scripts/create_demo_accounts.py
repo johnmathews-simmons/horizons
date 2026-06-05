@@ -11,14 +11,22 @@ collide with real client data:
   (jurisdiction=EU, sector=BANKING)
 * ``admin-demo@example.test`` — role=admin, no subscription
 
-Passwords are read from environment variables with development defaults
-so the script is runnable out-of-the-box for the local demo. Do NOT
-publish the defaults; production demo deployments override them via the
-container environment. The env-var names are:
+Passwords are read from environment variables. By default ALL THREE must
+be set explicitly; missing variables abort the run before any DB write.
+The env-var names are:
 
-  HORIZONS_DEMO_UK_PASSWORD     (default: demo-uk-pass-not-secret)
-  HORIZONS_DEMO_EU_PASSWORD     (default: demo-eu-pass-not-secret)
-  HORIZONS_DEMO_ADMIN_PASSWORD  (default: admin-demo-pass-not-secret)
+  HORIZONS_DEMO_UK_PASSWORD
+  HORIZONS_DEMO_EU_PASSWORD
+  HORIZONS_DEMO_ADMIN_PASSWORD
+
+``--allow-dev-defaults`` opts into the local-dev fallback passwords
+baked into the source (visible to anyone who reads the file). The opt-in
+is intentional: the admin account has cross-tenant read access via the
+WU1.9 audit path, and the demo is publicly reachable for 1–2 days during
+the showcase. The default refusal closes the "operator forgot the
+override on production" footgun. ``--allow-dev-defaults`` is for
+localhost development only and is never appropriate in any environment
+reachable beyond your laptop.
 
 These accounts use direct SQL writes (mirroring ``seed_e2e.py``) rather
 than the WU4.5 ``/v1/admin/subscriptions`` HTTP path: the admin endpoint
@@ -31,12 +39,23 @@ Distinct from the WU8.2 Playwright e2e fixtures: those live under
 ``@e2e.test`` and ``seed_e2e.py``; the demo accounts here are for the
 manual showcase walk-through.
 
-Idempotent. Default behaviour is "create what does not exist; leave
-existing rows untouched". ``--reset`` performs a teardown of every demo
-account (and its subscriptions / scopes / watchlists) before recreating.
+**Idempotency rotates credentials.** A re-run UPDATEs the
+``password_hash`` of any existing demo row to match the freshly resolved
+password — re-running with new env-var values rotates the stored hash
+without needing ``--reset``. A previous version of this script
+silently skipped existing rows; that preserved stale (default-bake)
+hashes if the operator forgot the env vars on the first run, then set
+them on the second.
+
+``--reset`` performs a teardown of every demo account (and its
+subscriptions / scopes / watchlists) before recreating. Use it when you
+want to delete watchlist state or otherwise rewind to a clean slate.
 
 Run from the repo root:
 
+    HORIZONS_DEMO_UK_PASSWORD=... \\
+    HORIZONS_DEMO_EU_PASSWORD=... \\
+    HORIZONS_DEMO_ADMIN_PASSWORD=... \\
     HORIZONS_DB_URL=postgresql+psycopg://postgres:postgres@localhost:5432/horizons \\
         uv run packages/horizons-api/scripts/create_demo_accounts.py [--reset]
 
@@ -72,9 +91,11 @@ UK_EMAIL = "demo-uk@example.test"
 EU_EMAIL = "demo-eu@example.test"
 ADMIN_EMAIL = "admin-demo@example.test"
 
-# Development defaults. They are NOT secret; they are not used in the
-# public demo deployment, where the env vars override them. Lint pragmas
-# pin the noqa for B105 (hard-coded password) at the assignment sites.
+# Dev-only fallback passwords. Used only when --allow-dev-defaults is
+# passed. They are visible to anyone who reads the source and are NEVER
+# acceptable in any environment reachable beyond localhost. The noqa
+# pins B105 (hard-coded password) at the literal sites; the opt-in flag
+# is the substantive guard.
 _DEFAULT_UK_PASSWORD = "demo-uk-pass-not-secret"  # noqa: S105
 _DEFAULT_EU_PASSWORD = "demo-eu-pass-not-secret"  # noqa: S105
 _DEFAULT_ADMIN_PASSWORD = "admin-demo-pass-not-secret"  # noqa: S105
@@ -135,6 +156,38 @@ def _normalise_db_url(raw: str) -> str:
     return raw
 
 
+# --- Password resolution ----------------------------------------------------
+
+
+def _resolve_passwords(
+    accounts: list[DemoAccount],
+    *,
+    allow_dev_defaults: bool,
+) -> tuple[dict[str, str], list[str]]:
+    """Resolve every account's password, or surface the missing env vars.
+
+    Returns ``(resolved, missing_env_vars)``. When ``missing_env_vars`` is
+    non-empty the caller must abort: ``resolved`` is partial and the
+    operator has not explicitly opted into the dev-default fallback.
+
+    With ``allow_dev_defaults=True``, missing env vars are silently
+    replaced by ``password_default``; the returned ``missing_env_vars``
+    is always empty.
+    """
+    resolved: dict[str, str] = {}
+    missing: list[str] = []
+    for account in accounts:
+        env_value = os.environ.get(account.password_env)
+        if env_value is not None and env_value != "":
+            resolved[account.email] = env_value
+            continue
+        if allow_dev_defaults:
+            resolved[account.email] = account.password_default
+            continue
+        missing.append(account.password_env)
+    return resolved, missing
+
+
 # --- Teardown --------------------------------------------------------------
 
 
@@ -184,7 +237,7 @@ def _teardown(conn: Connection) -> None:
     )
 
 
-# --- Create-or-skip -------------------------------------------------------
+# --- Create-or-rotate -----------------------------------------------------
 
 
 def _account_exists(conn: Connection, email: str) -> bool:
@@ -207,6 +260,19 @@ def _create_user(conn: Connection, account: DemoAccount, plaintext: str) -> uuid
     ).scalar_one()
 
 
+def _rotate_password(conn: Connection, email: str, plaintext: str) -> None:
+    """UPDATE the stored password hash for an existing user.
+
+    Always-rotate on re-run is the chosen idempotency contract: it
+    catches the "ran once with defaults, set env vars on second run"
+    case that a silent skip would leave broken.
+    """
+    conn.execute(
+        sqlalchemy.text("UPDATE users SET password_hash = :ph WHERE email = :e"),
+        {"e": email, "ph": hash_password(plaintext)},
+    )
+
+
 def _subscribe(conn: Connection, user_id: uuid.UUID, scope: tuple[str, str]) -> None:
     jurisdiction, sector = scope
     valid_from = datetime.now(UTC) - timedelta(days=30)
@@ -227,15 +293,14 @@ def _subscribe(conn: Connection, user_id: uuid.UUID, scope: tuple[str, str]) -> 
     )
 
 
-def _resolve_password(account: DemoAccount) -> str:
-    return os.environ.get(account.password_env, account.password_default)
-
-
-def _create_or_skip(conn: Connection, account: DemoAccount) -> str:
-    """Return one of ``"created"`` / ``"skipped"``."""
+def _create_or_rotate(
+    conn: Connection, account: DemoAccount, plaintext: str
+) -> str:
+    """Return one of ``"created"`` / ``"rotated"``."""
     if _account_exists(conn, account.email):
-        return "skipped"
-    user_id = _create_user(conn, account, _resolve_password(account))
+        _rotate_password(conn, account.email, plaintext)
+        return "rotated"
+    user_id = _create_user(conn, account, plaintext)
     if account.scope is not None:
         _subscribe(conn, user_id, account.scope)
     return "created"
@@ -253,6 +318,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="teardown all demo accounts (and dependants) before recreating",
     )
+    parser.add_argument(
+        "--allow-dev-defaults",
+        action="store_true",
+        help=(
+            "fall back to the dev-default passwords baked into the source "
+            "when an env var is unset. Localhost-only; never appropriate "
+            "for any environment reachable beyond your laptop"
+        ),
+    )
     args = parser.parse_args(argv)
 
     raw = os.environ.get("HORIZONS_DB_URL")
@@ -261,14 +335,32 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     url = _normalise_db_url(raw)
 
+    accounts = _accounts()
+    resolved, missing = _resolve_passwords(
+        accounts, allow_dev_defaults=args.allow_dev_defaults
+    )
+    if missing:
+        print(
+            "refusing to provision: the following password env vars are not set: "
+            + ", ".join(missing),
+            file=sys.stderr,
+        )
+        print(
+            "set them, OR pass --allow-dev-defaults if this is localhost-only dev.",
+            file=sys.stderr,
+        )
+        return 1
+
     engine = create_engine(url, future=True)
     try:
         with engine.begin() as conn:
             if args.reset:
                 _teardown(conn)
             outcomes: dict[str, str] = {}
-            for account in _accounts():
-                outcomes[account.email] = _create_or_skip(conn, account)
+            for account in accounts:
+                outcomes[account.email] = _create_or_rotate(
+                    conn, account, resolved[account.email]
+                )
         print("demo accounts:")
         for email, outcome in outcomes.items():
             print(f"  {email}: {outcome}")
