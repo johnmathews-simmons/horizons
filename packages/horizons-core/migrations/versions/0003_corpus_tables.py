@@ -194,9 +194,7 @@ def upgrade() -> None:
     op.execute("ALTER TABLE document_versions OWNER TO schema_owner;")
     op.execute("ALTER TABLE clauses OWNER TO schema_owner;")
     op.execute("ALTER FUNCTION reject_document_update() OWNER TO schema_owner;")
-    op.execute(
-        "ALTER FUNCTION reject_document_version_update() OWNER TO schema_owner;"
-    )
+    op.execute("ALTER FUNCTION reject_document_version_update() OWNER TO schema_owner;")
     op.execute("ALTER FUNCTION reject_clause_update() OWNER TO schema_owner;")
 
     # Grants:
@@ -233,9 +231,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP TRIGGER IF EXISTS clauses_no_update ON clauses;")
-    op.execute(
-        "DROP TRIGGER IF EXISTS document_versions_no_update ON document_versions;"
-    )
+    op.execute("DROP TRIGGER IF EXISTS document_versions_no_update ON document_versions;")
     op.execute("DROP TRIGGER IF EXISTS documents_no_update ON documents;")
     op.execute("DROP FUNCTION IF EXISTS reject_clause_update();")
     op.execute("DROP FUNCTION IF EXISTS reject_document_version_update();")

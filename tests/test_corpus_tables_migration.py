@@ -321,9 +321,7 @@ def test_document_versions_reject_update(migrated_engine: Engine) -> None:
             migrated_engine.begin() as conn,
         ):
             conn.execute(
-                text(
-                    "UPDATE document_versions SET content_bytes = 0 WHERE id = :id"
-                ),
+                text("UPDATE document_versions SET content_bytes = 0 WHERE id = :id"),
                 {"id": v_id},
             )
     finally:
@@ -377,9 +375,7 @@ def test_per_role_grants_match_design(migrated_engine: Engine) -> None:
 
     grants: dict[tuple[str, str], set[str]] = {}
     for row in rows:
-        grants.setdefault((row.grantee, row.table_name), set()).add(
-            row.privilege_type
-        )
+        grants.setdefault((row.grantee, row.table_name), set()).add(row.privilege_type)
 
     for table in CORPUS_TABLES:
         assert grants.get(("api_app", table)) == {"SELECT"}
