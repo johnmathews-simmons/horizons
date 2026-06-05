@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { computeDiff, type DiffOp, type PendingDiff } from '@/lib/diff'
+import { computeDiff, type DiffOp } from '@/lib/diff'
 
 // vi.mock is hoisted above the test imports so DiffView's import of
 // computeDiffAsync routes through the mock when the threshold is crossed.
