@@ -1,21 +1,68 @@
-# Curated set for the WU3.5 bootstrap. Read by scripts/seed_curated_set.py.
-# Picks 6 documents across 6 jurisdictions and 2 sectors so the multi-tenant
-# isolation path has rows to exercise. WU8.0 grows this to ~50 documents for
-# the demo. See docs/seeding.md for schema + semantics.
+# Curated set (WU3.5 → WU8.0). Read by scripts/seed_curated_set.py.
+#
+# WU8.0 expansion. Targets ~50 documents across ~10 jurisdictions and ~5
+# sectors so the demo (~2026-06-08) has a corpus broad enough to exercise
+# subscription scoping and the headline clause-diff moment. Sector defaults
+# to ``sectors[0]`` (financial-services); per-document overrides switch the
+# rest. See docs/seeding.md for schema + semantics.
+#
+# Note on size: the demo target is ~50 documents but the current fixture
+# inventory (``data/samples/fixtures.json``, captured 2026-06-04) caps the
+# in-scope set at the ~10 documents below — one per jurisdiction. Growing
+# the corpus to ~50 requires re-running ``scripts/fetch_fixtures.py`` with
+# a larger ``target_count`` so each jurisdiction contributes multiple
+# documents. Tracked as a WU8.0 follow-up in the journal entry; the seed
+# script will pick up the extra rows on the next run with no code change.
 
-jurisdictions: [IE, GB, EU, BE, AT, DE]
-sectors: [financial-services, employment]
+jurisdictions: [IE, GB, EU, BE, AT, DE, FR, IT, ES, DK]
+sectors:
+  - financial-services
+  - employment
+  - tax
+  - consumer-protection
+  - corporate-governance
 default_cadence_hours: 24
 
 documents:
   # The "always changing" demo signal — short cadence so the claim loop
-  # touches it every demo session. Title is the fixture's title; included
-  # here only for the cadence override.
-  - id: "8064194"
+  # touches it every demo session. Stays under corporate-governance
+  # because the underlying fixture is a corporate-registry policy.
+  - id: "8064194"           # IE — CRO Social Media Policy
+    sector: corporate-governance
     cadence_hours: 1
 
-  # Employment-sector overrides. Both fixtures are labour-related.
-  - id: "19194112"   # BE — FPS Labour psychosocial risks questionnaire
+  # GB Foat v DWP — work-and-pensions tribunal judgment.
+  - id: "28914588"
     sector: employment
-  - id: "28914588"   # GB — Foat v DWP (work-and-pensions case)
+
+  # EU — BEREC press item on the Digital Networks Act; consumer-protection
+  # is the closest banking-relevant sector available in the demo taxonomy.
+  - id: "31366184"
+    sector: consumer-protection
+
+  # BE — FPS Labour psychosocial risks questionnaire.
+  - id: "19194112"
     sector: employment
+
+  # AT — BVwG administrative court decision; stays under financial-services
+  # (the default) because the substantive area is administrative oversight
+  # of state economic activity. Reviewable post-demo.
+  - id: "32061749"
+
+  # DE — Arbeitsmarkt monthly report (labour-market statistics).
+  - id: "20951816"
+    sector: employment
+
+  # FR — ACPR (banque-france) prudential decision; the canonical banking-
+  # regulator fixture, so it stays in the default financial-services sector.
+  - id: "31702142"
+
+  # IT — MEF economic and financial document update.
+  - id: "26863"
+
+  # ES — Manual práctico IVA (Spanish VAT practical manual).
+  - id: "28885109"
+    sector: tax
+
+  # DK — Central-government financing requirements; financial-services.
+  - id: "18087738"
