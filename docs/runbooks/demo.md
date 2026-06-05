@@ -190,43 +190,37 @@ for an unhurried walk-through; total ≈ 7–9 minutes.
 
 ### d. Admin view + support view
 
-<!-- WU5.4 follow-up: fill in from
-     journal/260606-wu54-admin-views-support-view.md once Session Q
-     merges. Keep the structural skeleton below; update the wording
-     in-place once the exact UI paths and label strings are known. -->
+1. Open a private window. Visit the SPA URL.
+2. Log in with the admin credentials from
+   `docs/runbooks/demo-accounts.md`. **Expected**: lands on
+   `/admin/clients`, not `/`.
+3. Walk the audience through the clients table. Mention the
+   `Page 1 of N` indicator and the per-row Open button.
+4. Open the UK demo client's detail page. Highlight the active
+   subscription's scopes.
+5. Add a new scope (e.g. `FR` + `banking`). The new row appears in
+   the scopes table; the toast reads "Scope added".
+6. Remove that scope. **Expected**: a confirmation modal listing
+   matching documents from the discovery feed. Click Cancel — the
+   modal closes and no API call fires.
+7. Re-open Remove and confirm. **Expected**: success toast reads
+   "Scope removed" (and "— N watchlists soft-hidden" if any).
+8. Click "Enter support view". **Expected**: amber banner appears
+   at the top of every page; tab title shows `[SUPPORT] Horizons`.
+9. Navigate to `/changes` and `/watchlists` to show the banner
+   persists across routes. Mention that the SPA is now rendering
+   the **client's** view, with the client's scopes — same code,
+   different bearer.
+10. Click "Exit support view" in the banner. **Expected**: banner
+    disappears, tab title returns to `Horizons`, lands on
+    `/admin/clients`.
+11. Open `/admin/audit` and filter `action=impersonation`. **Expected**:
+    a row recording the impersonation event, with the admin's id,
+    the target client's id, and the timestamp.
 
-The skeleton beat (Session Q wires the screens; this runbook locks in
-the *order* and the *talking points*):
-
-1. **Log out as `demo-eu`. Log in as `admin-demo@example.test`.** The
-   admin nav appears only for the admin role.
-2. **Navigate to `/admin/clients`.** The list of all clients in the
-   system renders with their subscription scopes and a
-   last-active timestamp. *Say:* "This is the operator's view —
-   anyone the legal firm has provisioned, and what they're scoped
-   to. This view is gated to the admin role; a client account that
-   tries to load it gets a 403."
-3. **Click a client row → enter support view.** Click into one of
-   the seeded demo clients (UK or EU). The page transitions into
-   "support view" mode for that client.
-4. **The amber banner appears.** A persistent amber banner at the
-   top of the viewport reads
-   "Support view: viewing as `<client-email>` — actions are audited."
-   The tab title is prefixed (e.g. `[support] Horizons — Changes`)
-   so an operator with multiple tabs open cannot lose track of which
-   tenant they are looking at.
-5. **Demonstrate the cross-tenant read.** Navigate to `/changes`
-   while in support view. The list renders that client's scoped
-   view — proving the admin path can see *exactly* what the client
-   sees, without the client's session or password.
-6. **Exit support view.** Click the banner's "Exit support view"
-   action. The amber banner clears, the tab title prefix drops, and
-   the admin returns to `/admin/clients`.
-7. **Open `/admin/audit`.** The audit log shows the support-view
-   entry — operator email, target client email, entered-at /
-   exited-at timestamps. *Say:* "Every admin look at a client's data
-   is recorded here. This is what makes the cross-tenant read
-   capability operationally safe."
+Recovery: if the SPA gets stuck in support view (e.g. a network blip
+hid an exit toast), reload the page. The cookie-driven cold bootstrap
+re-enters as the admin; the in-memory impersonation token is gone.
 
 ### e. Wrap (≈ 30 s)
 
