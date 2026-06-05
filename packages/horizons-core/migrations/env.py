@@ -12,6 +12,7 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
+from horizons_core.db.models import Base
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
@@ -27,9 +28,11 @@ if _db_url is None:
     )
 config.set_main_option("sqlalchemy.url", _db_url)
 
-# No declarative metadata yet — schema lands in later work units. Autogenerate
-# will be wired up when the first ORM models exist.
-target_metadata = None
+# Declarative metadata for autogenerate. Importing the models package
+# eagerly registers every aggregate on ``Base.metadata`` — new models
+# only need to be re-exported from ``horizons_core.db.models.__init__``
+# to participate.
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

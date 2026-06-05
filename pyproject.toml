@@ -46,6 +46,12 @@ extend-exclude = [".claude", "packages/horizons-webapp", "scripts"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "TC"]
 
+[tool.ruff.lint.per-file-ignores]
+# SQLAlchemy 2.x mapped_column resolves ``Mapped[T]`` annotations at
+# runtime via module globals, so type-only imports there must NOT live
+# in a TYPE_CHECKING block — TC003 would break the mapper.
+"packages/horizons-core/src/horizons_core/db/models/*.py" = ["TC003"]
+
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"

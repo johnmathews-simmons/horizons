@@ -63,6 +63,29 @@ The session-GUC + RLS-predicate pair is one layer; the role-level GRANT
 narrowing (above) is the second. Both must independently prevent a
 cross-tenant read.
 
+## Per-table grants (current state)
+
+The role-model migration (`0001_role_model.py`) creates the four roles
+but grants nothing on its own — there were no tables yet. Subsequent
+migrations grant per-table:
+
+| Table | `api_app` | `ingestion_worker` | `admin_bypass` |
+| --- | --- | --- | --- |
+| `users` | SELECT, INSERT, UPDATE | — | — |
+| `subscriptions` | SELECT, INSERT, UPDATE *(trigger-policed)* | — | — |
+| `subscription_scopes` | SELECT, INSERT | — | — |
+
+`admin_bypass` deliberately has no static grants. Code paths that need
+admin reach assume the role per-operation (`SET LOCAL ROLE
+admin_bypass`) and rely on its `BYPASSRLS` to read across tenants
+through the same `api_app`-granted tables. This keeps the grant surface
+small and the elevation auditable.
+
+These grants are the loosest workable surface for the **WU1.x** API
+layer. RLS policies and read-scope narrowing for the corpus tables land
+in **WU1.4**; see [schema.md](schema.md) "Multi-tenant access (current
+state)" for the boundary.
+
 ## Running the migration
 
 The role-model migration is `migrations/versions/0001_role_model.py`.
