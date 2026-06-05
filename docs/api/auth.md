@@ -165,6 +165,45 @@ Auth-flow responses (`/v1/auth/login`, `/v1/auth/refresh`, `/v1/auth/logout`)
 carry the same header for the same reason: the body contains tokens that
 must not be cached by any intermediary or the browser.
 
+## Impersonation tokens (admin support view)
+
+A third token kind — `impersonation` — exists alongside `access` and
+`refresh`. It is minted only by `POST /v1/admin/impersonate` (admin-only,
+audited) and carries the impersonated client's `user_id` in `sub` and
+`role='client'`. Its TTL is 15 minutes, the same as access tokens.
+
+The mint endpoint writes one `admin_access_log` row with
+`mode='impersonation'` and `target_user_id=<client>` **before** the
+token is returned. That row is the single durable record of the
+elevation event; a network blip after the mint cannot leave a working
+token with no audit trail. The mint endpoint also writes one
+`mode='operator'` row (from the standard admin dep) recording the URL
+hit; both rows are intentional and are pinned by tests.
+
+Token-kind acceptance matrix on client-facing routes:
+
+| Endpoint class                | `access` | `impersonation` | `refresh` |
+| ----------------------------- | -------- | --------------- | --------- |
+| `/v1/me`, `/v1/me/*`          | ✓        | ✓               | 401       |
+| `/v1/changes/*`               | ✓        | ✓               | 401       |
+| `/v1/auth/refresh`            | 401      | 401             | ✓         |
+| `/v1/auth/logout`             | 401      | 401             | ✓         |
+| `/v1/admin/*`                 | ✓ (admin role) | 403 (client role) | 401 |
+
+The `authenticated_user` dep accepts `{access, impersonation}` because
+both represent "a human user acting on their own behalf"; the role
+gate on `/v1/admin/*` (`require_admin_principal`) refuses
+impersonation tokens by virtue of their `role='client'` claim. No
+per-request audit row is written under impersonation: the entry row
+plus the 15-minute TTL are the audit story. The webapp's support-view
+banner is the live-deception mitigation.
+
+Exit from support view is client-side: the SPA drops the
+impersonation token from in-memory state. There is no
+`/v1/admin/impersonate/exit` endpoint — a separate exit audit row
+would add no durable signal beyond what the entry row already
+records.
+
 ## Refresh-token registry
 
 Issued refresh tokens are persisted to the `refresh_tokens` table at

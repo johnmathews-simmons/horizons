@@ -69,6 +69,35 @@ Filtered, paginated reads of the admin audit log.
 | `422` | `HTTPValidationError` | Validation Error |
 
 
+### `GET /v1/admin/clients`
+
+List Clients
+
+Return ``role='client'`` users, oldest-first, with a total count.
+
+Admins (``role='admin'``) are excluded by construction — the
+support-view flow only impersonates clients, and surfacing other
+admins on this list would be both noisy and a small vector for
+"the operator clicked the wrong row" mistakes.
+
+Ordering is stable on ``(created_at ASC, id ASC)`` so offset paging
+behaves predictably across new signups.
+
+**Parameters**
+
+| In | Name | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `query` | `limit` | `integer` | no | Page size cap. Silently clamped to 200. |
+| `query` | `offset` | `integer` | no | Number of rows to skip. |
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `ClientsListResponse` | Successful Response |
+| `422` | `HTTPValidationError` | Validation Error |
+
+
 ### `GET /v1/admin/health/api`
 
 Api Health
@@ -106,6 +135,49 @@ Overdue polls + recent incidents.
 | Status | Shape | Description |
 | --- | --- | --- |
 | `200` | `IngestionHealthResponse` | Successful Response |
+
+
+### `POST /v1/admin/impersonate`
+
+Begin Impersonation
+
+Mint an audited impersonation token for ``body.target_user_id``.
+
+Validation order is deliberate so the audit story is clean:
+
+1. Resolve the *admin* (we already have the principal, but we need
+   the admin's email for the response). The lookup runs under the
+   ``admin_operator_session_for_request`` ``admin_bypass`` session
+   that was opened to write the dependency's *own* audit row — that
+   row records the lookup itself, which is the right semantic.
+2. Resolve the target. A missing or non-client target is refused
+   BEFORE the impersonation audit row is written, so a typo'd
+   ``target_user_id`` does not leave an "impersonated NULL" row.
+3. Refuse self-impersonation and admin-target impersonation; both
+   are policy refusals, not malformed input → 422.
+4. Enter ``admin_impersonation_session`` purely to commit the
+   impersonation audit row. We immediately exit the with-block; the
+   working session is never used because the route does not need to
+   read or write as the target — it only needs to mint a token.
+5. Mint the impersonation JWT. The minting itself does not touch the
+   database; if it raises, the audit row already records the
+   attempted elevation.
+6. Shape the response. ``Cache-Control: private, no-store`` per
+   contract.
+
+**Request body**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `reason` | `string?` | no | Free-text justification — recorded on the admin_access_log row. The mint endpoint does not enforce non-empty: a blank reason is allowed but discouraged; the SPA's confirm dialog will press the operator for one. |
+| `target_user_id` | `string (uuid)` | yes | — |
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `201` | `ImpersonateResponse` | Successful Response |
+| `422` | `HTTPValidationError` | Validation Error |
 
 
 ### `GET /v1/admin/subscriptions`
