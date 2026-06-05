@@ -84,6 +84,11 @@ jobs:
         run: npm run build
 
       - name: Start API (background)
+        # asyncpg driver at runtime: the async engine sets
+        # statement_cache_size=0 which only the asyncpg dialect accepts.
+        # alembic + seed_e2e use the job-level +psycopg URL (sync).
+        env:
+          HORIZONS_DB_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/horizons_e2e
         run: |
           uv run uvicorn 'horizons_api.app:create_app' --factory \
             --host 0.0.0.0 --port 8000 \
