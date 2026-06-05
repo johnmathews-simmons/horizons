@@ -196,6 +196,90 @@ def test_valid_bearer_returns_200_and_principal_body(
     }
 
 
+def _issue_token_with_kind(
+    private_pem: bytes,
+    public_pem: bytes,
+    kind: TokenKind,
+) -> str:
+    """Mint a token of the requested kind with the test provider's keys."""
+    provider = LocalJwtProvider(
+        private_key=private_pem,
+        public_key=public_pem,
+        issuer=ISSUER,
+        audience=AUDIENCE,
+    )
+    import asyncio
+
+    # IMPERSONATION tokens — like ACCESS — don't write to refresh_tokens,
+    # so no session is needed. REFRESH tokens need a session but the
+    # tests for those use the integration suite; here we only need
+    # ACCESS and IMPERSONATION to verify the kind gate.
+    return asyncio.run(
+        provider.issue_token(
+            user_id=uuid.uuid4(),
+            role="client",
+            kind=kind,
+        )
+    )
+
+
+def test_refresh_token_rejected_at_me_endpoint(
+    configured_env: tuple[bytes, bytes],
+    client: TestClient,
+) -> None:
+    """A REFRESH token must not authenticate /v1/me.
+
+    Forges the JWT directly via ``jwt.encode`` rather than
+    ``LocalJwtProvider.issue_token(kind=REFRESH)`` because the latter
+    requires a DB session to persist the refresh-tokens row — and the
+    point of the test is the *kind-claim check at the auth boundary*,
+    which is upstream of any DB write. Regression test for the
+    missing-authz finding from the push-time security review.
+    """
+    import time
+
+    import jwt
+
+    private_pem, _ = configured_env
+    now = int(time.time())
+    payload = {
+        "sub": str(uuid.uuid4()),
+        "role": "client",
+        "kind": TokenKind.REFRESH.value,
+        "jti": str(uuid.uuid4()),
+        "iat": now,
+        "exp": now + 60 * 60,
+        "iss": ISSUER,
+        "aud": AUDIENCE,
+    }
+    token = jwt.encode(payload, private_pem, algorithm="RS256")
+
+    response = client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    assert response.json() == {"detail": "invalid bearer token"}
+
+
+def test_impersonation_token_rejected_at_me_endpoint(
+    configured_env: tuple[bytes, bytes],
+    client: TestClient,
+) -> None:
+    """An IMPERSONATION token must not authenticate /v1/me.
+
+    /v1/me depends on require_kind(ACCESS). An impersonation token is
+    a valid JWT against the configured keypair, so the signature /
+    issuer / audience / expiry all pass; the kind gate is the only
+    defence. Regression test for the missing-authz finding from the
+    push-time security review.
+    """
+    private_pem, public_pem = configured_env
+    token = _issue_token_with_kind(private_pem, public_pem, TokenKind.IMPERSONATION)
+    response = client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    # Body must not distinguish wrong-kind from invalid-signature —
+    # the client cannot probe the verifier's branches.
+    assert response.json() == {"detail": "invalid bearer token"}
+
+
 def test_missing_required_env_var_fails_app_construction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
