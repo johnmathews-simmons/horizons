@@ -98,9 +98,7 @@ class SubscriptionsRepository:
         scope_rows = (
             (
                 await self._session.execute(
-                    select(SubscriptionScope).where(
-                        SubscriptionScope.subscription_id.in_(sub_ids)
-                    )
+                    select(SubscriptionScope).where(SubscriptionScope.subscription_id.in_(sub_ids))
                 )
             )
             .scalars()
@@ -108,9 +106,7 @@ class SubscriptionsRepository:
         )
         scopes_by_sub: dict[uuid.UUID, list[SubscriptionScopeDTO]] = {sid: [] for sid in sub_ids}
         for row in scope_rows:
-            scopes_by_sub[row.subscription_id].append(
-                SubscriptionScopeDTO.model_validate(row)
-            )
+            scopes_by_sub[row.subscription_id].append(SubscriptionScopeDTO.model_validate(row))
 
         out: list[SubscriptionDTO] = []
         for sub in sub_rows:

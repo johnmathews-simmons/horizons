@@ -22,7 +22,7 @@ Before doing anything substantive, read in this order:
    - `docs/2. clause-alignment.md` — how clauses keep identity across versions; the alignment pipeline and similarity stack.
    - `docs/3. database-design.md` — performance target, scale assumptions, principles; depends on the identity model from doc 2.
    - `docs/4. services.md` — the three deployable services (ingestion worker, public API, SPA webapp), their responsibilities and non-responsibilities, and the cross-cutting principles (multi-tenant isolation, API responsiveness, single API surface).
-3. `docs/api/README.md` — entry point to the Lawstronaut v2 API reference. Then `getting-started.md`, `concepts.md`, `endpoints.md`, `operational-notes.md`.
+3. `docs/api/README.md` — index of two API surfaces. **Horizons (what we ship):** `endpoints.md` (auto-generated from FastAPI OpenAPI by `packages/horizons-api/scripts/regen_endpoints_md.py`; do not hand-edit), `horizons-primitives.md`, `auth.md`. **Lawstronaut (what we consume):** `getting-started.md`, `concepts.md`, `lawstronaut-endpoints.md`, `operational-notes.md`.
 4. `data/samples/README.md` — what the sample legal markdown is, how it was collected (`scripts/fetch_fixtures.py`), and the current 31-fixture inventory.
 5. The memory entries for this project. These live in-repo at `.claude/memory/` (gitignored — synced across machines via syncthing, not git) and are also auto-loaded by the harness via a symlink at `~/.claude/projects/-Users-john-projects-syncthing-agent-lxc-horizons/memory` → `.claude/memory/`. The index is `.claude/memory/MEMORY.md`; write new entries here and they'll be picked up next session.
    - `project-horizons-business-context` — what we're selling and to whom.

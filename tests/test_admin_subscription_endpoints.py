@@ -133,10 +133,7 @@ def _make_user(engine: Engine, email: str, role: str = "client") -> uuid.UUID:
     pw_hash = hash_password("pw")
     with engine.begin() as conn:
         return conn.execute(
-            text(
-                "INSERT INTO users (email, password_hash, role) "
-                "VALUES (:e, :p, :r) RETURNING id"
-            ),
+            text("INSERT INTO users (email, password_hash, role) VALUES (:e, :p, :r) RETURNING id"),
             {"e": email, "p": pw_hash, "r": role},
         ).scalar_one()
 
@@ -314,8 +311,7 @@ def test_admin_patch_reduction_soft_hides_out_of_scope_watchlist(
     with migrated_postgres_a.connect() as conn:
         rows = conn.execute(
             text(
-                "SELECT document_id, active FROM watchlists "
-                "WHERE user_id = :u ORDER BY document_id"
+                "SELECT document_id, active FROM watchlists WHERE user_id = :u ORDER BY document_id"
             ),
             {"u": target_id},
         ).all()
@@ -333,9 +329,7 @@ def test_non_admin_calling_admin_endpoint_returns_403(
     migrated_postgres_a: Engine,
 ) -> None:
     target_id = _make_user(migrated_postgres_a, "client_for_403@example.com", role="client")
-    _seed_initial_subscription(
-        migrated_postgres_a, target_id, scope=(("uk", "banking"),)
-    )
+    _seed_initial_subscription(migrated_postgres_a, target_id, scope=(("uk", "banking"),))
     token = _login(client, "client_for_403@example.com")
 
     for resp in (

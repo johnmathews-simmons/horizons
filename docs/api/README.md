@@ -1,21 +1,35 @@
-# Lawstronaut API — Local Reference
+# Horizons & Lawstronaut API references
 
-This directory captures the Lawstronaut API (v2) as documented in the developer portal at
-`https://dev-portal.filerskeepersapi.co/dashboard/lawstronaut`. It is the working reference
-for designing the change-watching tool.
+Two distinct surfaces live in this directory:
 
-**Source captured:** 2026-06-04 (from the authenticated developer portal — API Docs, Endpoints, Getting Started, and List of Prices pages).
+1. **Horizons public API** — the FastAPI service we ship (the
+   `/v1/...` prefix). Customers and the Vue webapp talk to this.
+2. **Lawstronaut API** — the third-party upstream we consume during
+   ingestion. We watch it; we do not proxy it.
 
 ## Files
 
-- `getting-started.md` — auth flow (custom OAuth 2.0 / Bearer token), base URLs, HTTP status codes.
-- `concepts.md` — domain model (jurisdiction, portal, taxonomy, document, version).
-- `endpoints.md` — every v2 endpoint: path, params, example request/response, notes.
-- `operational-notes.md` — refresh cadence, deployment, pricing, MCP, and other facts that shape tool design.
+**Horizons surface:**
 
-**Horizons public API** (separate from upstream — we *expose*, we don't proxy):
+- `endpoints.md` — auto-generated from the live FastAPI OpenAPI by
+  [`scripts/regen_endpoints_md.py`](../../packages/horizons-api/scripts/regen_endpoints_md.py).
+  Source of truth for the wire shape. Do not hand-edit.
+- `horizons-primitives.md` — design-of-record for the three primitives
+  (`/v1/discovery`, `/v1/temporal`, `/v1/differential`) — scope
+  discriminator, opaque-cursor pagination, `include_content` rules.
+- `auth.md` — Horizons login / refresh / logout posture and cookie
+  semantics.
 
-- `horizons-primitives.md` — the three primitives (`/v1/discovery`, `/v1/temporal`, `/v1/differential`) at corpus / document / clause scope, scope discriminator, opaque-cursor pagination, `include_content` rules. WU4.6 will publish an OpenAPI-generated reference; this is the design-of-record until then.
+**Lawstronaut upstream (captured 2026-06-04 from the dev portal):**
+
+- `getting-started.md` — auth flow (custom OAuth 2.0 / Bearer token),
+  base URLs, HTTP status codes.
+- `concepts.md` — domain model (jurisdiction, portal, taxonomy,
+  document, version).
+- `lawstronaut-endpoints.md` — every v2 endpoint: path, params,
+  example request/response, notes.
+- `operational-notes.md` — refresh cadence, deployment, pricing, MCP,
+  and other facts that shape tool design.
 
 ## Quick facts
 

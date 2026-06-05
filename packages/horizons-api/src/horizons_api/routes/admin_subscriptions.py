@@ -279,9 +279,7 @@ async def patch_subscription(  # noqa: PLR0913 — each parameter is a wire fiel
             detail="subscription not found",
         )
 
-    active_pairs = {
-        (s.jurisdiction, s.sector) for s in existing.scopes if s.valid_to is None
-    }
+    active_pairs = {(s.jurisdiction, s.sector) for s in existing.scopes if s.valid_to is None}
     if any(p in active_pairs for p in add_pairs):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

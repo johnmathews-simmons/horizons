@@ -40,3 +40,25 @@ repos:
       - id: ruff-check
         args: ["--fix"]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      # WU4.6: fail when ``docs/api/endpoints.md`` drifts from the live
+      # FastAPI OpenAPI. The script is fast (no DB hit) and idempotent;
+      # contributors regenerate with
+      # ``uv run packages/horizons-api/scripts/regen_endpoints_md.py``.
+      # ``files:`` narrows the trigger so the hook runs only when route /
+      # schema code changes or the doc itself changes — pre-commit
+      # still invokes the script on those events; the script reads the
+      # whole OpenAPI regardless of which file landed it.
+      - id: regen-endpoints-md
+        name: regen-endpoints-md (--check)
+        entry: uv run --no-sync python packages/horizons-api/scripts/regen_endpoints_md.py --check
+        language: system
+        pass_filenames: false
+        files: |
+          (?x)^(
+            packages/horizons-api/src/horizons_api/.*\.py|
+            packages/horizons-api/scripts/regen_endpoints_md\.py|
+            docs/api/endpoints\.md
+          )$
