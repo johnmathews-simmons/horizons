@@ -23,9 +23,7 @@ if TYPE_CHECKING:
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT_PATH = (
-    REPO_ROOT / "packages" / "horizons-api" / "scripts" / "create_demo_accounts.py"
-)
+SCRIPT_PATH = REPO_ROOT / "packages" / "horizons-api" / "scripts" / "create_demo_accounts.py"
 _SCRIPT_MODULE_NAME = "horizons_demo_accounts_script"
 
 
@@ -58,7 +56,7 @@ def test_missing_env_vars_without_opt_in_lists_all_three(
     monkeypatch.delenv("HORIZONS_DEMO_EU_PASSWORD", raising=False)
     monkeypatch.delenv("HORIZONS_DEMO_ADMIN_PASSWORD", raising=False)
 
-    resolved, missing = module._resolve_passwords(  # type: ignore[attr-defined]
+    resolved, missing, from_dev_default = module._resolve_passwords(  # type: ignore[attr-defined]
         module._accounts(),  # type: ignore[attr-defined]
         allow_dev_defaults=False,
     )
@@ -70,6 +68,7 @@ def test_missing_env_vars_without_opt_in_lists_all_three(
     # When `missing` is non-empty the caller aborts before any DB
     # write; `resolved` is partial and ignored.
     assert "demo-uk@example.test" not in resolved
+    assert from_dev_default == set()
 
 
 def test_partial_env_vars_without_opt_in_flags_remaining(
@@ -81,7 +80,7 @@ def test_partial_env_vars_without_opt_in_flags_remaining(
     monkeypatch.setenv("HORIZONS_DEMO_EU_PASSWORD", "eu-real-pw")
     monkeypatch.delenv("HORIZONS_DEMO_ADMIN_PASSWORD", raising=False)
 
-    _, missing = module._resolve_passwords(  # type: ignore[attr-defined]
+    _, missing, _ = module._resolve_passwords(  # type: ignore[attr-defined]
         module._accounts(),  # type: ignore[attr-defined]
         allow_dev_defaults=False,
     )
@@ -97,7 +96,7 @@ def test_empty_string_env_var_treated_as_unset(
     monkeypatch.setenv("HORIZONS_DEMO_EU_PASSWORD", "eu-real-pw")
     monkeypatch.setenv("HORIZONS_DEMO_ADMIN_PASSWORD", "admin-real-pw")
 
-    _, missing = module._resolve_passwords(  # type: ignore[attr-defined]
+    _, missing, _ = module._resolve_passwords(  # type: ignore[attr-defined]
         module._accounts(),  # type: ignore[attr-defined]
         allow_dev_defaults=False,
     )
@@ -113,11 +112,12 @@ def test_all_env_vars_set_resolves_cleanly(
     monkeypatch.setenv("HORIZONS_DEMO_EU_PASSWORD", "eu-real-pw")
     monkeypatch.setenv("HORIZONS_DEMO_ADMIN_PASSWORD", "admin-real-pw")
 
-    resolved, missing = module._resolve_passwords(  # type: ignore[attr-defined]
+    resolved, missing, from_dev_default = module._resolve_passwords(  # type: ignore[attr-defined]
         module._accounts(),  # type: ignore[attr-defined]
         allow_dev_defaults=False,
     )
     assert missing == []
+    assert from_dev_default == set()
     assert resolved == {
         "demo-uk@example.test": "uk-real-pw",
         "demo-eu@example.test": "eu-real-pw",
@@ -134,16 +134,156 @@ def test_opt_in_falls_back_to_defaults_when_unset(
     monkeypatch.delenv("HORIZONS_DEMO_EU_PASSWORD", raising=False)
     monkeypatch.delenv("HORIZONS_DEMO_ADMIN_PASSWORD", raising=False)
 
-    resolved, missing = module._resolve_passwords(  # type: ignore[attr-defined]
+    resolved, missing, from_dev_default = module._resolve_passwords(  # type: ignore[attr-defined]
         module._accounts(),  # type: ignore[attr-defined]
         allow_dev_defaults=True,
     )
     assert missing == []
+    assert from_dev_default == {
+        "demo-uk@example.test",
+        "demo-eu@example.test",
+        "admin-demo@example.test",
+    }
     assert resolved == {
         "demo-uk@example.test": "demo-uk-pass-not-secret",
         "demo-eu@example.test": "demo-eu-pass-not-secret",
         "admin-demo@example.test": "admin-demo-pass-not-secret",
     }
+
+
+def test_downgrade_guard_blocks_dev_default_over_real_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A row holding a real credential cannot be rotated to a dev default.
+
+    Models the attack: operator ran with real env vars on day 1, then
+    re-ran with --allow-dev-defaults (env vars unset). The guard must
+    flag every account whose stored hash does not match the dev
+    default and block the run before any UPDATE.
+    """
+    module = _load_script_module()
+    accounts = module._accounts()  # type: ignore[attr-defined]
+    hash_password = module.hash_password  # type: ignore[attr-defined]
+
+    # Resolution: all three accounts fall back to dev defaults.
+    resolved = {a.email: a.password_default for a in accounts}
+    from_dev_default = {a.email for a in accounts}
+
+    # All three rows currently hold REAL (env-var-sourced) credentials.
+    real_hashes = {
+        accounts[0].email: hash_password("uk-real-pw"),
+        accounts[1].email: hash_password("eu-real-pw"),
+        accounts[2].email: hash_password("admin-real-pw"),
+    }
+
+    def fake_hash(_conn: object, email: str) -> str | None:
+        return real_hashes.get(email)
+
+    monkeypatch.setattr(module, "_existing_password_hash", fake_hash)
+
+    blocked = module._downgrade_candidates(  # type: ignore[attr-defined]
+        conn=object(),  # unused — _existing_password_hash is stubbed
+        accounts=accounts,
+        resolved=resolved,
+        from_dev_default=from_dev_default,
+    )
+    # All three would be downgraded; all three must be flagged.
+    assert sorted(blocked) == sorted(real_hashes.keys())
+
+
+def test_downgrade_guard_allows_dev_default_over_matching_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A row already holding the dev-default hash is a safe no-op rotate.
+
+    The guard MUST NOT flag accounts whose stored hash already verifies
+    against the dev default — otherwise idempotent re-runs of
+    --allow-dev-defaults would abort spuriously.
+    """
+    module = _load_script_module()
+    accounts = module._accounts()  # type: ignore[attr-defined]
+    hash_password = module.hash_password  # type: ignore[attr-defined]
+
+    resolved = {a.email: a.password_default for a in accounts}
+    from_dev_default = {a.email for a in accounts}
+
+    # Each row already holds the dev-default hash. Argon2 is salted, so
+    # hash_password(default) produces a different ciphertext every call;
+    # verify_password against the same plaintext still returns True.
+    matching_hashes = {a.email: hash_password(a.password_default) for a in accounts}
+
+    def fake_hash(_conn: object, email: str) -> str | None:
+        return matching_hashes.get(email)
+
+    monkeypatch.setattr(module, "_existing_password_hash", fake_hash)
+
+    blocked = module._downgrade_candidates(  # type: ignore[attr-defined]
+        conn=object(),
+        accounts=accounts,
+        resolved=resolved,
+        from_dev_default=from_dev_default,
+    )
+    assert blocked == []
+
+
+def test_downgrade_guard_ignores_env_var_sourced_accounts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Accounts whose password came from the env var are never blocked.
+
+    The guard's invariant is "do not downgrade a real credential to a
+    dev default". If the resolved password came from the env var, the
+    rotate isn't a downgrade — even if the stored hash diverges, the
+    operator explicitly set a new password.
+    """
+    module = _load_script_module()
+    accounts = module._accounts()  # type: ignore[attr-defined]
+    hash_password = module.hash_password  # type: ignore[attr-defined]
+
+    # No account is in from_dev_default — every password came from an
+    # env var. The guard should short-circuit before _existing_password_hash
+    # is even consulted, but stub it pessimistically anyway.
+    resolved = {a.email: "real-pw-" + a.email for a in accounts}
+    from_dev_default: set[str] = set()
+    real_hashes = {a.email: hash_password("something-totally-different") for a in accounts}
+
+    def fake_hash(_conn: object, email: str) -> str | None:
+        return real_hashes.get(email)
+
+    monkeypatch.setattr(module, "_existing_password_hash", fake_hash)
+
+    blocked = module._downgrade_candidates(  # type: ignore[attr-defined]
+        conn=object(),
+        accounts=accounts,
+        resolved=resolved,
+        from_dev_default=from_dev_default,
+    )
+    assert blocked == []
+
+
+def test_downgrade_guard_skips_absent_accounts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A fresh provision (no existing row) is a CREATE, not a downgrade."""
+    module = _load_script_module()
+    accounts = module._accounts()  # type: ignore[attr-defined]
+
+    resolved = {a.email: a.password_default for a in accounts}
+    from_dev_default = {a.email for a in accounts}
+
+    # No row exists for any account yet.
+    def fake_hash(_conn: object, _email: str) -> str | None:
+        return None
+
+    monkeypatch.setattr(module, "_existing_password_hash", fake_hash)
+
+    blocked = module._downgrade_candidates(  # type: ignore[attr-defined]
+        conn=object(),
+        accounts=accounts,
+        resolved=resolved,
+        from_dev_default=from_dev_default,
+    )
+    assert blocked == []
 
 
 def test_opt_in_still_prefers_env_var_when_set(
@@ -155,7 +295,7 @@ def test_opt_in_still_prefers_env_var_when_set(
     monkeypatch.delenv("HORIZONS_DEMO_UK_PASSWORD", raising=False)
     monkeypatch.delenv("HORIZONS_DEMO_EU_PASSWORD", raising=False)
 
-    resolved, _ = module._resolve_passwords(  # type: ignore[attr-defined]
+    resolved, _, from_dev_default = module._resolve_passwords(  # type: ignore[attr-defined]
         module._accounts(),  # type: ignore[attr-defined]
         allow_dev_defaults=True,
     )
@@ -163,3 +303,9 @@ def test_opt_in_still_prefers_env_var_when_set(
     assert resolved["admin-demo@example.test"] == "admin-real-pw"
     assert resolved["demo-uk@example.test"] == "demo-uk-pass-not-secret"
     assert resolved["demo-eu@example.test"] == "demo-eu-pass-not-secret"
+    # The from_dev_default set drives the no-downgrade rotate guard.
+    # Admin is excluded because the env-var sourced its password.
+    assert from_dev_default == {
+        "demo-uk@example.test",
+        "demo-eu@example.test",
+    }

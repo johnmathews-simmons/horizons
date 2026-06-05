@@ -49,8 +49,19 @@ uv run python packages/horizons-api/scripts/create_demo_accounts.py
 
 Re-running the script rotates the stored password hash to match the
 freshly resolved env-var value — there is no silent "skip if exists"
-path. Re-running with new env-var values rotates without `--reset`. To
-delete watchlist state or otherwise rewind to a clean slate, pass
+path. Re-running with new env-var values rotates without `--reset`.
+
+**No-downgrade guard.** If the resolved password for an account came
+from `--allow-dev-defaults` (env var unset, bake-in fallback in effect)
+but the existing row currently holds a real (env-var-sourced)
+credential, the script refuses the run before any UPDATE and prints the
+offending accounts. The operator's options at that point are: set the
+missing env var(s) and re-run, or pass `--reset` to deliberately wipe
+the row first. This closes the path where a stray
+`--allow-dev-defaults` invocation could downgrade a production password
+to the publicly-known bake-in default.
+
+To delete watchlist state or otherwise rewind to a clean slate, pass
 `--reset`:
 
 ```bash

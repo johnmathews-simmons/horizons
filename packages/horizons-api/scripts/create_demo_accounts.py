@@ -39,13 +39,26 @@ Distinct from the WU8.2 Playwright e2e fixtures: those live under
 ``@e2e.test`` and ``seed_e2e.py``; the demo accounts here are for the
 manual showcase walk-through.
 
-**Idempotency rotates credentials.** A re-run UPDATEs the
-``password_hash`` of any existing demo row to match the freshly resolved
-password — re-running with new env-var values rotates the stored hash
-without needing ``--reset``. A previous version of this script
-silently skipped existing rows; that preserved stale (default-bake)
-hashes if the operator forgot the env vars on the first run, then set
-them on the second.
+**Idempotency rotates credentials, but never downgrades to dev
+defaults.** A re-run UPDATEs the ``password_hash`` of any existing
+demo row to match the freshly resolved password — re-running with new
+env-var values rotates the stored hash without needing ``--reset``.
+
+The rotate path enforces one invariant: if ``--allow-dev-defaults`` is
+the source of an account's resolved password (env var unset, fallback
+in effect), the rotate is permitted only when the existing stored hash
+already verifies against the same dev default. If the row currently
+holds a real production credential, the run aborts with a message
+naming the offending account(s) and pointing the operator at
+``--reset``. This prevents a stray ``--allow-dev-defaults`` invocation
+(or a forgotten env var on a re-run) from overwriting a real credential
+with the public bake-in default.
+
+A previous version of this script silently skipped existing rows; that
+preserved stale (default-bake) hashes if the operator forgot the env
+vars on the first run, then set them on the second. The current
+contract — rotate-on-rerun with a no-downgrade refuse — closes both
+that footgun and the downgrade vector the first rewrite introduced.
 
 ``--reset`` performs a teardown of every demo account (and its
 subscriptions / scopes / watchlists) before recreating. Use it when you
@@ -75,7 +88,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import sqlalchemy
-from horizons_core.core.auth import hash_password
+from horizons_core.core.auth import hash_password, verify_password
 from sqlalchemy import create_engine
 
 if TYPE_CHECKING:
@@ -163,19 +176,29 @@ def _resolve_passwords(
     accounts: list[DemoAccount],
     *,
     allow_dev_defaults: bool,
-) -> tuple[dict[str, str], list[str]]:
+) -> tuple[dict[str, str], list[str], set[str]]:
     """Resolve every account's password, or surface the missing env vars.
 
-    Returns ``(resolved, missing_env_vars)``. When ``missing_env_vars`` is
-    non-empty the caller must abort: ``resolved`` is partial and the
-    operator has not explicitly opted into the dev-default fallback.
+    Returns ``(resolved, missing_env_vars, from_dev_default)``:
+
+    * ``resolved`` — every account whose password the script knows; keyed
+      by email.
+    * ``missing_env_vars`` — env var names that are unset (or empty)
+      without ``--allow-dev-defaults`` to cover them. When this is
+      non-empty the caller MUST abort before any DB write.
+    * ``from_dev_default`` — emails whose resolved value is the bake-in
+      dev default (because the env var was unset under
+      ``allow_dev_defaults``). The caller uses this set to enforce the
+      "do not downgrade a real credential to a dev default" invariant
+      on the rotate path.
 
     With ``allow_dev_defaults=True``, missing env vars are silently
     replaced by ``password_default``; the returned ``missing_env_vars``
-    is always empty.
+    is always empty in that mode.
     """
     resolved: dict[str, str] = {}
     missing: list[str] = []
+    from_dev_default: set[str] = set()
     for account in accounts:
         env_value = os.environ.get(account.password_env)
         if env_value is not None and env_value != "":
@@ -183,9 +206,10 @@ def _resolve_passwords(
             continue
         if allow_dev_defaults:
             resolved[account.email] = account.password_default
+            from_dev_default.add(account.email)
             continue
         missing.append(account.password_env)
-    return resolved, missing
+    return resolved, missing, from_dev_default
 
 
 # --- Teardown --------------------------------------------------------------
@@ -241,13 +265,18 @@ def _teardown(conn: Connection) -> None:
 
 
 def _account_exists(conn: Connection, email: str) -> bool:
-    return (
-        conn.execute(
-            sqlalchemy.text("SELECT 1 FROM users WHERE email = :e"),
-            {"e": email},
-        ).first()
-        is not None
-    )
+    return _existing_password_hash(conn, email) is not None
+
+
+def _existing_password_hash(conn: Connection, email: str) -> str | None:
+    """Return the stored password hash for ``email`` or ``None`` if absent."""
+    row = conn.execute(
+        sqlalchemy.text("SELECT password_hash FROM users WHERE email = :e"),
+        {"e": email},
+    ).first()
+    if row is None:
+        return None
+    return str(row.password_hash)
 
 
 def _create_user(conn: Connection, account: DemoAccount, plaintext: str) -> uuid.UUID:
@@ -296,14 +325,55 @@ def _subscribe(conn: Connection, user_id: uuid.UUID, scope: tuple[str, str]) -> 
 def _create_or_rotate(
     conn: Connection, account: DemoAccount, plaintext: str
 ) -> str:
-    """Return one of ``"created"`` / ``"rotated"``."""
-    if _account_exists(conn, account.email):
-        _rotate_password(conn, account.email, plaintext)
-        return "rotated"
-    user_id = _create_user(conn, account, plaintext)
-    if account.scope is not None:
-        _subscribe(conn, user_id, account.scope)
-    return "created"
+    """Return one of ``"created"`` / ``"rotated"`` / ``"unchanged"``.
+
+    ``"unchanged"`` is returned when the existing hash already verifies
+    against ``plaintext``; the UPDATE is skipped so re-runs with the
+    same dev-default fallback don't churn the row. (``--reset`` is the
+    deterministic-rewrite path; this branch is the no-op-on-match path.)
+    """
+    existing = _existing_password_hash(conn, account.email)
+    if existing is None:
+        user_id = _create_user(conn, account, plaintext)
+        if account.scope is not None:
+            _subscribe(conn, user_id, account.scope)
+        return "created"
+    if verify_password(plaintext=plaintext, password_hash=existing):
+        return "unchanged"
+    _rotate_password(conn, account.email, plaintext)
+    return "rotated"
+
+
+def _downgrade_candidates(
+    conn: Connection,
+    accounts: list[DemoAccount],
+    resolved: dict[str, str],
+    from_dev_default: set[str],
+) -> list[str]:
+    """Identify accounts a rotate would downgrade real credentials on.
+
+    For every account whose resolved password came from the bake-in
+    dev default, check whether the existing stored hash already
+    verifies against that default. If not, the row currently holds a
+    real (env-var-sourced) credential and rotating it to the default
+    would be a downgrade — return its email.
+
+    Verify cost is ~100 ms per call; with at most three demo accounts
+    the worst-case overhead is negligible.
+    """
+    blocked: list[str] = []
+    for account in accounts:
+        if account.email not in from_dev_default:
+            continue
+        existing = _existing_password_hash(conn, account.email)
+        if existing is None:
+            continue
+        if verify_password(
+            plaintext=resolved[account.email], password_hash=existing
+        ):
+            continue
+        blocked.append(account.email)
+    return blocked
 
 
 # --- CLI ------------------------------------------------------------------
@@ -336,7 +406,7 @@ def main(argv: list[str] | None = None) -> int:
     url = _normalise_db_url(raw)
 
     accounts = _accounts()
-    resolved, missing = _resolve_passwords(
+    resolved, missing, from_dev_default = _resolve_passwords(
         accounts, allow_dev_defaults=args.allow_dev_defaults
     )
     if missing:
@@ -356,6 +426,21 @@ def main(argv: list[str] | None = None) -> int:
         with engine.begin() as conn:
             if args.reset:
                 _teardown(conn)
+            blocked = _downgrade_candidates(
+                conn, accounts, resolved, from_dev_default
+            )
+            if blocked:
+                print(
+                    "refusing to provision: --allow-dev-defaults would "
+                    "downgrade real credentials on: " + ", ".join(blocked),
+                    file=sys.stderr,
+                )
+                print(
+                    "set the corresponding HORIZONS_DEMO_*_PASSWORD env "
+                    "var(s), OR pass --reset to wipe and re-provision.",
+                    file=sys.stderr,
+                )
+                return 1
             outcomes: dict[str, str] = {}
             for account in accounts:
                 outcomes[account.email] = _create_or_rotate(
