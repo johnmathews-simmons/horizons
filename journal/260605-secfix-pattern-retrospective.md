@@ -117,7 +117,7 @@ pre-merge pass.
 | WU5.4 (admin views + support view) | **Yes** | **Yes** | Admin impersonation is high-risk; support-view banner + audit-log surface need defence-in-depth thinking |
 | WU8.3 (demo runbook) | No | No | Docs only |
 | WU8.4 (wrap-up journal + CLAUDE.md update) | No | No | Docs only |
-| E2E hotfix (WU8.2 stability) | No | No | Test stability, not security |
+| E2E hotfix (WU8.2 stability) | ~~No~~ **Revised: Yes** | ~~No~~ **Revised: Yes** | See update section below — the hotfix found 5 bugs, 2 security-adjacent, reframing this as an integration surface |
 
 ## Bottom line
 
@@ -141,3 +141,98 @@ cleaner commit history with fewer secfix follow-ups — is real.
 - File-level audit: re-read every secfix commit's diff six weeks
   post-demo (~2026-07-20) to confirm no regression has reintroduced
   the original issue.
+- Validate the integration-surface extension (added in the update
+  below) against any future WU that crosses ≥3 components. If
+  named-adversary framing on integration surfaces also reduces the
+  iteration count of diagnostic hotfixes, the technique generalises
+  beyond security.
+
+---
+
+## Update — WU8.2 e2e hotfix (2026-06-05 evening)
+
+Roughly 90 minutes after the original retrospective above, the WU8.2
+e2e hotfix landed (`journal/260605-wu82-hotfix-e2e-cors.md`). It
+materially changes the analysis. Summary in three points:
+
+### What the hotfix actually found
+
+The original diagnostic prompt assumed one CI timing race. Local
+reproduction surfaced a chain of **five distinct latent bugs**, each
+masking the next:
+
+| # | Bug | Commit | Category |
+|---|---|---|---|
+| 1 | API CORS allow-list omitted `X-Client-Type` | `ac59003` | Security-adjacent — CORS is security infrastructure |
+| 2 | CI e2e API step missing `+asyncpg` driver in DB URL | `385b532` | Integration / infra config |
+| 3 | Pydantic email-validator rejected RFC-6761 `.test` TLD | `9a8d2e8` | Standards / library quirk |
+| 4 | Webapp router didn't try refresh-from-cookie on cold SPA bootstrap | `9d03cd8` | Real app bug — F5 logged users out |
+| 5 | Webapp Axios sent `Authorization` header to `/v1/auth/{login,refresh,logout}` | `05a64ff` | Security-adjacent — auth endpoints shouldn't accept bearer |
+
+Two are security-adjacent (1 + 5); three are integration / standards.
+**The pattern extends beyond security to any integration surface.**
+
+### What the hotfix DIDN'T do (important meta-point)
+
+Zero stability slack added: no navigation-timeout bumps, no
+`test.slow()`, no retry-count change, no `waitForResponse` shims, no
+extra workflow waits. The original WU8.2 timing was correct; failures
+were never about timing. Recorded in the hotfix journal so a future
+agent doesn't tighten back something that was never loosened.
+
+This validates the diagnostic prompt's "minimal surgical changes"
+framing — when the prompt forbids adding stability noise, the agent
+is forced to find the real bug. That framing is worth keeping for
+similar diagnostic prompts.
+
+### Reframing Change 1 — extend to integration surfaces
+
+The original Change 1 limited named-adversary framing to high-risk
+*security* surfaces (auth, RLS, redirect, credentials). The hotfix
+data shows similar bug density on integration surfaces — places where
+≥3 components meet (browser ↔ webapp ↔ API ↔ DB ↔ infra). Bugs there
+hide behind each other in chains, just like security review iterations
+hide bugs from each other.
+
+Updated rule:
+
+> **Apply Change 1 (named-adversary framing) to both high-risk
+> security surfaces AND integration surfaces.** An integration surface
+> is any WU that wires together three or more independently-developed
+> components for the first time. The "adversary" framing on an
+> integration surface is: "I'm a chaos engineer trying to find the
+> latent bug each component left for the next to discover."
+
+### Application to the remaining WUs
+
+| WU | Apply Change 1? | Apply Change 2? | Reasoning |
+|---|---|---|---|
+| WU5.4 (admin views + support view) | Yes | Yes | Security surface (impersonation + audit) AND integration surface (admin shell ↔ public API ↔ audit log) |
+| WU8.3 (demo runbook) | No | No | Docs only |
+| WU8.4 (wrap-up journal + CLAUDE.md update) | No | No | Docs only |
+| (E2E hotfix) | (Already done) | (Already done) | Retroactively a successful application of Change 1 + 2 via local reproduction discipline |
+
+### Three follow-ups the hotfix journal captured
+
+Recording here for visibility (not blocking):
+
+1. Regression unit tests for cold-bootstrap-refresh (Bug 4) and
+   Authorization-suppression-on-auth-endpoints (Bug 5). Currently
+   only the e2e would catch a regression — unit-level coverage
+   would catch it on the next PR.
+2. Cross-reference note in `docs/runbooks/demo-accounts.md` flagging
+   the RFC-6761 `.test` TLD restriction so future demo-account
+   generators don't repeat the trap.
+3. Rename the now-overloaded `_skipAuthRefresh` Axios flag to
+   something more accurate — the flag conflates "skip refresh
+   retry" with "skip Authorization header attachment."
+
+### Revised bottom line
+
+The pattern is broader than security: **iterative review under-counts
+both security categories and integration failure modes.** The fix is
+the same — adversary framing + explicit second-review constraint — but
+the scope of "high-risk surfaces" should include integration surfaces
+as well as security surfaces. WU5.4 happens to be both, so it gets
+both treatments. Most future WUs will be one or the other; check
+which before scaffolding the prompt.
