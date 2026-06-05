@@ -1,0 +1,11 @@
+{
+  "apiBaseUrl": "http://localhost:8000",
+  "tuningThresholds": {
+    "alignmentConfidence": {
+      "suppressBelow": 0.6,
+      "amberMin": 0.6,
+      "greenMin": 0.85
+    }
+  },
+  "featureFlags": {}
+}

@@ -27,6 +27,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     props: true,
   },
+  {
+    path: '/watchlists',
+    name: 'watchlists',
+    component: () => import('@/views/WatchlistsView.vue'),
+    meta: { requiresAuth: true },
+  },
 ]
 
 export function createAppRouter(): Router {

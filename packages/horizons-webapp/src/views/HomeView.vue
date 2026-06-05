@@ -26,12 +26,18 @@ async function onSignOut(): Promise<void> {
     <section class="mx-auto max-w-3xl px-6 py-16">
       <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Welcome</h1>
       <p class="mt-3 text-slate-600">Regulatory-change intelligence.</p>
-      <div class="mt-6">
+      <div class="mt-6 flex gap-3">
         <RouterLink
           to="/changes"
           class="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-slate-50 hover:bg-slate-800"
         >
           Browse recent changes
+        </RouterLink>
+        <RouterLink
+          to="/watchlists"
+          class="inline-flex items-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-100"
+        >
+          Manage watchlists
         </RouterLink>
       </div>
     </section>

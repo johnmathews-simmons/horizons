@@ -17,11 +17,6 @@ declare module 'axios' {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-// TODO(WU5.1): replace with runtime /config.json lookup. A single bundle ships
-// to every environment; the base URL is read from a config file fetched at
-// app boot, not baked in here.
-const API_BASE_URL = 'http://localhost:8000'
-
 export interface AuthBridge {
   getAccessToken: () => string | null
   refresh: () => Promise<void>
@@ -35,10 +30,16 @@ export function setAuthBridge(next: AuthBridge | null): void {
 }
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: { Accept: 'application/json' },
 })
+
+// Set the API base URL from runtime config (loaded by bootstrap()) before any
+// HTTP call. Without this every request fails against the page origin, which
+// is the intentional fail-loud signal — never silently default.
+export function configureApiClient(baseUrl: string): void {
+  apiClient.defaults.baseURL = baseUrl
+}
 
 apiClient.interceptors.request.use((config) => {
   const token = bridge?.getAccessToken() ?? null

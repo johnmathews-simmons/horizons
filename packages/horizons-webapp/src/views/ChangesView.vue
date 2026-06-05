@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useWindowVirtualizer, type VirtualItem } from '@tanstack/vue-virtual'
 import { useChangeEvents } from '@/composables/useChangeEvents'
-import { confidenceTier } from '@/constants/confidence'
+import { suppressBelowThreshold } from '@/constants/confidence'
 import { Button } from '@/components/ui/button'
 import { ConfidenceBadge } from '@/components/ui/confidence-badge'
 import { ChangeTypePill } from '@/components/ui/change-type-pill'
@@ -17,14 +17,14 @@ const allItems = computed<DiscoveryItem[]>(
   () => query.data.value?.pages.flatMap((p) => p.items) ?? [],
 )
 
-const filteredItems = computed<DiscoveryItem[]>(() =>
-  allItems.value.filter((item) => {
+const filteredItems = computed<DiscoveryItem[]>(() => {
+  const suppress = suppressBelowThreshold()
+  return allItems.value.filter((item) => {
     if (!showMoved.value && item.change_type === 'MOVED') return false
-    if (!showBelowThreshold.value && confidenceTier(item.alignment_confidence) === 'low')
-      return false
+    if (!showBelowThreshold.value && item.alignment_confidence < suppress) return false
     return true
-  }),
-)
+  })
+})
 
 const isInitialLoading = computed(() => query.isPending.value)
 const hasError = computed(() => query.isError.value)
