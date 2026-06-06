@@ -120,12 +120,19 @@ module keyVault 'modules/keyvault.bicep' = {
 // ---------------------------------------------------------------------
 // 4. Storage — originals container + $web for the SPA.
 // ---------------------------------------------------------------------
+// UAMI provisioned out-of-band by WU6.1; referenced here only to thread
+// its principalId into the storage module's role-assignment block.
+resource githubOidcUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: 'horizons-github-oidc'
+}
+
 module storage 'modules/storage.bicep' = {
   name: 'storage'
   params: {
     location: location
     workloadPrefix: workloadPrefix
     environmentName: environmentName
+    spaUploaderPrincipalId: githubOidcUami.properties.principalId
     tags: tags
   }
 }
