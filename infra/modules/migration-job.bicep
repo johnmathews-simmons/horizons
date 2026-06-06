@@ -147,15 +147,22 @@ resource migrate 'Microsoft.App/jobs@2024-10-02-preview' = {
         {
           name: 'migrate'
           image: image
-          // Override uvicorn → alembic. The image already has uv +
-          // the workspace baked in; alembic.ini lives at /app root
-          // and references packages/horizons-core/migrations.
+          // Override uvicorn → alembic. The runtime image puts the
+          // alembic console script at /opt/venv/bin/alembic (on PATH);
+          // alembic.ini lives at /app/alembic.ini after the Dockerfile's
+          // COPY (B2). `uv` itself is NOT in the runtime image — the
+          // builder stage owns it.
+          //
+          // The migration env.py reads HORIZONS_DB_URL; the job's
+          // env block only carries the individual HORIZONS_DB_* parts.
+          // Assemble the URL at runtime via a sh wrapper. The `\${…}`
+          // escape keeps Bicep from interpolating at compile time so
+          // the literal `${VAR}` lands in the JSON; shell expansion
+          // happens in the container where the env vars are populated.
           command: [
-            'uv'
-            'run'
-            'alembic'
-            'upgrade'
-            'head'
+            'sh'
+            '-c'
+            'export HORIZONS_DB_URL="postgresql+psycopg://\${HORIZONS_DB_USER}:\${HORIZONS_DB_PASSWORD}@\${HORIZONS_DB_HOST}:5432/\${HORIZONS_DB_NAME}"; exec alembic upgrade head'
           ]
           resources: {
             cpu: json(cpu)
