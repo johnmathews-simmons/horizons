@@ -75,6 +75,8 @@ uv run pre-commit install        # enable git pre-commit hooks
 cd packages/horizons-webapp && npm install && cd -
 ```
 
+Verify the hook was actually installed with `ls .git/hooks/pre-commit`. If the install reported `Cowardly refusing to install hooks with core.hooksPath set`, the repo has an orphan `git config core.hooksPath` pointing at the default location — unset it (`git config --unset core.hooksPath`) and rerun `uv run pre-commit install`.
+
 **Day-to-day:**
 
 - `uv run pytest` — full Python test suite (pytest uses `--import-mode=importlib` so per-package `test_smoke.py` filenames don't collide; `asyncio_mode=auto` so `async def test_*` functions don't need a decorator). Integration tests marked `integration` spin up a testcontainers Postgres 18 and auto-skip if Docker isn't reachable. Slow Hypothesis property tests marked `nightly` are excluded by default via `-m 'not nightly'` in `addopts`.
