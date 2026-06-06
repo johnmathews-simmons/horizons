@@ -58,6 +58,16 @@ async function confirmRemove(): Promise<void> {
 function formatDate(iso: string): string {
   return iso.slice(0, 10)
 }
+
+function displayName(row: Watchlist): string {
+  // Prefer the user-set name; if blank, fall back to the joined document
+  // title; if that's also unavailable (write-only path or older row),
+  // fall back to the document ID so the row is never visually empty.
+  const trimmed = row.name?.trim()
+  if (trimmed) return trimmed
+  if (row.document_title) return row.document_title
+  return row.document_id
+}
 </script>
 
 <template>
@@ -77,7 +87,7 @@ function formatDate(iso: string): string {
         <div>
           <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Watchlists</h1>
           <p class="mt-1 text-sm text-slate-500">
-            Documents you are monitoring for clause-level changes.
+            Documents monitored for clause-level changes.
           </p>
         </div>
         <Button data-testid="open-add-dialog" @click="addOpen = true">Add documents</Button>
@@ -112,6 +122,8 @@ function formatDate(iso: string): string {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
+            <TableHead>Jurisdiction</TableHead>
+            <TableHead>Sector</TableHead>
             <TableHead>Document ID</TableHead>
             <TableHead>Added</TableHead>
             <TableHead class="text-right">Actions</TableHead>
@@ -124,7 +136,9 @@ function formatDate(iso: string): string {
             :data-testid="`watchlist-row-${row.id}`"
             data-row-testid="watchlist-row"
           >
-            <TableCell class="font-medium">{{ row.name }}</TableCell>
+            <TableCell class="font-medium">{{ displayName(row) }}</TableCell>
+            <TableCell class="text-slate-700">{{ row.document_jurisdiction ?? '—' }}</TableCell>
+            <TableCell class="text-slate-700">{{ row.document_sector ?? '—' }}</TableCell>
             <TableCell class="font-mono text-xs text-slate-500">{{ row.document_id }}</TableCell>
             <TableCell class="text-slate-600">{{ formatDate(row.created_at) }}</TableCell>
             <TableCell class="text-right">

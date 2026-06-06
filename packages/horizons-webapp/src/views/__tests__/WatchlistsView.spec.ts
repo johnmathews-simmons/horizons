@@ -17,6 +17,9 @@ interface Watchlist {
   document_id: string
   name: string
   created_at: string
+  document_title?: string | null
+  document_jurisdiction?: string | null
+  document_sector?: string | null
 }
 
 const SAMPLE: Watchlist[] = [
@@ -25,12 +28,18 @@ const SAMPLE: Watchlist[] = [
     document_id: '01800000-0000-7000-8000-000000000001',
     name: 'Capital Requirements Act 2024',
     created_at: '2026-06-01T10:00:00Z',
+    document_title: 'Capital Requirements Act 2024',
+    document_jurisdiction: 'UK',
+    document_sector: 'BANKING',
   },
   {
     id: '01900000-0000-7000-8000-000000000002',
     document_id: '01800000-0000-7000-8000-000000000002',
     name: 'Liquidity Coverage Directive',
     created_at: '2026-06-02T09:30:00Z',
+    document_title: 'Liquidity Coverage Directive',
+    document_jurisdiction: 'EU',
+    document_sector: 'BANKING',
   },
 ]
 
@@ -109,7 +118,7 @@ describe('WatchlistsView — list, remove', () => {
     wrapper.unmount()
   })
 
-  it('renders one row per watchlist with name, doc id, and date', async () => {
+  it('renders one row per watchlist with name, jurisdiction, sector, doc id, and date', async () => {
     server.use(http.get(WATCHLIST_PATH, () => HttpResponse.json(SAMPLE)))
 
     const wrapper = mountView()
@@ -118,8 +127,54 @@ describe('WatchlistsView — list, remove', () => {
     const rows = wrapper.findAll('[data-row-testid="watchlist-row"]')
     expect(rows).toHaveLength(2)
     expect(rows[0]?.text()).toContain('Capital Requirements Act 2024')
+    expect(rows[0]?.text()).toContain('UK')
+    expect(rows[0]?.text()).toContain('BANKING')
     expect(rows[0]?.text()).toContain(SAMPLE[0]!.document_id)
     expect(rows[0]?.text()).toContain('2026-06-01')
+    expect(rows[1]?.text()).toContain('EU')
+    wrapper.unmount()
+  })
+
+  it('falls back to document_title when the user-set name is blank', async () => {
+    const blankName: Watchlist[] = [
+      {
+        id: '01900000-0000-7000-8000-000000000bbb',
+        document_id: '01800000-0000-7000-8000-000000000bbb',
+        name: '',
+        created_at: '2026-06-03T08:00:00Z',
+        document_title: 'Foat v Department of Work and Pensions',
+        document_jurisdiction: 'UK',
+        document_sector: 'BANKING',
+      },
+    ]
+    server.use(http.get(WATCHLIST_PATH, () => HttpResponse.json(blankName)))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rows = wrapper.findAll('[data-row-testid="watchlist-row"]')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.text()).toContain('Foat v Department of Work and Pensions')
+    wrapper.unmount()
+  })
+
+  it('falls back to document_id when both name and document_title are blank', async () => {
+    const allBlank: Watchlist[] = [
+      {
+        id: '01900000-0000-7000-8000-000000000ccc',
+        document_id: '01800000-0000-7000-8000-000000000ccc',
+        name: '',
+        created_at: '2026-06-03T08:00:00Z',
+      },
+    ]
+    server.use(http.get(WATCHLIST_PATH, () => HttpResponse.json(allBlank)))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rows = wrapper.findAll('[data-row-testid="watchlist-row"]')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.text()).toContain(allBlank[0]!.document_id)
     wrapper.unmount()
   })
 

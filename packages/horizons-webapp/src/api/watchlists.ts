@@ -5,6 +5,12 @@ export interface Watchlist {
   document_id: string
   name: string
   created_at: string
+  // Joined from the document on listing endpoints. Optional because the
+  // create response doesn't populate them — the SPA refetches the list
+  // after a mutation, which then carries the joined values.
+  document_title?: string | null
+  document_jurisdiction?: string | null
+  document_sector?: string | null
 }
 
 export interface CreateWatchlistBody {

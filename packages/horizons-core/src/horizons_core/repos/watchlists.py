@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
 from sqlalchemy import update as sql_update
+from sqlalchemy.orm import selectinload
 
 from horizons_core.db.models.watchlists import Watchlist
 
@@ -29,6 +30,13 @@ class WatchlistDTO(BaseModel):
 
     ``from_attributes=True`` is what lets ``model_validate`` read
     SQLAlchemy ORM attribute access (``row.id``) instead of dict access.
+
+    The ``document_*`` fields are populated by the listing paths
+    (``list_for``, ``get_by_id``, ``list_all_including_inactive_for_user``)
+    which selectin-load the related document so the surface needs no extra
+    round-trip to render jurisdiction + sector + a sensible fallback for
+    ``name``. ``create`` leaves them ``None`` — the frontend invalidates
+    the list query after a mutation, so the next list_for fills them.
     """
 
     model_config = ConfigDict(from_attributes=True, frozen=True)
@@ -39,6 +47,11 @@ class WatchlistDTO(BaseModel):
     name: str
     active: bool
     created_at: datetime
+    # Joined from `documents` for read paths. Optional so write paths
+    # (`create`) don't need to fan out to the documents table.
+    document_title: str | None = None
+    document_jurisdiction: str | None = None
+    document_sector: str | None = None
 
 
 class WatchlistsRepository:
@@ -55,6 +68,32 @@ class WatchlistsRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    @staticmethod
+    def _to_dto(row: Watchlist) -> WatchlistDTO:
+        """Build a DTO from an ORM row, copying joined document fields if loaded.
+
+        The caller is responsible for having selectin-loaded
+        ``Watchlist.document`` when the joined fields are wanted. When
+        the relationship wasn't loaded (e.g. the row was constructed by
+        ``create`` and hasn't gone through ``selectinload``), the joined
+        fields stay ``None`` rather than triggering an async-unfriendly
+        lazy load.
+        """
+        document = row.__dict__.get("document")  # avoid implicit lazy-load
+        if document is None:
+            return WatchlistDTO.model_validate(row)
+        return WatchlistDTO(
+            id=row.id,
+            user_id=row.user_id,
+            document_id=row.document_id,
+            name=row.name,
+            active=row.active,
+            created_at=row.created_at,
+            document_title=document.title,
+            document_jurisdiction=document.jurisdiction,
+            document_sector=document.sector,
+        )
+
     async def list_for(self) -> list[WatchlistDTO]:
         """Every *active* watchlist visible to the current session.
 
@@ -63,13 +102,23 @@ class WatchlistsRepository:
         rows (set inactive when an admin reduced the owning user's
         subscription scope) disappear from the client surface. Admin
         views use ``list_all_including_inactive_for_user`` instead.
+
+        Selectin-loads the related document so the DTO carries the
+        joined ``document_title`` / ``jurisdiction`` / ``sector`` for
+        the listing surface without a per-row round-trip.
         """
         rows = (
-            (await self._session.execute(select(Watchlist).where(Watchlist.active.is_(True))))
+            (
+                await self._session.execute(
+                    select(Watchlist)
+                    .options(selectinload(Watchlist.document))
+                    .where(Watchlist.active.is_(True))
+                )
+            )
             .scalars()
             .all()
         )
-        return [WatchlistDTO.model_validate(r) for r in rows]
+        return [self._to_dto(r) for r in rows]
 
     async def list_all_including_inactive_for_user(self, user_id: uuid.UUID) -> list[WatchlistDTO]:
         """Every watchlist owned by ``user_id``, active or not.
@@ -80,11 +129,17 @@ class WatchlistsRepository:
         cross-user reads to zero rows.
         """
         rows = (
-            (await self._session.execute(select(Watchlist).where(Watchlist.user_id == user_id)))
+            (
+                await self._session.execute(
+                    select(Watchlist)
+                    .options(selectinload(Watchlist.document))
+                    .where(Watchlist.user_id == user_id)
+                )
+            )
             .scalars()
             .all()
         )
-        return [WatchlistDTO.model_validate(r) for r in rows]
+        return [self._to_dto(r) for r in rows]
 
     async def soft_hide_out_of_scope(
         self,

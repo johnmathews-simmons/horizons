@@ -45,7 +45,15 @@ router = APIRouter(prefix="/v1/me/watchlists", tags=["watchlists"])
 
 
 class WatchlistResponse(BaseModel):
-    """Wire shape for a single watchlist row."""
+    """Wire shape for a single watchlist row.
+
+    The ``document_*`` fields are populated by listing endpoints (joined
+    from ``documents`` in the repository) so the UI can render
+    jurisdiction / sector / a sensible name fallback without an extra
+    round-trip. The create endpoint returns them ``None``; the SPA
+    refetches the list after a mutation and picks the joined values up
+    on the next read.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -53,6 +61,9 @@ class WatchlistResponse(BaseModel):
     document_id: uuid.UUID
     name: str
     created_at: str  # ISO-8601; Pydantic encodes datetime → str on serialise
+    document_title: str | None = None
+    document_jurisdiction: str | None = None
+    document_sector: str | None = None
 
 
 class CreateWatchlistRequest(BaseModel):
@@ -74,6 +85,9 @@ def _to_response(dto: WatchlistDTO) -> WatchlistResponse:
         document_id=dto.document_id,
         name=dto.name,
         created_at=dto.created_at.isoformat(),
+        document_title=dto.document_title,
+        document_jurisdiction=dto.document_jurisdiction,
+        document_sector=dto.document_sector,
     )
 
 
