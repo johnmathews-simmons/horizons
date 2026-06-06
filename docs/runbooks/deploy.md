@@ -235,7 +235,9 @@ The workflow assumes these are already in place:
 | Federated credential `repo:johnmathews/horizons:environment:staging` on UAMI `horizons-github-oidc` | Azure portal | WU6.1 |
 | `Contributor` role on `horizons-nonprod` for the UAMI's principal | Azure RBAC | WU6.1 (control plane only — see next row) |
 | `Storage Blob Data Contributor` on the storage account for the UAMI's principal | Azure RBAC | **NEW — required for the SPA `upload-batch` step** |
+| `Storage Blob Data Contributor` on the storage account for the worker's SystemAssigned identity (principal ID = `az containerapp show -n horizons-dev-worker -g <rg> --query identity.principalId -o tsv`) | Azure RBAC | First deploy follow-up — the worker creates the `originals` container on startup |
 | `secrets.POSTGRES_ADMIN_PASSWORD` | `staging` GitHub Environment secret | **NEW — must be set before first deploy** |
+| `secrets.HORIZONS_JWT_PRIVATE_KEY_PEM` + `HORIZONS_JWT_PUBLIC_KEY_PEM` | `staging` GitHub Environment secret | RS256 keypair the API signs/verifies tokens with. Generate locally with `openssl genpkey -algorithm RSA -out priv.pem -pkeyopt rsa_keygen_bits:2048 && openssl rsa -pubout -in priv.pem -out pub.pem`, then `gh secret set HORIZONS_JWT_PRIVATE_KEY_PEM --env staging < priv.pem` (same for the public key). |
 | GHCR packages `horizons-api`, `horizons-worker` set to public visibility | github.com package settings | WU6.2 (post-first-push flip) |
 | Static-website hosting enabled on the storage account | One-off `az storage blob service-properties update --static-website` | First deploy follow-up — see `infra/README.md` |
 | ACA env bound to App Insights via `az containerapp env update --logs-destination log-analytics` | One-off control-plane action | First deploy follow-up — see `infra/README.md` |

@@ -1,8 +1,10 @@
 # 2026-06-06 — Deploy pipeline triage
 
-Working document for the "charge through and fix everything" effort. Created mid-session after the first end-to-end deploy attempts revealed multiple Bicep ↔ application contract mismatches that none of the unit/integration test suite catches. The repo is functionally complete (tests pass, Playwright e2e green locally), but no commit has ever produced a running Azure stack. This doc is the single source of truth for what's broken, what depends on what, and the order in which we fix it. Update in place as fixes land.
+**Status:** all 8 bugs in the ledger are closed; the deploy pipeline lands a full stack against `horizons-nonprod`. Session retro + post-demo punch list live in `journal/260606-deploy-pipeline-end-to-end.md`. This doc is preserved as the bug-by-bug record but should not be edited further.
 
-**Status:** in progress. Demo target 2026-06-08.
+---
+
+Working document for the "charge through and fix everything" effort. Created mid-session after the first end-to-end deploy attempts revealed multiple Bicep ↔ application contract mismatches that none of the unit/integration test suite catches. The repo is functionally complete (tests pass, Playwright e2e green locally), but no commit has ever produced a running Azure stack. This doc was the single source of truth for what's broken, what depends on what, and the order in which we fix it.
 
 ## Where we are right now
 
@@ -47,7 +49,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
 - **Reality:** `horizons_api.app` only exposes a `create_app()` factory; there is no module-level `app` symbol. Uvicorn's "Attribute 'app' not found in module 'horizons_api.app'" error in the ACA system log confirms this.
 - **Fix:** Use uvicorn's factory mode: `CMD ["uvicorn", "horizons_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]`.
 - **Verification:** New image, deployed revision reaches `Running` not `ActivationFailed` (assuming B5 also fixed for env vars).
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ### B2 — Migration tooling absent from API runtime image
 
@@ -60,7 +62,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
   COPY packages/horizons-core/migrations ./packages/horizons-core/migrations
   ```
 - **Verification:** Inside the new image, `alembic --version` succeeds and `ls /app/alembic.ini` shows the file. (Also B4 needs to be fixed before migrations actually run.)
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ### B3 — Migration job command uses missing `uv`
 
@@ -76,7 +78,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
   ```
   *Note: Bicep interpolates `${…}` at compile time. Need to escape: the env-var refs above must be passed through as `\${HORIZONS_DB_USER}` etc. in the Bicep source so that the literal `${…}` lands in the JSON and shell expansion happens at runtime.* See the actual Bicep syntax in B4 below.
 - **Verification:** New job execution logs Alembic INFO lines and exits 0.
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ### B4 — Migration job env vars don't match what `migrations/env.py` reads
 
@@ -88,7 +90,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
   - **(b)** Extend `migrations/env.py` to construct the URL from individual vars when `HORIZONS_DB_URL` is absent. Cleaner long-term, but touches application code.
 - **Recommendation:** (a) for the demo, (b) post-demo.
 - **Verification:** Same as B3.
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ### B5 — API container has no DB or JWT env vars
 
@@ -117,7 +119,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
   7. Add `HORIZONS_CORS_ORIGINS` — value should be the Front Door endpoint hostname (`https://horizons-dev-<hash>.azurefd.net` or whatever it resolves to).
 - **Prereq:** UAMI needs `Key Vault Secrets User` role on the vault; ACA needs the UAMI mounted (currently ACA uses `SystemAssigned` — switch to or add `UserAssigned`).
 - **Verification:** New revision reaches `Running`. `/healthz` returns 200 from inside the ACA env.
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ### B6 — Worker container has no DB or domain env vars
 
@@ -131,7 +133,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
   - **Lawstronaut credentials.** Confirm whether the worker calls Lawstronaut directly at runtime in the demo, or whether the curated seed already populated the corpus and the worker just maintains it. **Open question — see Q3.**
 - **Fix:** Same pattern as B5 — KV-backed secrets for the password, plain env vars for the rest.
 - **Verification:** New revision reaches `Running` and `/healthz` returns 200 on port 8080.
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ### B7 — `horizons` database not in IaC
 
@@ -150,7 +152,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
   ```
   Add the resource inside `infra/modules/postgres-flex.bicep` next to the server, OR in `infra/postgres.bicep` if we keep it stack-level.
 - **Verification:** Tearing down the database and re-running `deploy-postgres.yml` recreates it.
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ### B8 — ACA env log destination not in IaC
 
@@ -167,7 +169,7 @@ Each row is a discrete, independently fixable bug. Fix order is bottom-up (datab
   }
   ```
 - **Verification:** Fresh `az containerapp env show` returns `appLogsConfiguration.destination = log-analytics` without manual intervention.
-- **Status:** [ ]
+- **Status:** [x] (landed; see end-to-end retro)
 
 ## Cross-cutting concerns
 
@@ -193,14 +195,17 @@ Already exists: `horizons-github-oidc`. Currently has `Contributor` on the RG an
 
 After B1/B2 fixes land, the GHCR images need a fresh build. `build-and-push.yml` triggers on push to main. Each Bicep image fix → push → wait for `build-and-push` → `deploy.yml` auto-fires. Roughly 8–12 min per cycle. Plan accordingly.
 
-## Open questions for John
+## Decisions (2026-06-06, locked)
 
-- **Q1 (cor scoping):** For the demo, is it acceptable to short-circuit KV (put secrets directly in `secrets:` block of each Container App via Bicep `@secure()` params) and post-demo refactor to KV-backed references? Saves ~1–2 h of indirection setup.
-- **Q2 (JWT issuer/audience):** What strings should `HORIZONS_JWT_ISSUER` and `HORIZONS_JWT_AUDIENCE` be? Suggest defaults: `issuer="horizons-api-dev"`, `audience="horizons-webapp-dev"`.
-- **Q3 (Lawstronaut at runtime):** Does the worker poll Lawstronaut at demo time, or is the curated set + synthetic v2 already seeded and the worker is just running its loop against a static dataset? If poll-at-demo, we need the Lawstronaut credentials wired into the worker. If static, we can leave Lawstronaut creds out — the worker will run its loop, find nothing to claim, sleep.
-- **Q4 (CORS origin):** What's the final SPA URL the API needs to accept? Probably the Front Door endpoint hostname — we can fetch it from `frontDoor.outputs.endpointHostName`. Confirm whether the webapp build also needs to know the API FQDN at build time (it does — `VITE_API_BASE_URL` or similar).
-- **Q5 (demo accounts):** `create_demo_accounts.py` reads `HORIZONS_DB_URL` and inserts the demo users. When and how do we run it against the deployed Postgres? Suggest: one-off Container Apps Job similar to migrate, fired from `deploy.yml` after migrations succeed. Or once-off `az containerapp job` invocation.
-- **Q6 (Front Door / SPA):** Has the SPA bundle's `VITE_API_BASE_URL` ever been set to a non-localhost value? The deploy workflow builds the SPA at deploy time — check that the build step injects the right API URL.
+- **Q1 — Secret architecture:** Short-circuit Key Vault. Bicep `@secure()` params → ACA `secrets:` block direct. Post-demo refactor to KV-backed `keyVaultUrl` references is a known follow-up.
+- **Q2 — JWT iss/aud:** `HORIZONS_JWT_ISSUER=horizons-api-dev`, `HORIZONS_JWT_AUDIENCE=horizons-webapp-dev`.
+- **Q3 — Lawstronaut at demo time:** Static. Curated set + synthetic v2 are pre-seeded; worker idles on its loop. No Lawstronaut credentials needed in the worker container.
+- **Q5 — Demo accounts:** New ACA Job mirroring the migration job pattern, fired from `deploy.yml` after migrations succeed.
+
+## Still to decide (lower-leverage)
+
+- **Q4 (CORS origin):** Use `frontDoor.outputs.endpointHostName` as the runtime source. The SPA build needs the API FQDN at build time via `VITE_API_BASE_URL` — checked at the deploy.yml SPA-build step when we get there.
+- **Q6 (SPA build env):** Likely the SPA has never been built with a non-localhost API URL. Audit at deploy.yml SPA-build time.
 
 ## Fix order
 
