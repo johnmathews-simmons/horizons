@@ -17,6 +17,13 @@ param environmentName string
 @description('Container Apps subnet ID (delegated to Microsoft.App/environments).')
 param infrastructureSubnetId string
 
+@description('Log Analytics workspace customerId — drives `appLogsConfiguration` so container stdout/stderr lands in LA without a post-deploy `az containerapp env update` step.')
+param logAnalyticsCustomerId string
+
+@description('Log Analytics workspace primary shared key. Sourced via `listKeys(workspaceId, apiVersion).primarySharedKey` in main.bicep.')
+@secure()
+param logAnalyticsSharedKey string
+
 @description('Tags applied to the environment.')
 param tags object = {}
 
@@ -37,12 +44,17 @@ resource env 'Microsoft.App/managedEnvironments@2024-10-02-preview' = {
         workloadProfileType: 'Consumption'
       }
     ]
-    // OpenTelemetry binding to App Insights is a control-plane action
-    // performed by `az containerapp env update` post-deploy — see
-    // infra/README.md "Post-deployment one-off steps". The corresponding
-    // property on managedEnvironments has churned across API versions;
-    // keeping the binding out-of-band avoids coupling the skeleton to a
-    // shape that may be renamed before WU6.3 lands.
+    // Stdout/stderr from every container in the env lands in Log Analytics
+    // via this block. Previously a post-deploy one-off (`az containerapp
+    // env update --logs-destination log-analytics …`); pulled into IaC so
+    // fresh deploys have working logs from the first revision.
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalyticsCustomerId
+        sharedKey: logAnalyticsSharedKey
+      }
+    }
   }
 }
 

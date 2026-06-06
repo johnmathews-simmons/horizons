@@ -136,6 +136,14 @@ resource existingPostgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01'
 // ---------------------------------------------------------------------
 // 6. Container Apps environment — managed OTEL agent wired to App Insights.
 // ---------------------------------------------------------------------
+// `listKeys` on a module output is rejected by Bicep (the resourceId is
+// only known mid-deployment). Reference the workspace via `existing` —
+// resolved at the start of deployment — and call `.listKeys()` on it.
+// The observability module owns its lifecycle; this is read-only.
+resource workspaceForKeys 'Microsoft.OperationalInsights/workspaces@2025-02-01' existing = {
+  name: '${workloadPrefix}-${environmentName}-law'
+}
+
 module containerEnv 'modules/container-app-env.bicep' = {
   name: 'container-app-env'
   params: {
@@ -143,6 +151,10 @@ module containerEnv 'modules/container-app-env.bicep' = {
     workloadPrefix: workloadPrefix
     environmentName: environmentName
     infrastructureSubnetId: network.outputs.acaSubnetId
+    logAnalyticsCustomerId: observability.outputs.workspaceCustomerId
+    // Treated as @secure in the env module so it never leaks into outputs
+    // or what-if reports.
+    logAnalyticsSharedKey: workspaceForKeys.listKeys().primarySharedKey
     tags: tags
   }
 }

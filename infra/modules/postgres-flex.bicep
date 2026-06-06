@@ -91,6 +91,21 @@ resource pgsql 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   }
 }
 
+// The application database. Azure provisions only `postgres` / `azure_*`
+// out of the box; the app expects a dedicated `horizons` DB and the
+// migration job fails fast on connection if it's missing. Declared as a
+// child resource so a fresh `deploy-postgres.yml` run leaves the cluster
+// in a state that the routine app deploy can immediately consume.
+resource horizonsDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
+  parent: pgsql
+  name: 'horizons'
+  properties: {
+    charset: 'UTF8'
+    collation: 'en_US.utf8'
+  }
+}
+
 output serverId string = pgsql.id
 output serverName string = pgsql.name
 output serverFqdn string = pgsql.properties.fullyQualifiedDomainName
+output databaseName string = horizonsDb.name
