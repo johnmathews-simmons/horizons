@@ -155,6 +155,15 @@ def upgrade() -> None:
     # not leak: ``current_scope()`` already restricts to the caller's
     # subscriptions and the EXISTS only checks the specific
     # ``NEW.document_id``.
+    # admin_bypass needs CREATE on app_private (the function's schema)
+    # for the OWNER transfer below — without it the ALTER fails with
+    # "permission denied for schema app_private" on PG 18 + Azure Flex
+    # (no superuser available to the migration user). Idempotent.
+    op.execute("GRANT USAGE, CREATE ON SCHEMA app_private TO admin_bypass;")
+    # Also self-grant admin_bypass to current_user so the ALTER OWNER
+    # can succeed (the migration user must be a member of the new
+    # owner role).
+    op.execute("GRANT admin_bypass TO current_user;")
     op.execute("ALTER FUNCTION app_private.assert_watchlist_in_scope() OWNER TO admin_bypass;")
     op.execute("REVOKE ALL ON FUNCTION app_private.assert_watchlist_in_scope() FROM PUBLIC;")
     op.execute("GRANT EXECUTE ON FUNCTION app_private.assert_watchlist_in_scope() TO api_app;")
