@@ -96,11 +96,16 @@ function isNotFound(): boolean {
               {{ document.title }}
             </h1>
             <div class="mt-1 text-sm text-slate-500">
-              {{ document.jurisdiction }} · {{ document.sector }} ·
-              <span data-testid="document-version-label">version {{ activeVersionLabel }}</span>
+              {{ document.jurisdiction }} · {{ document.sector }}<template
+                v-if="activeVersionLabel"
+              >
+                ·
+                <span data-testid="document-version-label">version {{ activeVersionLabel }}</span>
+              </template>
             </div>
           </div>
           <Button
+            v-if="activeVersionLabel"
             variant="outline"
             size="sm"
             data-testid="toggle-structure"
@@ -112,7 +117,15 @@ function isNotFound(): boolean {
         </div>
 
         <div
-          v-if="clausesQuery.isPending.value"
+          v-if="!activeVersionLabel"
+          data-testid="no-versions-state"
+          class="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-600"
+        >
+          No content has been ingested for this document yet. The Horizons worker fetches and aligns clauses on its next scheduled poll.
+        </div>
+
+        <div
+          v-else-if="clausesQuery.isPending.value"
           data-testid="clauses-loading"
           class="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-500"
         >

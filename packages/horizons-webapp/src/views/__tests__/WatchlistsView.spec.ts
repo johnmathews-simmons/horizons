@@ -10,7 +10,7 @@ import { _resetToasts } from '@/composables/useToast'
 
 const API = 'http://localhost:8000'
 const WATCHLIST_PATH = `${API}/v1/me/watchlists`
-const DISCOVERY_PATH = `${API}/v1/discovery`
+const DOCUMENTS_PATH = `${API}/v1/documents`
 
 interface Watchlist {
   id: string
@@ -43,32 +43,27 @@ const SAMPLE: Watchlist[] = [
   },
 ]
 
-interface DiscoverySeed {
-  document_id: string
+interface DocumentSeed {
+  id: string
   jurisdiction: string
   sector: string
+  title?: string
 }
 
-function discoveryHandler(items: DiscoverySeed[]) {
-  return http.get(DISCOVERY_PATH, () =>
+function documentsHandler(items: DocumentSeed[]) {
+  return http.get(DOCUMENTS_PATH, () =>
     HttpResponse.json({
       items: items.map((item, i) => ({
-        id: i + 1,
-        document_id: item.document_id,
-        document_version_id: 'v1',
+        id: item.id,
         jurisdiction: item.jurisdiction,
         sector: item.sector,
-        change_type: 'MODIFIED',
-        before_clause_uid: null,
-        after_clause_uid: null,
-        before_path: null,
-        after_path: 'x',
-        alignment_confidence: 0.9,
-        detected_at: '2026-06-04T08:00:00Z',
-        effective_date: null,
+        lawstronaut_document_id: `lid-${i + 1}`,
+        title: item.title ?? `Document ${item.id}`,
+        created_at: '2026-06-04T08:00:00Z',
       })),
-      next_cursor: null,
-      has_more: false,
+      total: items.length,
+      limit: 200,
+      offset: 0,
     }),
   )
 }
@@ -253,14 +248,12 @@ describe('WatchlistsView — add dialog', () => {
     _resetToasts()
   })
 
-  it('opens the add dialog and lists in-scope documents from /v1/discovery (deduped)', async () => {
+  it('opens the add dialog and lists in-scope documents from /v1/documents', async () => {
     server.use(
       http.get(WATCHLIST_PATH, () => HttpResponse.json([])),
-      // Same document_id repeated twice + one distinct → dedup to 2 rows.
-      discoveryHandler([
-        { document_id: 'doc-uk-finance-1', jurisdiction: 'UK', sector: 'FINANCE' },
-        { document_id: 'doc-uk-finance-1', jurisdiction: 'UK', sector: 'FINANCE' },
-        { document_id: 'doc-ie-banking-2', jurisdiction: 'IE', sector: 'BANKING' },
+      documentsHandler([
+        { id: 'doc-uk-finance-1', jurisdiction: 'UK', sector: 'FINANCE' },
+        { id: 'doc-ie-banking-2', jurisdiction: 'IE', sector: 'BANKING' },
       ]),
     )
 
@@ -294,8 +287,8 @@ describe('WatchlistsView — add dialog', () => {
         watchlists = [...watchlists, created]
         return HttpResponse.json(created, { status: 201 })
       }),
-      discoveryHandler([
-        { document_id: 'doc-uk-finance-1', jurisdiction: 'UK', sector: 'FINANCE' },
+      documentsHandler([
+        { id: 'doc-uk-finance-1', jurisdiction: 'UK', sector: 'FINANCE' },
       ]),
     )
 
@@ -326,11 +319,11 @@ describe('WatchlistsView — add dialog', () => {
     wrapper.unmount()
   })
 
-  it('out-of-scope guard: a document not in /v1/discovery is invisible in the add dialog', async () => {
+  it('out-of-scope guard: a document not in /v1/documents is invisible in the add dialog', async () => {
     server.use(
       http.get(WATCHLIST_PATH, () => HttpResponse.json([])),
-      discoveryHandler([
-        { document_id: 'doc-in-scope', jurisdiction: 'UK', sector: 'FINANCE' },
+      documentsHandler([
+        { id: 'doc-in-scope', jurisdiction: 'UK', sector: 'FINANCE' },
       ]),
     )
 
@@ -344,12 +337,12 @@ describe('WatchlistsView — add dialog', () => {
     wrapper.unmount()
   })
 
-  it('search filters by document id, jurisdiction, or sector', async () => {
+  it('search filters by title, jurisdiction, or sector', async () => {
     server.use(
       http.get(WATCHLIST_PATH, () => HttpResponse.json([])),
-      discoveryHandler([
-        { document_id: 'uk-finance', jurisdiction: 'UK', sector: 'FINANCE' },
-        { document_id: 'ie-banking', jurisdiction: 'IE', sector: 'BANKING' },
+      documentsHandler([
+        { id: 'uk-doc', jurisdiction: 'UK', sector: 'FINANCE', title: 'UK Finance Act 2024' },
+        { id: 'ie-doc', jurisdiction: 'IE', sector: 'BANKING', title: 'IE Banking Regulation' },
       ]),
     )
 
@@ -366,7 +359,7 @@ describe('WatchlistsView — add dialog', () => {
 
     const remaining = document.querySelectorAll('[data-testid="discovery-row"]')
     expect(remaining.length).toBe(1)
-    expect(remaining[0]?.textContent).toContain('ie-banking')
+    expect(remaining[0]?.textContent).toContain('IE Banking Regulation')
     wrapper.unmount()
   })
 })

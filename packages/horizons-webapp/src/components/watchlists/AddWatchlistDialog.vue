@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useScopedDocuments, type ScopedDocument } from '@/composables/useScopedDiscovery'
+import { useScopedDocuments, type ScopedDocument } from '@/composables/useScopedDocuments'
 import { useAddWatchlistMutation } from '@/composables/useWatchlists'
 import { useToast } from '@/composables/useToast'
 import type { Watchlist } from '@/api/watchlists'
@@ -45,7 +45,7 @@ const filtered = computed<ScopedDocument[]>(() => {
     if (existingIds.value.has(doc.document_id)) return false
     if (!query) return true
     return (
-      doc.document_id.toLowerCase().includes(query) ||
+      doc.title.toLowerCase().includes(query) ||
       doc.jurisdiction.toLowerCase().includes(query) ||
       doc.sector.toLowerCase().includes(query)
     )
@@ -104,7 +104,7 @@ watch(open, (next) => {
         <Input
           v-model="search"
           type="search"
-          placeholder="Search by document ID, jurisdiction, or sector"
+          placeholder="Search by title, jurisdiction, or sector"
           data-testid="search-input"
         />
 
@@ -144,7 +144,7 @@ watch(open, (next) => {
                 @change="toggle(doc.document_id)"
               />
               <div class="min-w-0 flex-1">
-                <div class="truncate font-mono text-xs text-slate-700">{{ doc.document_id }}</div>
+                <div class="truncate text-sm font-medium text-slate-900">{{ doc.title }}</div>
                 <div class="text-xs text-slate-500">{{ doc.jurisdiction }} · {{ doc.sector }}</div>
               </div>
             </label>
