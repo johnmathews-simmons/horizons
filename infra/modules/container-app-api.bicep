@@ -2,8 +2,6 @@
 //
 // Per docs/RFC-4 services.md, this is the single HTTP surface every client
 // talks to. External ingress on :8000 → port 8000 inside the container.
-// Multiple revisions per locked-in plan item 10 — `activeRevisionsMode:
-// Multiple` enables revision-based blue/green rollback via traffic shift.
 
 @description('Azure region.')
 param location string
@@ -91,25 +89,14 @@ resource api 'Microsoft.App/containerApps@2024-10-02-preview' = {
     environmentId: environmentId
     workloadProfileName: 'Consumption'
     configuration: {
-      activeRevisionsMode: 'Multiple'
+      activeRevisionsMode: 'Single'
       ingress: {
         external: true
         targetPort: targetPort
         transport: 'auto'
         allowInsecure: false
-        // `traffic` is intentionally NOT declared here. WU6.3's deploy.yml
-        // manages traffic imperatively via `az containerapp ingress traffic
-        // set` so it can stand up a new revision at 0 % weight, smoke-test
-        // it, and only then shift to 100 % (with the previous revision held
-        // at 0 % as the rollback target). Declaring a traffic block would
-        // either (a) re-pin `latestRevision: true` on every Bicep deploy —
-        // bypassing the smoke gate — or (b) drift to whichever named
-        // revision the template happens to know about. ARM incremental
-        // mode preserves the live traffic state when the property is
-        // absent; on the very first deploy ACA defaults the traffic config
-        // to `latestRevision: true, weight: 100` (the platform default),
-        // which is the correct bootstrap behaviour. Subsequent deploys
-        // leave traffic untouched.
+        // No `traffic[]` block — Single mode defaults to
+        // `latestRevision: true, weight: 100`, which is correct.
       }
       // Short-circuit secret architecture for the demo: secrets live
       // inline on the Container App, sourced from Bicep @secure() params.
