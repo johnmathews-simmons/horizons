@@ -526,6 +526,23 @@ Return the user row + subscription summary for the verified bearer.
 | `200` | `MeResponse` | Successful Response |
 
 
+### `GET /v1/me/overview`
+
+Get Me Overview
+
+Return the corpus-matrix dashboard overview for the calling user.
+
+Admins see the full corpus with every entry ``subscribed=true``.
+Clients see the full corpus matrix but with ``subscribed`` flags
+reflecting their own subscription scope.
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `OverviewResponse` | Successful Response |
+
+
 ## temporal
 
 ### `GET /v1/temporal`
