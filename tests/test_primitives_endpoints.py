@@ -868,3 +868,159 @@ def test_discovery_clause_scope_filters_to_uid(
     assert response.status_code == 200
     ids = [it["id"] for it in response.json()["items"]]
     assert ids == [target_id]
+
+
+# ---- helpers for admin-role tests ----------------------------------------
+
+
+def _seed_admin_user(
+    engine: Engine,
+    email: str,
+) -> uuid.UUID:
+    """Insert an ``admin``-role user row (no subscription needed)."""
+    pw_hash = hash_password("pw")
+    with engine.begin() as conn:
+        uid = conn.execute(
+            text(
+                "INSERT INTO users (email, password_hash, role) "
+                "VALUES (:e, :p, 'admin') RETURNING id"
+            ),
+            {"e": email, "p": pw_hash},
+        ).scalar_one()
+    return uid
+
+
+# ---- admin-role primitives tests -----------------------------------------
+
+
+@pytest.mark.integration
+def test_admin_discovery_returns_corpus_wide(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """An admin GET /v1/discovery sees events across all jurisdictions.
+
+    Seeds a UK row (subscription-scoped to ``admin_uk_disc@``) and an EU
+    row whose jurisdiction is outside that scope.  A UK-only *client*
+    would see only the UK row; an admin must see both because
+    ``admin_bypass`` bypasses RLS subscription filtering.
+    """
+    j_uk = f"ADM-UK-{uuid.uuid4().hex[:6]}"
+    j_eu = f"ADM-EU-{uuid.uuid4().hex[:6]}"
+    s = f"ADM-S-{uuid.uuid4().hex[:6]}"
+
+    _seed_admin_user(migrated_postgres_p, "admin_disc_wide@example.com")
+
+    uk_doc, uk_ver = _seed_doc(migrated_postgres_p, jurisdiction=j_uk, sector=s, label="adm_uk")
+    eu_doc, eu_ver = _seed_doc(migrated_postgres_p, jurisdiction=j_eu, sector=s, label="adm_eu")
+
+    uk_id = _seed_event(
+        migrated_postgres_p,
+        document_id=uk_doc,
+        document_version_id=uk_ver,
+        jurisdiction=j_uk,
+        sector=s,
+    )
+    eu_id = _seed_event(
+        migrated_postgres_p,
+        document_id=eu_doc,
+        document_version_id=eu_ver,
+        jurisdiction=j_eu,
+        sector=s,
+    )
+
+    token = _login(client, "admin_disc_wide@example.com")
+    response = client.get("/v1/discovery?scope=corpus&limit=100", headers=_bearer(token))
+
+    assert response.status_code == 200, response.text
+    ids = {it["id"] for it in response.json()["items"]}
+    assert uk_id in ids, "admin must see UK row"
+    assert eu_id in ids, "admin must see EU row (corpus-wide, not subscription-scoped)"
+
+    # Confirm the result spans at least two jurisdictions.
+    jurisdictions = {it["jurisdiction"] for it in response.json()["items"]}
+    assert len(jurisdictions) >= 2
+
+
+@pytest.mark.integration
+def test_admin_discovery_writes_audit_row(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """Each admin GET /v1/discovery appends one ``admin_access_log`` row."""
+    admin_uid = _seed_admin_user(migrated_postgres_p, "admin_disc_audit@example.com")
+
+    with migrated_postgres_p.connect() as conn:
+        before = conn.execute(
+            text("SELECT COUNT(*) FROM admin_access_log WHERE admin_id = :uid"),
+            {"uid": admin_uid},
+        ).scalar_one()
+
+    token = _login(client, "admin_disc_audit@example.com")
+    response = client.get("/v1/discovery", headers=_bearer(token))
+    assert response.status_code == 200, response.text
+
+    with migrated_postgres_p.connect() as conn:
+        rows = (
+            conn.execute(
+                text(
+                    "SELECT mode, reason, target_user_id "
+                    "FROM admin_access_log "
+                    "WHERE admin_id = :uid "
+                    "ORDER BY granted_at DESC "
+                    "LIMIT 1"
+                ),
+                {"uid": admin_uid},
+            )
+            .mappings()
+            .all()
+        )
+
+    assert len(rows) == before + 1, "expected exactly one new audit row"
+    newest = rows[0]
+    assert newest["mode"] in ("OPERATOR", "operator"), f"unexpected mode: {newest['mode']!r}"
+    assert newest["reason"] == "/v1/discovery"
+    assert newest["target_user_id"] is None
+
+
+@pytest.mark.integration
+def test_client_discovery_still_scoped(
+    client: TestClient,
+    migrated_postgres_p: Engine,
+) -> None:
+    """A UK-only client must not see events from an out-of-scope jurisdiction.
+
+    Regression guard: swapping the session dep must not break the
+    existing RLS narrowing for non-admin callers.
+    """
+    j_in = f"CLI-IN-{uuid.uuid4().hex[:6]}"
+    j_out = f"CLI-OUT-{uuid.uuid4().hex[:6]}"
+    s = f"CLI-S-{uuid.uuid4().hex[:6]}"
+
+    _seed_user(migrated_postgres_p, "client_disc_scoped@example.com", scope=((j_in, s),))
+
+    in_doc, in_ver = _seed_doc(migrated_postgres_p, jurisdiction=j_in, sector=s, label="cli_in")
+    out_doc, out_ver = _seed_doc(migrated_postgres_p, jurisdiction=j_out, sector=s, label="cli_out")
+
+    in_id = _seed_event(
+        migrated_postgres_p,
+        document_id=in_doc,
+        document_version_id=in_ver,
+        jurisdiction=j_in,
+        sector=s,
+    )
+    out_id = _seed_event(
+        migrated_postgres_p,
+        document_id=out_doc,
+        document_version_id=out_ver,
+        jurisdiction=j_out,
+        sector=s,
+    )
+
+    token = _login(client, "client_disc_scoped@example.com")
+    response = client.get("/v1/discovery?scope=corpus&limit=100", headers=_bearer(token))
+
+    assert response.status_code == 200, response.text
+    ids = {it["id"] for it in response.json()["items"]}
+    assert in_id in ids, "client must see in-scope row"
+    assert out_id not in ids, "client must NOT see out-of-scope row (RLS regression)"

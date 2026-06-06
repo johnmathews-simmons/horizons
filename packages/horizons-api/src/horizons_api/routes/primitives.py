@@ -37,7 +37,8 @@ from horizons_core.repos.change_events import (
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from horizons_api.deps import authenticated_user, session_for_request
+from horizons_api.deps import authenticated_user
+from horizons_api.deps.admin_or_app import admin_or_app_session_dep
 
 ScopeKind = Literal["corpus", "document", "clause"]
 
@@ -271,7 +272,7 @@ differential_router = APIRouter(prefix="/v1/differential", tags=["differential"]
 async def discovery(  # noqa: PLR0913 — every parameter maps to a wire field
     response: Response,
     _principal: Annotated[Principal, Depends(authenticated_user)],
-    session: Annotated[AsyncSession, Depends(session_for_request)],
+    session: Annotated[AsyncSession, Depends(admin_or_app_session_dep)],
     scope: Annotated[ScopeKind, Query()] = "corpus",
     jurisdiction: Annotated[str | None, Query()] = None,
     sector: Annotated[str | None, Query()] = None,
@@ -326,7 +327,7 @@ def _to_discovery_item(dto: ChangeEventDTO) -> DiscoveryItem:
 async def temporal(  # noqa: PLR0913 — every parameter maps to a wire field
     response: Response,
     _principal: Annotated[Principal, Depends(authenticated_user)],
-    session: Annotated[AsyncSession, Depends(session_for_request)],
+    session: Annotated[AsyncSession, Depends(admin_or_app_session_dep)],
     scope: Annotated[ScopeKind, Query()] = "corpus",
     jurisdiction: Annotated[str | None, Query()] = None,
     sector: Annotated[str | None, Query()] = None,
@@ -381,7 +382,7 @@ def _to_temporal_item(dto: ChangeEventDTO) -> TemporalItem:
 async def differential(  # noqa: PLR0913 — every parameter maps to a wire field
     response: Response,
     _principal: Annotated[Principal, Depends(authenticated_user)],
-    session: Annotated[AsyncSession, Depends(session_for_request)],
+    session: Annotated[AsyncSession, Depends(admin_or_app_session_dep)],
     scope: Annotated[ScopeKind, Query()] = "corpus",
     jurisdiction: Annotated[str | None, Query()] = None,
     sector: Annotated[str | None, Query()] = None,
@@ -426,7 +427,7 @@ async def differential_by_id(
     event_id: int,
     response: Response,
     _principal: Annotated[Principal, Depends(authenticated_user)],
-    session: Annotated[AsyncSession, Depends(session_for_request)],
+    session: Annotated[AsyncSession, Depends(admin_or_app_session_dep)],
     include_content: Annotated[bool, Query()] = True,
 ) -> DifferentialItem:
     """One change event by id, with before/after text by default.
