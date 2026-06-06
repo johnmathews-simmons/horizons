@@ -77,13 +77,20 @@ ENV PATH=/opt/venv/bin:$PATH \
     PORT=8000
 
 WORKDIR /app
+
+# Alembic config + migration tree. The migration ACA Job reuses this
+# image with a command override; without these two paths in /app the
+# `alembic upgrade head` invocation in the job has nothing to apply.
+# Keep the runtime fast: no other workspace tree is copied.
+COPY alembic.ini ./alembic.ini
+COPY packages/horizons-core/migrations ./packages/horizons-core/migrations
+
 USER horizons
 
 EXPOSE 8000
 
-# WU4.1 contract: horizons-api exposes the FastAPI instance as
-# `horizons_api.app:app`. Until WU4.1 lands, the symbol doesn't exist and
-# the container will exit at startup — that's a feature, not a bug
-# (build-and-push verifies the IMAGE is well-formed; runtime contract is
-# WU4.1's gate).
-CMD ["uvicorn", "horizons_api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# `horizons_api.app` exposes a `create_app()` factory rather than a
+# module-level `app` symbol (the factory pattern keeps test isolation
+# clean — see app.py docstring). Uvicorn's `--factory` flag tells it to
+# call the symbol rather than treat it as an ASGI instance.
+CMD ["uvicorn", "horizons_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
