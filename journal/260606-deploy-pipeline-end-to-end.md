@@ -87,6 +87,7 @@ In rough order of leverage; items here are explicit follow-ups, not nice-to-have
 
 - [ ] Add a testcontainers test that runs the migration as a non-superuser with only `CREATEROLE`, asserts each `op.execute("ALTER … OWNER TO …;")` succeeds. Would have caught all three permission-denied iterations in this session.
 - [ ] Audit later migrations (0010–0012) for any further `ALTER OWNER` calls that bypass the bootstrap roles. The session's fixes cover 0002 and 0009; others may still be brittle if/when admin_bypass / api_app / ingestion_worker receive new objects.
+- [ ] Factor the `users` + `admin_access_log` teardown sequence into a shared helper (or document the rule explicitly). `seed_e2e.py:_teardown` and `create_demo_accounts.py:_teardown` both need to set `session_replication_role = 'replica'` and DELETE the audit rows before deleting users (FK is `ON DELETE RESTRICT`, the audit table has an append-only trigger). Today the duplication caused the demo-account reseed to blow up on a Job execution because the rule was only encoded in one of them — fixed in commit `6e02027`, but the next teardown script will trip the same wire if nothing changes.
 
 ### Worker contract
 
@@ -106,6 +107,7 @@ In rough order of leverage; items here are explicit follow-ups, not nice-to-have
 
 - [ ] First-fresh-deploy runbook. Tear down `horizons-nonprod`, recreate from zero, document every step. Should reduce to: provision UAMI + federated cred (one-off; can't be in repo); `gh workflow run deploy-postgres.yml`; `gh workflow run deploy.yml`. Anything that requires additional manual steps is a bug — see "IaC drift" above.
 - [ ] CI step that runs `az bicep build` on every push to catch template errors before they reach the deploy step.
+- [ ] Replace `git diff HEAD~1 HEAD -- infra/ .github/workflows/deploy.yml` in `deploy.yml`'s "Detect infra changes" step (L172) with a baseline that survives batched pushes. The current shape silently skips Bicep when infra changes sit deeper than the top two commits of a multi-commit push — burned us today by leaving the `activeRevisionsMode: Single` flip un-deployed for hours (see `journal/260606-stale-revision-and-reseed-teardown.md`). Options: diff against the SHA of the most recent successful ARM deployment, diff `${{ github.event.workflow_run.head_commit.id }}` against the run before, or remove the optimisation and always reconcile (Bicep is idempotent — cost is ~mins per deploy).
 
 ### Documentation
 
