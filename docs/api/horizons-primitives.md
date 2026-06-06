@@ -113,7 +113,7 @@ ignored if passed.
   "document_id": "0192f30c-...",
   "document_version_id": "0192f30d-...",
   "jurisdiction": "IE",
-  "sector": "financial-services",
+  "sector": "BANKING",
   "change_type": "MODIFIED",
   "before_clause_uid": "0192...",
   "after_clause_uid":  "0192...",

@@ -42,6 +42,19 @@ documents:
     title: "Foat v DWP - employment tribunal"
 """
 
+JURISDICTION_OVERRIDE_YAML = """
+jurisdictions: [GB, FR]
+sectors: [BANKING, employment]
+default_cadence_hours: 24
+documents:
+  - id: "28914588"
+    jurisdiction: UK
+    sector: BANKING
+  - id: "31702142"
+    jurisdiction: EU
+    sector: BANKING
+"""
+
 
 def test_parse_curated_set_minimal() -> None:
     cs = parse_curated_set(MINIMAL_YAML)
@@ -167,6 +180,35 @@ def test_select_applies_per_document_overrides() -> None:
     # sector + title override
     assert rows["28914588"].sector == "employment"
     assert rows["28914588"].title == "Foat v DWP - employment tribunal"
+
+
+def test_parse_accepts_jurisdiction_override() -> None:
+    cs = parse_curated_set(JURISDICTION_OVERRIDE_YAML)
+    # The fixture-iso filter is unchanged: only GB/FR fixtures pass through.
+    assert cs.jurisdictions == frozenset({"GB", "FR"})
+    assert cs.overrides["28914588"] == DocOverride(jurisdiction="UK", sector="BANKING")
+    assert cs.overrides["31702142"] == DocOverride(jurisdiction="EU", sector="BANKING")
+
+
+def test_select_applies_jurisdiction_override() -> None:
+    """WU8.1 demo path: a GB fixture is relabelled to UK on output."""
+    cs = parse_curated_set(JURISDICTION_OVERRIDE_YAML)
+    fixtures = [
+        _fix("GB", "28914588", title="Foat v DWP"),
+        _fix("FR", "31702142", title="ACPR decision"),
+    ]
+    rows = {r.lawstronaut_document_id: r for r in select(cs, fixtures)}
+    assert rows["28914588"].jurisdiction == "UK"
+    assert rows["28914588"].sector == "BANKING"
+    assert rows["31702142"].jurisdiction == "EU"
+    assert rows["31702142"].sector == "BANKING"
+
+
+def test_select_falls_back_to_fixture_iso_when_no_jurisdiction_override() -> None:
+    cs = parse_curated_set(MINIMAL_YAML)
+    fixtures = [_fix("IE", "1", title="t")]
+    rows = select(cs, fixtures)
+    assert rows[0].jurisdiction == "IE"
 
 
 def test_select_warns_on_override_with_unknown_fixture() -> None:

@@ -54,6 +54,12 @@ class DocOverride:
     cadence_hours: float | None = None
     sector: str | None = None
     title: str | None = None
+    # Free-form jurisdiction relabel applied after the fixture iso filter.
+    # Used to map a fixture captured under one ISO-2 (e.g. ``GB``) onto the
+    # demo's user-facing jurisdiction token (e.g. ``UK``) without forking
+    # the upstream capture. Not validated against ``CuratedSet.jurisdictions``
+    # — that list is the fixture-iso filter, not the output taxonomy.
+    jurisdiction: str | None = None
 
 
 @dataclass(frozen=True)
@@ -103,7 +109,7 @@ class SeedResult:
 # --- YAML parsing ------------------------------------------------------------
 
 _ALLOWED_TOP_LEVEL = frozenset({"jurisdictions", "sectors", "default_cadence_hours", "documents"})
-_ALLOWED_DOC_KEYS = frozenset({"id", "cadence_hours", "sector", "title"})
+_ALLOWED_DOC_KEYS = frozenset({"id", "cadence_hours", "sector", "title", "jurisdiction"})
 
 
 def parse_curated_set(source: str) -> CuratedSet:
@@ -176,7 +182,15 @@ def parse_curated_set(source: str) -> CuratedSet:
         title_val: Any = entry.get("title")
         title: str | None = str(title_val) if title_val is not None else None
 
-        overrides[doc_id] = DocOverride(cadence_hours=cadence_hours, sector=sector, title=title)
+        jurisdiction_val: Any = entry.get("jurisdiction")
+        jurisdiction: str | None = str(jurisdiction_val) if jurisdiction_val is not None else None
+
+        overrides[doc_id] = DocOverride(
+            cadence_hours=cadence_hours,
+            sector=sector,
+            title=title,
+            jurisdiction=jurisdiction,
+        )
 
     return CuratedSet(
         jurisdictions=jurisdictions,
@@ -225,11 +239,16 @@ def select(
             if override is not None and override.title is not None
             else str(fixture["title"])
         )
+        jurisdiction = (
+            override.jurisdiction
+            if override is not None and override.jurisdiction is not None
+            else str(iso)
+        )
 
         rows.append(
             PendingRow(
                 lawstronaut_document_id=doc_id,
-                jurisdiction=str(iso),
+                jurisdiction=jurisdiction,
                 sector=sector,
                 title=title,
                 cadence=timedelta(hours=cadence_hours),

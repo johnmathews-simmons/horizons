@@ -3,8 +3,16 @@
 # WU8.0 expansion. Targets ~50 documents across ~10 jurisdictions and ~5
 # sectors so the demo (~2026-06-08) has a corpus broad enough to exercise
 # subscription scoping and the headline clause-diff moment. Sector defaults
-# to ``sectors[0]`` (financial-services); per-document overrides switch the
-# rest. See docs/seeding.md for schema + semantics.
+# to ``sectors[0]`` (BANKING); per-document overrides switch the rest.
+# See docs/seeding.md for schema + semantics.
+#
+# Token convention: jurisdictions are ISO-2 (matching ``fixtures.json``) plus
+# the synthetic relabels UK and EU used by the demo accounts. Per-doc
+# ``jurisdiction:`` overrides relabel a captured fixture onto a demo token
+# without forking the upstream capture. Sectors use the canonical taxonomy
+# documented in ``packages/horizons-core/src/horizons_core/db/schema.md``
+# (BANKING, INSURANCE, …). The WU8.1 demo accounts assume BANKING is the
+# headline sector — keep it as ``sectors[0]`` so unannotated docs inherit it.
 #
 # Note on size: the demo target is ~50 documents but the current fixture
 # inventory (``data/samples/fixtures.json``, captured 2026-06-04) caps the
@@ -16,7 +24,7 @@
 
 jurisdictions: [IE, GB, EU, BE, AT, DE, FR, IT, ES, DK]
 sectors:
-  - financial-services
+  - BANKING
   - employment
   - tax
   - consumer-protection
@@ -31,22 +39,31 @@ documents:
     sector: corporate-governance
     cadence_hours: 1
 
-  # GB Foat v DWP — work-and-pensions tribunal judgment.
+  # GB Foat v DWP — work-and-pensions tribunal judgment. Relabelled to
+  # (UK, BANKING) for the WU8.1 demo: this is the synthetic v2 the UK
+  # demo client (subscription = UK / BANKING) clicks during the headline
+  # diff beat. The fixture content is employment-tribunal in origin but
+  # the demo treats it as the UK banking headline; replace with a real
+  # UK banking fixture once one is captured.
   - id: "28914588"
-    sector: employment
+    jurisdiction: UK
+    sector: BANKING
 
-  # EU — BEREC press item on the Digital Networks Act; consumer-protection
-  # is the closest banking-relevant sector available in the demo taxonomy.
+  # EU — BEREC press item on the Digital Networks Act. Retagged to
+  # BANKING for the demo (consumer-protection in origin) so the
+  # subscription scope tokens line up — but there is no synthetic v2 for
+  # this id, so the EU demo client gets its visible diff from the FR
+  # relabel below, not from this row.
   - id: "31366184"
-    sector: consumer-protection
+    sector: BANKING
 
   # BE — FPS Labour psychosocial risks questionnaire.
   - id: "19194112"
     sector: employment
 
-  # AT — BVwG administrative court decision; stays under financial-services
-  # (the default) because the substantive area is administrative oversight
-  # of state economic activity. Reviewable post-demo.
+  # AT — BVwG administrative court decision; stays under BANKING (the
+  # default) because the substantive area is administrative oversight of
+  # state economic activity. Reviewable post-demo.
   - id: "32061749"
 
   # DE — Arbeitsmarkt monthly report (labour-market statistics).
@@ -54,8 +71,13 @@ documents:
     sector: employment
 
   # FR — ACPR (banque-france) prudential decision; the canonical banking-
-  # regulator fixture, so it stays in the default financial-services sector.
+  # regulator fixture. Relabelled to (EU, BANKING) for the WU8.1 demo so
+  # the EU demo client has a synthetic v2 to click. ACPR participates in
+  # the EU banking-union supervisory chain, so the relabel is defensible
+  # for a public showcase; revert once a true EU banking v2 is captured.
   - id: "31702142"
+    jurisdiction: EU
+    sector: BANKING
 
   # IT — MEF economic and financial document update.
   - id: "26863"
@@ -64,5 +86,5 @@ documents:
   - id: "28885109"
     sector: tax
 
-  # DK — Central-government financing requirements; financial-services.
+  # DK — Central-government financing requirements; BANKING.
   - id: "18087738"

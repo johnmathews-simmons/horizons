@@ -26,7 +26,7 @@ documents (`ON CONFLICT (lawstronaut_document_id) DO NOTHING`).
 ```yaml
 # data/curated_set.yaml
 jurisdictions: [IE, GB, EU, BE, AT, DE]    # ISO codes; only fixtures with these iso values are seeded
-sectors: [financial-services, employment]  # allowed sectors; sectors[0] is the default
+sectors: [BANKING, employment]             # allowed sectors; sectors[0] is the default
 default_cadence_hours: 24                  # cadence applied to documents without an override
 
 documents:                                  # optional per-document overrides
@@ -34,12 +34,15 @@ documents:                                  # optional per-document overrides
     cadence_hours: 1                        # "always changing" demo cadence
   - id: "19194112"
     sector: employment                      # override default sector
+  - id: "28914588"
+    jurisdiction: UK                        # relabel a GB capture as UK for the demo
+    sector: BANKING
 ```
 
 Top-level keys:
 
-- `jurisdictions` — ISO codes. Fixtures with `iso` outside this list are skipped.
-- `sectors` — allowed sector taxonomy values. The first entry is the default for any document without an explicit `sector:` override.
+- `jurisdictions` — ISO codes. Fixtures with `iso` outside this list are skipped. This is the **fixture-iso filter**, not the output taxonomy — a per-doc `jurisdiction:` override can relabel a passed-through fixture to any token (e.g. `UK`, `EU`) without that token appearing here.
+- `sectors` — allowed sector taxonomy values. The first entry is the default for any document without an explicit `sector:` override. Convention is the canonical taxonomy from `schema.md` (`BANKING`, `INSURANCE`, …).
 - `default_cadence_hours` — `document_poll_schedule.cadence_interval` for documents without a `cadence_hours:` override.
 
 Per-document overrides under `documents:`:
@@ -48,8 +51,9 @@ Per-document overrides under `documents:`:
 - `cadence_hours` (optional) — overrides the top-level default.
 - `sector` (optional) — overrides `sectors[0]`. Must appear in the top-level `sectors:` list.
 - `title` (optional) — overrides the fixture's `title`. Useful when the upstream title is unhelpful.
+- `jurisdiction` (optional) — replaces the fixture's `iso` on the seeded row. Free-form; not validated against the top-level `jurisdictions` list. Used to map a fixture captured under one ISO-2 (e.g. `GB`) onto the demo's user-facing token (e.g. `UK`) without forking the upstream capture.
 
-Documents not listed under `documents:` get the defaults applied automatically; the per-doc list is for overrides only, not for opt-in. To include every IE/GB/EU fixture as financial-services / 24h, omit the `documents:` list entirely.
+Documents not listed under `documents:` get the defaults applied automatically; the per-doc list is for overrides only, not for opt-in. To include every IE/GB/EU fixture as BANKING / 24h, omit the `documents:` list entirely.
 
 ## Idempotency
 

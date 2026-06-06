@@ -63,6 +63,21 @@ ENV PATH=/opt/venv/bin:$PATH \
     HORIZONS_WORKER_HEALTH_PORT=8080
 
 WORKDIR /app
+
+# Reseed substrate. The operator-driven wipe+reseed path (run from a
+# laptop via ``az containerapp exec``) reads the curated set, the fixture
+# inventory, and the synthetic v2 markdown from disk, then re-provisions
+# the demo accounts. Baked into the worker image so the operator doesn't
+# need a separate one-shot Job. ~1 MB on disk; the runtime never touches
+# these paths unless the operator runs ``scripts/reseed_corpus.py``.
+# COPY-as-root then chown to the runtime user — files end up owned by
+# ``horizons:horizons`` so the unprivileged process can read them.
+COPY --chown=horizons:horizons scripts/seed_curated_set.py ./scripts/seed_curated_set.py
+COPY --chown=horizons:horizons scripts/reseed_corpus.py ./scripts/reseed_corpus.py
+COPY --chown=horizons:horizons packages/horizons-api/scripts/create_demo_accounts.py ./scripts/create_demo_accounts.py
+COPY --chown=horizons:horizons data/curated_set.yaml ./data/curated_set.yaml
+COPY --chown=horizons:horizons data/samples ./data/samples
+
 USER horizons
 
 # /healthz on the aiohttp probe surface (per ADR-0001). The port is also

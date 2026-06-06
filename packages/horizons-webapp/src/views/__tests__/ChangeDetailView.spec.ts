@@ -39,7 +39,7 @@ const baseEvent = {
   document_id: '11111111-1111-4111-8111-111111111111',
   document_version_id: '22222222-2222-4222-8222-222222222222',
   jurisdiction: 'IE',
-  sector: 'financial-services',
+  sector: 'BANKING',
   change_type: 'MODIFIED',
   before_clause_uid: '33333333-3333-4333-8333-333333333333',
   after_clause_uid: '33333333-3333-4333-8333-333333333333',

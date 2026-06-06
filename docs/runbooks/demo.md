@@ -146,7 +146,7 @@ for an unhurried walk-through; total ≈ 7–9 minutes.
 2. **Log in as `demo-uk@demo.example.com`.** Submit the password from the
    operator's notes. On success the SPA navigates to `/changes`.
 3. **Browse `/changes`.** The list renders recent change events
-   filtered to the UK + financial-services subscription scope. Each
+   filtered to the UK + BANKING subscription scope. Each
    row carries: clause path, change mode (ADDED / REMOVED / MODIFIED
    / MOVED), relative timestamp, and a tiered confidence badge
    (red / amber / green).
@@ -179,7 +179,7 @@ for an unhurried walk-through; total ≈ 7–9 minutes.
    above.
 3. **Browse `/changes`.** The list renders **disjoint** content from
    the UK view — same query path, different rows, because the
-   EU + financial-services subscription scopes the corpus rows the
+   EU + BANKING subscription scopes the corpus rows the
    client role can read.
    *Say:* "Same URL, same query, different account. Each client only
    ever sees the corpus rows their subscription covers. A UK-only

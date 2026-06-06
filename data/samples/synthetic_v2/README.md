@@ -12,18 +12,24 @@ with three targeted edits documented below.
 
 The acceptance for WU8.0 calls for one document each from IE, GB, FR, DE,
 and US. The current fixture inventory has no US capture, so we substitute
-**IT** (a financial-services document) to keep the v2 spread broad. The
-gap is captured as a follow-up in the WU8.0 journal entry.
+**IT** (a BANKING document) to keep the v2 spread broad. The gap is
+captured as a follow-up in the WU8.0 journal entry.
 
 ## Inventory
 
-| slug | jurisdiction | sector (per curated_set.yaml) | source | diff intent |
-|------|-------------|-------------------------------|--------|-------------|
-| `ie-8064194` | IE | corporate-governance | `data/samples/ie-8064194-v1.md` | see below |
-| `gb-28914588` | GB | employment | `data/samples/gb-28914588-v1.md` | see below |
-| `fr-31702142` | FR | financial-services | `data/samples/fr-31702142-v1.md` | see below |
-| `de-20951816` | DE | employment | `data/samples/de-20951816-v1.md` | see below |
-| `it-26863` | IT | financial-services | `data/samples/it-26863-v1.md` | see below |
+`gb-28914588` and `fr-31702142` are relabelled in `data/curated_set.yaml`
+so the seeded `jurisdiction`/`sector` columns line up with the WU8.1 demo
+accounts' subscription scopes. The fixture file on disk stays under its
+captured iso; the seed library applies the override at write time. See
+the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
+
+| slug | fixture iso | seeded as (jurisdiction, sector) | source | diff intent |
+|------|-------------|----------------------------------|--------|-------------|
+| `ie-8064194` | IE | (IE, corporate-governance) | `data/samples/ie-8064194-v1.md` | see below |
+| `gb-28914588` | GB | **(UK, BANKING)** — demo relabel | `data/samples/gb-28914588-v1.md` | see below |
+| `fr-31702142` | FR | **(EU, BANKING)** — demo relabel | `data/samples/fr-31702142-v1.md` | see below |
+| `de-20951816` | DE | (DE, employment) | `data/samples/de-20951816-v1.md` | see below |
+| `it-26863` | IT | (IT, BANKING) | `data/samples/it-26863-v1.md` | see below |
 
 ## Diff intent per document
 
