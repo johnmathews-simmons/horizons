@@ -42,6 +42,22 @@ param memory string = '1.0Gi'
 @secure()
 param appInsightsConnectionString string
 
+@description('Postgres server FQDN.')
+param postgresFqdn string
+
+@description('Postgres user.')
+param postgresUser string = 'horizons_admin'
+
+@description('Database name.')
+param postgresDatabase string = 'horizons'
+
+@description('Postgres admin password. Combined into HORIZONS_DB_URL as a Container App secret.')
+@secure()
+param postgresAdminPassword string
+
+@description('Blob storage account URL (https://<acct>.blob.core.windows.net). The worker writes original document blobs into a container under this account.')
+param blobAccountUrl string
+
 @description('Tags applied to the container app.')
 param tags object = {}
 
@@ -79,7 +95,17 @@ resource worker 'Microsoft.App/containerApps@2024-10-02-preview' = {
           }
         ]
       }
-      secrets: []
+      // Short-circuit secret architecture (decision Q1, triage doc).
+      // Post-demo: move behind Key Vault references.
+      secrets: [
+        {
+          name: 'db-url'
+          // horizons-core/db/session.py expects the asyncpg driver.
+          // ACA secrets channel keeps the @secure password sealed.
+          #disable-next-line use-secure-value-for-secure-inputs
+          value: 'postgresql+asyncpg://${postgresUser}:${postgresAdminPassword}@${postgresFqdn}:5432/${postgresDatabase}'
+        }
+      ]
       registries: []
     }
     template: {
@@ -101,8 +127,20 @@ resource worker 'Microsoft.App/containerApps@2024-10-02-preview' = {
               value: environmentName
             }
             {
-              name: 'HORIZONS_WORKER_HEALTH_PORT'
+              // Bicep param historically named `HORIZONS_WORKER_HEALTH_PORT`
+              // but the worker code reads `HORIZONS_INGESTION_HEALTHZ_PORT`
+              // (config.py). Align so a non-default port would actually take
+              // effect; today's 8080 default keeps both names a no-op.
+              name: 'HORIZONS_INGESTION_HEALTHZ_PORT'
               value: string(healthPort)
+            }
+            {
+              name: 'HORIZONS_DB_URL'
+              secretRef: 'db-url'
+            }
+            {
+              name: 'HORIZONS_INGESTION_BLOB_ACCOUNT_URL'
+              value: blobAccountUrl
             }
           ]
           probes: [

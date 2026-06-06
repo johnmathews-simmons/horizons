@@ -207,6 +207,10 @@ module containerWorker 'modules/container-app-worker.bicep' = {
     environmentId: containerEnv.outputs.environmentId
     image: workerImage
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
+    postgresFqdn: existingPostgres.properties.fullyQualifiedDomainName
+    postgresUser: postgresAdminLogin
+    postgresAdminPassword: postgresAdminPassword
+    blobAccountUrl: storage.outputs.blobEndpoint
     tags: tags
   }
 }
