@@ -188,6 +188,28 @@ def _slugify(text: str) -> str:
     return _SLUG_RE.sub("-", text.strip().lower()).strip("-")[:64]
 
 
+def _disambiguate_segment(segment: str, siblings: list[_MutClause]) -> str:
+    """Return ``segment`` rewritten so its full string is unique among siblings.
+
+    Only the leaf (last) segment matters for uniqueness inside a parent —
+    each ``_MutClause`` in ``siblings`` carries ``path[-1]`` as its
+    contribution to its parent's child segments. The first occurrence
+    keeps the base ``segment``; subsequent duplicates get ``-2``, ``-3``,
+    etc. Stable: deterministic for any fixed input order, which is what
+    the alignment pipeline relies on to pair v1 and v2 clauses across
+    versions with the same duplicate-heading structure.
+    """
+    taken = {sib.path[-1] for sib in siblings if sib.path}
+    if segment not in taken:
+        return segment
+    suffix = 2
+    candidate = f"{segment}-{suffix}"
+    while candidate in taken:
+        suffix += 1
+        candidate = f"{segment}-{suffix}"
+    return candidate
+
+
 class _TreeBuilder:
     def __init__(self, cfg: ParserConfig) -> None:
         self._cfg = cfg
@@ -276,6 +298,18 @@ class _TreeBuilder:
             # ``heading`` is always non-empty at this point.
             assert heading is not None
             segment = _slugify(heading) or f"#{ord_idx}"
+        # Disambiguate against existing siblings. Two structural patterns
+        # can produce the same `label` (e.g. an errata-style re-issue of
+        # "Article 5"), and a slugified heading can collide when a
+        # document has multiple sub-sections sharing a title (e.g. three
+        # "Position de la Commission" headings under different Griefs in
+        # the ACPR FR fixture). The clauses table enforces
+        # UNIQUE(document_version_id, clause_path), so the segment must
+        # be unique among ``parent``'s children. Apply a ``-2`` / ``-3``
+        # suffix to the later occurrences; the first occurrence keeps
+        # the base slug so existing fixtures with no duplicates are
+        # unaffected.
+        segment = _disambiguate_segment(segment, parent.children)
         node = _MutClause(
             depth=depth,
             path=parent.path + (segment,),

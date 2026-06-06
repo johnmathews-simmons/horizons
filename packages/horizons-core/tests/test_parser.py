@@ -263,6 +263,45 @@ def test_loose_text_with_only_whitespace_is_ignored() -> None:
     assert part1.body_text == ""
 
 
+def test_sibling_headings_with_same_slug_get_disambiguated() -> None:
+    """Three sibling headings that slugify to the same string must produce
+    distinct paths. Backstop for the WU8.0 FR-31702142 (ACPR) fixture:
+    three ``# Position de la Commission`` headings under different Griefs
+    would otherwise collide on ``clauses_unique_path_per_version`` when
+    the synthetic-v2 staging path inserts them into the same document
+    version.
+    """
+    md = (
+        "# Position de la Commission\n\nfirst.\n\n"
+        "# Position de la Commission\n\nsecond.\n\n"
+        "# Position de la Commission\n\nthird.\n"
+    )
+    root = parse(md)
+    segments = [c.path[-1] for c in root.children]
+    assert segments == [
+        "position-de-la-commission",
+        "position-de-la-commission-2",
+        "position-de-la-commission-3",
+    ]
+    # Same input twice → same paths (alignment relies on stability).
+    again = parse(md)
+    assert [c.path for c in again.children] == [c.path for c in root.children]
+
+
+def test_sibling_labels_with_same_text_get_disambiguated() -> None:
+    """Two siblings with the same structural label still get distinct paths.
+    Rare in legal docs but defensive against errata-style re-issues.
+    """
+    md = "**1\\.** first.\n\n**1\\.** repeated.\n"
+    root = parse(md)
+    # Both clauses parsed with numbering_label == "1.", but their path
+    # segments differ so the unique constraint won't fire downstream.
+    assert root.children[0].path[-1] != root.children[1].path[-1]
+    # The first occurrence keeps the base segment.
+    assert root.children[0].path[-1] == "1."
+    assert root.children[1].path[-1] == "1.-2"
+
+
 def test_sibling_pop_when_same_depth_marker_appears_again() -> None:
     md = "**1\\.** first.\n\n**2\\.** second.\n"
     root = parse(md)
