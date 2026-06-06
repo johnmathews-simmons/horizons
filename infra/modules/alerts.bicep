@@ -90,13 +90,18 @@ var alertIngestionFailuresName = '${workloadPrefix}-${environmentName}-alert-ing
 // registers AppRequests / AppTraces once the API and worker have actually
 // emitted a record; on a fresh-workspace deploy that hasn't happened yet,
 // so the RP's pre-flight schema-resolution check rejects the rule before
-// `skipQueryValidation` is consulted. `isfuzzy=true` parses identically
-// once the table exists.
-var api5xxQuery = 'union isfuzzy=true AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize total = count(), failed = countif(toint(ResultCode) >= 500) | extend errorRatio = iff(total == 0, 0.0, todouble(failed) / todouble(total)) | project errorRatio'
+// `skipQueryValidation` is consulted.
+//
+// Fuzzy union requires at least ONE operand that resolves at validation
+// time, so we pair the real table with an empty `datatable(...)` sentinel
+// declaring the columns each query references. The sentinel contributes
+// zero rows; once the real table exists, its rows flow through and the
+// alert behaves identically to the single-table form.
+var api5xxQuery = 'union isfuzzy=true (datatable(AppRoleName:string, ResultCode:string)[]), AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize total = count(), failed = countif(toint(ResultCode) >= 500) | extend errorRatio = iff(total == 0, 0.0, todouble(failed) / todouble(total)) | project errorRatio'
 
-var apiP95Query = 'union isfuzzy=true AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize p95Ms = percentile(DurationMs, 95) | project p95Ms'
+var apiP95Query = 'union isfuzzy=true (datatable(AppRoleName:string, DurationMs:real)[]), AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize p95Ms = percentile(DurationMs, 95) | project p95Ms'
 
-var ingestionFailuresQuery = 'union isfuzzy=true AppTraces | where AppRoleName == "${workerAppRoleName}" | where SeverityLevel >= 2 | where Message contains "schedule entry parked"'
+var ingestionFailuresQuery = 'union isfuzzy=true (datatable(AppRoleName:string, SeverityLevel:int, Message:string)[]), AppTraces | where AppRoleName == "${workerAppRoleName}" | where SeverityLevel >= 2 | where Message contains "schedule entry parked"'
 
 // -------------------------------------------------------------------
 // Action Group — single email receiver.
