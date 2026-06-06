@@ -159,6 +159,29 @@ it can read `subscriptions` / `subscription_scopes` even though
 `api_app` itself does not have those rows under RLS. See
 [rls.md](rls.md) for the full architecture.
 
+## Per-function grants (`app_public` schema)
+
+The `app_public` schema carries SECURITY DEFINER helpers exposed via
+the public API. Unlike `app_private` helpers (used by RLS policies),
+these functions are directly callable by clients. The schema itself is
+owned by `schema_owner`; `PUBLIC` has no access; explicit EXECUTE
+grants below control visibility.
+
+| Function | `api_app` | `ingestion_worker` | `admin_bypass` |
+| --- | --- | --- | --- |
+| `app_public.corpus_shape() -> (jurisdiction, sector, document_count)` | EXECUTE | — | EXECUTE |
+
+`app_public.corpus_shape()` is SECURITY DEFINER and returns
+`(jurisdiction, sector, document_count)` for the whole corpus
+unscoped. It powers `GET /v1/me/overview`'s "Not subscribed" cards:
+corpus *shape* is non-sensitive catalog data (clients already know
+the subscription token vocabulary), so the function bypasses RLS
+without per-request `admin_bypass` escalation and without an audit
+row per page load. Per-row corpus content remains scoped on every
+other route. Function ownership is `schema_owner` and a sibling
+RLS policy (`documents_schema_owner_read`) admits the SECURITY
+DEFINER read of `public.documents` against `FORCE ROW LEVEL SECURITY`.
+
 ## Running the migration
 
 The role-model migration is `migrations/versions/0001_role_model.py`.
