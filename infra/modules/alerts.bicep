@@ -85,11 +85,18 @@ var alertIngestionFailuresName = '${workloadPrefix}-${environmentName}-alert-ing
 // KQL queries — single-line because Bicep multi-line strings ('''…''')
 // do not perform `${}` interpolation. Pipe operators are whitespace-
 // separated which is valid KQL syntax on a single physical line.
-var api5xxQuery = 'AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize total = count(), failed = countif(toint(ResultCode) >= 500) | extend errorRatio = iff(total == 0, 0.0, todouble(failed) / todouble(total)) | project errorRatio'
+// `union isfuzzy=true` makes the table reference tolerate "table not yet
+// registered in the workspace schema". Workspace-based App Insights only
+// registers AppRequests / AppTraces once the API and worker have actually
+// emitted a record; on a fresh-workspace deploy that hasn't happened yet,
+// so the RP's pre-flight schema-resolution check rejects the rule before
+// `skipQueryValidation` is consulted. `isfuzzy=true` parses identically
+// once the table exists.
+var api5xxQuery = 'union isfuzzy=true AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize total = count(), failed = countif(toint(ResultCode) >= 500) | extend errorRatio = iff(total == 0, 0.0, todouble(failed) / todouble(total)) | project errorRatio'
 
-var apiP95Query = 'AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize p95Ms = percentile(DurationMs, 95) | project p95Ms'
+var apiP95Query = 'union isfuzzy=true AppRequests | where AppRoleName == "${apiAppRoleName}" | summarize p95Ms = percentile(DurationMs, 95) | project p95Ms'
 
-var ingestionFailuresQuery = 'AppTraces | where AppRoleName == "${workerAppRoleName}" | where SeverityLevel >= 2 | where Message contains "schedule entry parked"'
+var ingestionFailuresQuery = 'union isfuzzy=true AppTraces | where AppRoleName == "${workerAppRoleName}" | where SeverityLevel >= 2 | where Message contains "schedule entry parked"'
 
 // -------------------------------------------------------------------
 // Action Group — single email receiver.
