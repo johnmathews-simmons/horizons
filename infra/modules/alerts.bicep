@@ -64,6 +64,9 @@ param alertEmail string = 'mthwsjc@gmail.com'
 @description('Whether the three alert rules are armed at deploy time. Default false — flip per-environment in the parameters file or via `az monitor` once the API + worker are deployed and emitting data (see WU7.3 journal entry).')
 param alertsEnabled bool = false
 
+@description('Skip server-side KQL validation when creating the scheduledQueryRules. Required when the deployment runs against a fresh Log Analytics workspace where AppRequests / AppTraces schema has not yet been registered (chicken-and-egg: ACA needs to be wired to the workspace and emit data before the schema is queryable). Default true — rules ship disabled (alertsEnabled=false) anyway, so validation is meaningless until they are armed.')
+param skipQueryValidation bool = true
+
 @description('Tags applied to every resource.')
 param tags object = {}
 
@@ -135,6 +138,7 @@ resource alertApi5xx 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview'
     description: 'API 5xx error ratio > 1% over 5 min (AppRequests / requests/failed over requests/count). Disabled by default; arm per-environment after WU6.3 deploys the API.'
     severity: 2
     enabled: alertsEnabled
+    skipQueryValidation: skipQueryValidation
     scopes: [
       appInsightsId
     ]
@@ -185,6 +189,7 @@ resource alertApiP95 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview'
     description: 'API p95 latency > 3000 ms over 5 min (AppRequests percentile(DurationMs, 95)). Disabled by default; arm per-environment after WU6.3 deploys the API.'
     severity: 2
     enabled: alertsEnabled
+    skipQueryValidation: skipQueryValidation
     scopes: [
       appInsightsId
     ]
@@ -246,6 +251,7 @@ resource alertIngestionFailures 'Microsoft.Insights/scheduledQueryRules@2023-03-
     description: 'Ingestion failures > 3 in 1 h (AppTraces "schedule entry parked" warnings emitted by the worker on threshold-cross). Disabled by default; arm per-environment after WU6.3 deploys the worker. Requires the worker to be running so AppTraces is populated.'
     severity: 2
     enabled: alertsEnabled
+    skipQueryValidation: skipQueryValidation
     scopes: [
       logAnalyticsWorkspaceId
     ]
