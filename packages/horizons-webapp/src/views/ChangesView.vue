@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useWindowVirtualizer, type VirtualItem } from '@tanstack/vue-virtual'
 import { useChangeEvents } from '@/composables/useChangeEvents'
 import { suppressBelowThreshold } from '@/constants/confidence'
@@ -8,7 +9,25 @@ import { ConfidenceBadge } from '@/components/ui/confidence-badge'
 import { ChangeTypePill } from '@/components/ui/change-type-pill'
 import type { DiscoveryItem } from '@/api/changes'
 
-const query = useChangeEvents()
+const route = useRoute()
+const router = useRouter()
+
+const filters = computed(() => ({
+  jurisdiction: (route.query.jurisdiction as string | undefined) ?? null,
+  sector: (route.query.sector as string | undefined) ?? null,
+}))
+
+const query = useChangeEvents(filters)
+
+function clearFilters(): void {
+  router.push({ name: 'changes' })
+}
+
+const activeFilter = computed(() => {
+  if (filters.value.jurisdiction) return { kind: 'Jurisdiction', value: filters.value.jurisdiction }
+  if (filters.value.sector) return { kind: 'Sector', value: filters.value.sector }
+  return null
+})
 
 const showMoved = ref(false)
 const showBelowThreshold = ref(false)
@@ -117,6 +136,21 @@ function measureRow(el: Element | null) {
           <p class="mt-1 text-sm text-slate-500">
             Clause-level change events across your subscription.
           </p>
+          <div
+            v-if="activeFilter"
+            class="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700"
+            data-testid="changes-filter-chip"
+          >
+            Filtered by {{ activeFilter.kind }}: <strong>{{ activeFilter.value }}</strong>
+            <button
+              type="button"
+              class="ml-1 rounded-full px-1 text-slate-500 hover:text-slate-900"
+              aria-label="Clear filter"
+              @click="clearFilters"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div class="flex items-center gap-3 text-xs text-slate-600">
           <label class="flex items-center gap-2">

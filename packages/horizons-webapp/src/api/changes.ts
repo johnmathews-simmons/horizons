@@ -26,12 +26,16 @@ export interface DiscoveryPage {
 export interface DiscoveryParams {
   cursor?: string | null
   limit?: number
+  jurisdiction?: string | null
+  sector?: string | null
 }
 
 export async function fetchDiscovery(params: DiscoveryParams = {}): Promise<DiscoveryPage> {
   const search: Record<string, string | number> = { scope: 'corpus' }
   if (params.limit !== undefined) search.limit = params.limit
   if (params.cursor) search.cursor = params.cursor
+  if (params.jurisdiction) search.jurisdiction = params.jurisdiction
+  if (params.sector) search.sector = params.sector
   const response = await apiClient.get<DiscoveryPage>('/v1/discovery', { params: search })
   return response.data
 }
