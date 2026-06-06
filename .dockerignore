@@ -34,10 +34,14 @@ dist/
 # alembic.ini is intentionally NOT excluded: the API Dockerfile copies
 # it into the runtime image so the migration ACA Job (which reuses the
 # API image) has the config alongside packages/horizons-core/migrations.
+# `/scripts/` (workspace root only) is excluded — leading slash anchors
+# the pattern so `packages/horizons-api/scripts/` is NOT excluded. The
+# API runtime image copies `create_demo_accounts.py` for the demo-seed
+# ACA Job.
 infra/
 docs/
 journal/
-scripts/
+/scripts/
 tests/
 data/
 README.md

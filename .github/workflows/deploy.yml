@@ -95,6 +95,7 @@ env:
   API_APP_NAME: horizons-dev-api
   WORKER_APP_NAME: horizons-dev-worker
   MIGRATION_JOB_NAME: horizons-dev-migrate
+  SEED_JOB_NAME: horizons-dev-seed-demo-accounts
   FRONT_DOOR_PROFILE: horizons-dev-fd
   FRONT_DOOR_ENDPOINT: horizons-dev
 
@@ -169,6 +170,9 @@ jobs:
           POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
           JWT_PRIVATE_KEY_PEM: ${{ secrets.HORIZONS_JWT_PRIVATE_KEY_PEM }}
           JWT_PUBLIC_KEY_PEM: ${{ secrets.HORIZONS_JWT_PUBLIC_KEY_PEM }}
+          DEMO_UK_PASSWORD: ${{ secrets.HORIZONS_DEMO_UK_PASSWORD }}
+          DEMO_EU_PASSWORD: ${{ secrets.HORIZONS_DEMO_EU_PASSWORD }}
+          DEMO_ADMIN_PASSWORD: ${{ secrets.HORIZONS_DEMO_ADMIN_PASSWORD }}
           TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
         run: |
           set -euo pipefail
@@ -180,6 +184,9 @@ jobs:
             --parameters postgresAdminPassword="$POSTGRES_ADMIN_PASSWORD" \
             --parameters jwtPrivateKeyPem="$JWT_PRIVATE_KEY_PEM" \
             --parameters jwtPublicKeyPem="$JWT_PUBLIC_KEY_PEM" \
+            --parameters demoUkPassword="$DEMO_UK_PASSWORD" \
+            --parameters demoEuPassword="$DEMO_EU_PASSWORD" \
+            --parameters demoAdminPassword="$DEMO_ADMIN_PASSWORD" \
             --parameters tenantId="$TENANT_ID" \
             --parameters apiImage="ghcr.io/johnmathews/horizons-api:sha-$SHORT_SHA" \
             --parameters workerImage="ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \
@@ -228,6 +235,47 @@ jobs:
             sleep 10
           done
           echo "::error::Migration job timed out (>650s); execution=$EXEC"
+          exit 1
+
+      - name: Start demo-accounts seed ACA Job
+        # Provisions / rotates the three demo accounts after migrations
+        # succeed. Idempotent: the script verifies-then-rotates, never
+        # downgrades to a dev default (see docs/runbooks/demo-accounts.md).
+        # Reuses the API image, runs `python /app/scripts/create_demo_accounts.py`.
+        # Same poll-loop shape as the migration step above. The job's
+        # replicaTimeout is 300s; budget 320s wall-clock (32 * 10s).
+        run: |
+          set -euo pipefail
+          EXEC=$(az containerapp job start \
+            --name "$SEED_JOB_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "name" -o tsv)
+          echo "Started seed execution: $EXEC"
+          for i in $(seq 1 32); do
+            STATUS=$(az containerapp job execution show \
+              --name "$SEED_JOB_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --job-execution-name "$EXEC" \
+              --query "properties.status" -o tsv)
+            echo "[$i/32] seed status: $STATUS"
+            case "$STATUS" in
+              Succeeded)
+                echo "Seed succeeded."
+                exit 0
+                ;;
+              Failed|Stopped|Degraded)
+                echo "::error::Seed job ended non-success: $STATUS"
+                az containerapp job execution show \
+                  --name "$SEED_JOB_NAME" \
+                  --resource-group "$AZURE_RESOURCE_GROUP" \
+                  --job-execution-name "$EXEC" \
+                  --query "properties" -o json
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Seed job timed out (>320s); execution=$EXEC"
           exit 1
 
   deploy-services:

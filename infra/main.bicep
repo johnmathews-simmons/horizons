@@ -70,6 +70,18 @@ param jwtPrivateKeyPem string
 @secure()
 param jwtPublicKeyPem string
 
+@description('Password for demo-uk@example.test. Threaded through the demo-accounts seed ACA Job. Sourced from secrets.HORIZONS_DEMO_UK_PASSWORD in deploy.yml.')
+@secure()
+param demoUkPassword string
+
+@description('Password for demo-eu@example.test. Same channel as the UK password.')
+@secure()
+param demoEuPassword string
+
+@description('Password for admin-demo@example.test. Same channel.')
+@secure()
+param demoAdminPassword string
+
 @description('Email address that receives Azure Monitor alert notifications (WU7.3). Single email receiver on the action group; swap to a Slack webhook by extending alerts.bicep with a webhookReceivers param.')
 param alertEmail string = 'mthwsjc@gmail.com'
 
@@ -222,6 +234,30 @@ module containerWorker 'modules/container-app-worker.bicep' = {
 //     shift; does NOT run on schedule. Reuses the API image with a
 //     command override — see infra/modules/migration-job.bicep.
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// 7d. Demo-accounts seed Job — provisions the three demo accounts after
+//     migrations succeed. Same shape as migration-job: Manual trigger,
+//     deploy.yml fires it post-migration, fails the workflow on a
+//     non-zero exit.
+// ---------------------------------------------------------------------
+module seedDemoAccountsJob 'modules/seed-demo-accounts-job.bicep' = {
+  name: 'seed-demo-accounts-job'
+  params: {
+    location: location
+    workloadPrefix: workloadPrefix
+    environmentName: environmentName
+    environmentId: containerEnv.outputs.environmentId
+    image: apiImage
+    postgresFqdn: existingPostgres.properties.fullyQualifiedDomainName
+    postgresUser: postgresAdminLogin
+    postgresAdminPassword: postgresAdminPassword
+    demoUkPassword: demoUkPassword
+    demoEuPassword: demoEuPassword
+    demoAdminPassword: demoAdminPassword
+    tags: tags
+  }
+}
+
 module migrationJob 'modules/migration-job.bicep' = {
   name: 'migration-job'
   params: {
@@ -290,6 +326,7 @@ output apiContainerAppName string = containerApi.outputs.appName
 output apiFqdn string = containerApi.outputs.fqdn
 output workerContainerAppName string = containerWorker.outputs.appName
 output migrationJobName string = migrationJob.outputs.jobName
+output seedDemoAccountsJobName string = seedDemoAccountsJob.outputs.jobName
 output frontDoorHostName string = frontDoor.outputs.endpointHostName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
 output alertActionGroupName string = alerts.outputs.actionGroupName

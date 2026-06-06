@@ -85,6 +85,11 @@ WORKDIR /app
 COPY alembic.ini ./alembic.ini
 COPY packages/horizons-core/migrations ./packages/horizons-core/migrations
 
+# Demo-accounts seed script — runs in the seed ACA Job (mirror of the
+# migration job pattern) immediately after migrations succeed in
+# deploy.yml. Single file; imports flow through the installed venv.
+COPY packages/horizons-api/scripts/create_demo_accounts.py ./scripts/create_demo_accounts.py
+
 USER horizons
 
 EXPOSE 8000
