@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 """Create (or reset) the WU8.1 demo accounts for the public showcase.
 
-Three accounts are provisioned, all under the IETF-reserved
-``@example.test`` TLD so they are trivially identifiable and cannot
-collide with real client data:
+Three accounts are provisioned, all under a sub-domain of the
+IETF-reserved ``@example.com`` (``@demo.example.com``) so they are
+trivially identifiable and cannot collide with real client data. The
+parent ``@example.test`` TLD is RFC-6761 special-use but pydantic's
+``EmailStr`` rejects it (see the constants section below for the
+detailed history); ``@demo.example.com`` is the working alternative.
 
-* ``demo-uk@example.test`` — role=client, subscription
+* ``demo-uk@demo.example.com`` — role=client, subscription
   (jurisdiction=UK, sector=BANKING)
-* ``demo-eu@example.test`` — role=client, subscription
+* ``demo-eu@demo.example.com`` — role=client, subscription
   (jurisdiction=EU, sector=BANKING)
-* ``admin-demo@example.test`` — role=admin, no subscription
+* ``admin-demo@demo.example.com`` — role=admin, no subscription
 
 Passwords are read from environment variables. By default ALL THREE must
 be set explicitly; missing variables abort the run before any DB write.
