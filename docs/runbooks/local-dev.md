@@ -177,7 +177,7 @@ if you need it.
 - `docs/runbooks/seeding.md` — what each seed script writes and why.
 - `docs/runbooks/demo-accounts.md` — the three demo accounts and how
   passwords are rotated.
-- `docs/runbooks/deploy.md` — the blue/green pipeline for staging /
-  production deploys.
+- `docs/runbooks/deploy.md` — the staging / production deploy
+  pipeline (Bicep + container app updates + SPA upload).
 - `packages/horizons-webapp/e2e/README.md` — Playwright e2e specifics
   on top of this runbook.

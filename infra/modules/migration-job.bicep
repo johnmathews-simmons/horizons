@@ -118,15 +118,15 @@ resource migrate 'Microsoft.App/jobs@2024-10-02-preview' = {
     configuration: {
       // Manual: deploy.yml (WU6.3) starts the job via
       //   `az containerapp job start --name <jobName> --resource-group <rg>`
-      // immediately before the traffic shift. We deliberately do NOT
-      // wire `scheduleTriggerConfig` or `eventTriggerConfig` — running
-      // migrations on a timer would race with deploys.
+      // immediately before the API revision update. We deliberately do
+      // NOT wire `scheduleTriggerConfig` or `eventTriggerConfig` —
+      // running migrations on a timer would race with deploys.
       triggerType: 'Manual'
       replicaTimeout: replicaTimeout
       // No retries — Alembic is idempotent in the success case but
       // mid-migration retries on a partially-applied step are
       // strictly worse than failing fast and letting the operator
-      // investigate. `deploy.yml` aborts the traffic shift on failure.
+      // investigate. `deploy.yml` aborts the API revision update on failure.
       replicaRetryLimit: 0
       manualTriggerConfig: {
         parallelism: 1

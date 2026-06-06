@@ -176,15 +176,17 @@ will show a thin `after` snapshot.
 
 ### `FATAL: remaining connection slots are reserved for roles with the SUPERUSER attribute`
 
-Postgres is out of non-superuser connection slots. Root cause: the
-worker and API are in `revisionMode: Multiple` and `deploy.yml` never
-deactivates the previous revision. After many deploys, dozens of
-active revisions each hold a SQLAlchemy pool open. Workaround:
+Postgres is out of non-superuser connection slots. **As of 2026-06-06
+this failure mode is historical** — both the worker and the API now
+run `activeRevisionsMode: Single`, so ACA auto-deactivates the
+previous revision on every deploy and revisions cannot accumulate.
+If it does recur (a config drift, a manual `az containerapp update
+--activeRevisionsMode Multiple`), the cleanup loop is:
 
 ```bash
-KEEP=horizons-dev-worker--sha-<latest>
+KEEP_WORKER=horizons-dev-worker--sha-<latest>
 az containerapp revision list --name horizons-dev-worker -g horizons-nonprod \
-  --query "[?properties.active && name != '$KEEP'].name" -o tsv | \
+  --query "[?properties.active && name != '$KEEP_WORKER'].name" -o tsv | \
   while read r; do
     az containerapp revision deactivate \
       --name horizons-dev-worker -g horizons-nonprod --revision "$r"
@@ -192,9 +194,7 @@ az containerapp revision list --name horizons-dev-worker -g horizons-nonprod \
 # Same loop for horizons-dev-api with that app's latest revision.
 ```
 
-Wait ~30s for connections to drain, then re-run the reseed. Tracked as
-a post-demo follow-up (the captured prompt for a fresh session lives in
-the operator's notes).
+Wait ~30s for connections to drain, then re-run the reseed.
 
 ### `duplicate key value violates unique constraint "clauses_unique_path_per_version"`
 

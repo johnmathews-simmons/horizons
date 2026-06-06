@@ -34,9 +34,14 @@ infra/
   `containerApps` resources inside the same `managedEnvironments`. They
   must not be co-located; an ingestion burst cannot starve the API of
   CPU.
-- **Multiple revisions (locked-in plan §10):** Both container apps have
-  `activeRevisionsMode: Multiple`. Blue/green and rollback work via
-  `az containerapp ingress traffic set` at the WU6.3 deploy step.
+- **Revision mode (locked-in plan §10, revised 2026-06-06):** Both
+  container apps run `activeRevisionsMode: Single`. ACA owns the
+  revision shift and previous-revision deactivation on every update.
+  Rollback is `az containerapp update --image :sha-PREV`; see
+  `docs/runbooks/deploy.md`. The original plan called for `Multiple`
+  to support traffic-weight blue/green; we walked that back — the
+  maintenance cost in `deploy.yml` wasn't worth the 5-second-vs-
+  5-minute rollback delta at demo scale.
 - **SPA hosting (locked-in plan §11):** Storage `$web` + Azure Front
   Door Standard. **Not** Azure CDN — its managed certs expired April
   2026.

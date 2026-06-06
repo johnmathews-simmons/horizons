@@ -78,19 +78,9 @@ resource worker 'Microsoft.App/containerApps@2024-10-02-preview' = {
     environmentId: environmentId
     workloadProfileName: 'Consumption'
     configuration: {
-      // Single revision mode: each `az containerapp update` creates a new
-      // revision and ACA auto-deactivates the previous one. The worker
-      // doesn't need the API's blue/green dance — ADR-0001 specifies one
-      // always-on replica with no ingress to load-balance over, so there is
-      // no traffic to shift and no rollback affordance to preserve. The
-      // previous `Multiple` setting inherited the API's convention without
-      // the API's reason for it, and on every deploy ACA left the old
-      // revision active with its replica still running. By 2026-06-06 the
-      // pile had grown to ~25 active worker revisions, each holding a
-      // SQLAlchemy pool open against Postgres; the reseed ACA Job hit
-      // `FATAL: remaining connection slots are reserved for roles with the
-      // SUPERUSER attribute` an hour before the demo. Switching to Single
-      // is the structural fix — see journal/260606-fix-revision-pileup.md.
+      // activeRevisionsMode: Single — one always-on replica per ADR-0001,
+      // no ingress to load-balance over. ACA auto-deactivates the
+      // previous revision once the new replica is healthy.
       activeRevisionsMode: 'Single'
       // Internal ingress is required for ACA to route the liveness probe.
       // `external: false` keeps the worker un-routable from outside the
