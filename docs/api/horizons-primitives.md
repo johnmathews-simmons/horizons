@@ -190,3 +190,46 @@ against the seeded curated set. The composite index
 is the hot path; the keyset cursor preserves index order without an
 ORDER BY sort. WU4.4 ships an inline integration test that asserts
 this budget against the WU3.5 seed.
+
+## `GET /v1/me/overview` — home dashboard summary
+
+The home dashboard's data source. Returns the full corpus matrix
+(every `(jurisdiction, sector)` pair present in `documents`, with
+counts) plus a `subscribed` flag per jurisdiction and per sector
+indicating whether the caller's subscription covers it.
+
+Admin callers see every pair flagged `subscribed=true`; the body
+also sets `is_admin=true`. The route reads corpus shape through the
+unscoped `app_public.corpus_shape()` function (see migration 0013
+and `db/roles.md`); per-row corpus content remains RLS-scoped on
+every other route.
+
+Response:
+
+```json
+{
+  "is_admin": false,
+  "totals": {
+    "documents": 10,
+    "jurisdictions": 8,
+    "sectors": 5,
+    "subscribed_jurisdictions": 1,
+    "subscribed_sectors": 1
+  },
+  "jurisdictions": [
+    { "code": "IE", "document_count": 1, "subscribed": false },
+    { "code": "UK", "document_count": 1, "subscribed": true }
+  ],
+  "sectors": [
+    { "code": "BANKING", "document_count": 5, "subscribed": true },
+    { "code": "employment", "document_count": 2, "subscribed": false }
+  ]
+}
+```
+
+Lists are sorted by `code` ascending. `Cache-Control: private, no-store`.
+
+Why this isn't `/v1/me`: keeping the dashboard view separate from the
+identity payload means the home page can stale-cache the overview
+independently of the principal, and `/v1/me` stays small for clients
+that only need user identity.
