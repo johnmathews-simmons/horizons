@@ -16,34 +16,29 @@ name: Deploy
 # What it does, in order:
 #   prepare-infra  → Bicep deploy (idempotent infra reconciliation) +
 #                    `az containerapp job start` for the migration Job
-#                    (WU6.4). Captures the storage account name from Bicep
-#                    outputs for the SPA job.
-#   deploy-services → blue/green of the API container app:
-#                       1. Capture the currently-100% revision (PREV).
-#                       2. Pin traffic explicitly to PREV so the new
-#                          revision doesn't auto-take traffic (the API's
-#                          ingress block omits `traffic[]` precisely so
-#                          this imperative step is the source of truth —
-#                          see container-app-api.bicep).
-#                       3. `az containerapp update` with
-#                          --revision-suffix sha-<short> creates a fresh
-#                          revision off the new image. PREV stays at 100%.
-#                       4. Smoke-test the new revision via its unique
-#                          `<app>--sha-<short>.<env-domain>` FQDN.
-#                       5. On smoke green: shift traffic 100% to the new
-#                          revision, 0% to PREV (PREV stays warm for
-#                          instant rollback).
-#                       6. On any failure between (3) and (5): shift
-#                          traffic back to PREV and fail the workflow.
-#                       7. Worker update — same `--revision-suffix sha-X`
-#                          pattern but no traffic shift (the worker has
-#                          one always-on replica per ADR-0001).
+#                    (WU6.4) + the demo-accounts seed Job. Captures the
+#                    storage account name from Bicep outputs for the SPA
+#                    job.
+#   deploy-services → update API + worker container apps:
+#                       1. `az containerapp update --image :sha-X` on the
+#                          API. Both apps are `activeRevisionsMode: Single`;
+#                          ACA creates a new revision, waits for the
+#                          readiness probe to pass, then shifts traffic
+#                          and deactivates the previous revision.
+#                       2. Smoke-test the API's stable FQDN — `/healthz`
+#                          and `/openapi.json`. Post-shift; this is a
+#                          tripwire, not a gate.
+#                       3. `az containerapp update --image :sha-X` on the
+#                          worker.
 #   deploy-spa    → parallel job: build the Vue bundle, upload to the
 #                   storage account's $web container, purge Front Door
 #                   cache for /, /index.html, /config.json. Non-blocking
 #                   on deploy-services: if the API deploy fails, the SPA
 #                   deploy still runs (`needs:` lists `prepare-infra`,
 #                   not `deploy-services`).
+#
+# Rollback is `az containerapp update --image :sha-PREV` against
+# whichever app regressed. ~3-5 min wall-clock; see docs/runbooks/deploy.md.
 #
 # Secrets / vars consumed:
 #   vars.AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
@@ -356,7 +351,7 @@ jobs:
           exit 1
 
   deploy-services:
-    name: Deploy API (blue/green) + worker
+    name: Deploy API + worker
     needs: [gate, prepare-infra]
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'staging' }}
@@ -370,50 +365,13 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Capture previous active API revision
-        id: prev
-        # PREV is whichever revision is currently serving 100% of
-        # traffic. On the very first deploy (no active revisions yet),
-        # this returns empty and the pin-and-shift dance becomes a
-        # simple "set 100% to the new revision" — handled below.
-        run: |
-          set -euo pipefail
-          PREV=$(az containerapp revision list \
-            --name "$API_APP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --query "[?properties.active && properties.trafficWeight==\`100\`] | [0].name" \
-            -o tsv 2>/dev/null || true)
-          echo "name=$PREV" >> "$GITHUB_OUTPUT"
-          if [[ -z "$PREV" ]]; then
-            echo "::warning::No 100%-traffic revision found; treating as bootstrap deploy."
-          else
-            echo "Previous active revision: $PREV"
-          fi
-
-      - name: Pin traffic to previous revision
-        # Before creating the new revision, explicitly pin traffic to
-        # PREV by name. This converts the (possibly platform-default)
-        # `latestRevision: true` traffic config into a named-revision
-        # config so the imminent `az containerapp update` does NOT
-        # cause the new revision to auto-take traffic before smoke-
-        # testing. Skipped on the bootstrap deploy.
-        if: steps.prev.outputs.name != ''
-        env:
-          PREV: ${{ steps.prev.outputs.name }}
-        run: |
-          set -euo pipefail
-          az containerapp ingress traffic set \
-            --name "$API_APP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --revision-weight "$PREV=100"
-
-      - name: Create new API revision (0% traffic)
+      - name: Update API revision
         id: api_update
-        # `az containerapp update --revision-suffix` creates a new
-        # revision named `<app>--<suffix>`. With traffic pinned to PREV,
-        # this revision starts at 0% weight. Use the immutable
-        # `:sha-<short>` tag — never `:latest` — so a re-run of this
-        # workflow against the same SHA targets a deterministic image.
+        # Single mode: ACA creates a new revision, waits for the readiness
+        # probe to pass, then shifts traffic to it and deactivates the
+        # previous revision. The --revision-suffix isn't required (ACA
+        # auto-generates one) but is kept for traceability — `sha-<short>`
+        # in the revision name makes "which build is this?" a one-liner.
         run: |
           set -euo pipefail
           az containerapp update \
@@ -423,103 +381,46 @@ jobs:
             --revision-suffix "sha-$SHORT_SHA"
           NEW_REVISION="${API_APP_NAME}--sha-$SHORT_SHA"
           echo "name=$NEW_REVISION" >> "$GITHUB_OUTPUT"
-          echo "Created revision: $NEW_REVISION"
+          echo "Updated to revision: $NEW_REVISION"
 
-      - name: Smoke test new revision
+      - name: Smoke-test API (stable FQDN, post-shift tripwire)
         id: smoke
-        # Each ACA revision exposes its own FQDN of the form
-        # `<app>--<suffix>.<env-defaultDomain>` which routes
-        # specifically to that revision regardless of the app's traffic
-        # config. Hit it directly to verify the new code works before
-        # shifting any user traffic.
-        #
-        # `--fail-with-body` returns the response body on non-2xx so the
-        # workflow log captures the failure reason (vs `--fail` which
-        # discards the body).
-        env:
-          NEW: ${{ steps.api_update.outputs.name }}
+        # ACA has already shifted traffic by the time `az containerapp
+        # update` returned. This curl confirms the new revision is the
+        # one that the stable FQDN now resolves to, and gives a workflow
+        # log line a human can grep if a user-facing alert fires later.
+        # NOT a gate: if this fails, manually re-deploy the prior SHA.
         run: |
           set -euo pipefail
-          REVISION_FQDN=$(az containerapp revision show \
+          API_FQDN=$(az containerapp show \
             --name "$API_APP_NAME" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --revision "$NEW" \
-            --query "properties.fqdn" -o tsv)
-          echo "Smoke-testing https://$REVISION_FQDN"
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "Smoke-testing https://$API_FQDN"
 
-          # ACA cold-start can take 30–60s; the readiness probe lags
-          # behind /healthz being live. Poll until 200 OK, cap at ~5 min.
-          for i in $(seq 1 60); do
+          # Allow time for the post-shift connection drain on PREV.
+          for i in $(seq 1 12); do
             if curl --fail-with-body --silent --max-time 5 \
-                "https://$REVISION_FQDN/healthz" > /dev/null; then
-              echo "[$i/60] /healthz OK"
+                "https://$API_FQDN/healthz" > /dev/null; then
+              echo "[$i/12] /healthz OK"
               break
             fi
-            echo "[$i/60] /healthz not ready yet"
+            echo "[$i/12] /healthz not ready yet"
             sleep 5
           done
 
-          # Final asserts — these fail the step (and the workflow) if
-          # /healthz still isn't returning 2xx.
           curl --fail-with-body --max-time 10 \
-            "https://$REVISION_FQDN/healthz"
+            "https://$API_FQDN/healthz"
           echo
           curl --fail-with-body --silent --max-time 10 \
-            "https://$REVISION_FQDN/openapi.json" > /dev/null
+            "https://$API_FQDN/openapi.json" > /dev/null
           echo "/openapi.json reachable"
 
-      - name: Shift traffic to new revision
-        id: shift
-        # On smoke green: 100% → NEW, 0% → PREV. PREV stays warm so a
-        # subsequent manual rollback (see docs/runbooks/deploy.md) is
-        # instant — just flip the weights back.
-        env:
-          NEW: ${{ steps.api_update.outputs.name }}
-          PREV: ${{ steps.prev.outputs.name }}
-        run: |
-          set -euo pipefail
-          if [[ -n "$PREV" && "$PREV" != "$NEW" ]]; then
-            az containerapp ingress traffic set \
-              --name "$API_APP_NAME" \
-              --resource-group "$AZURE_RESOURCE_GROUP" \
-              --revision-weight "$NEW=100" "$PREV=0"
-            echo "Shifted: $NEW=100, $PREV=0"
-          else
-            az containerapp ingress traffic set \
-              --name "$API_APP_NAME" \
-              --resource-group "$AZURE_RESOURCE_GROUP" \
-              --revision-weight "$NEW=100"
-            echo "Shifted: $NEW=100 (no previous revision)"
-          fi
-
-      - name: Rollback traffic on failure
-        # Fires only when:
-        #   * the job is failing (`failure()`),
-        #   * the new revision was created (`api_update` succeeded),
-        #   * there is a PREV to roll back to (bootstrap deploy excluded),
-        #   * the shift step did NOT succeed (avoid touching traffic
-        #     when the failure is downstream of a successful shift —
-        #     i.e. the worker update step).
-        if: failure() && steps.api_update.conclusion == 'success' && steps.prev.outputs.name != '' && steps.shift.conclusion != 'success'
-        env:
-          PREV: ${{ steps.prev.outputs.name }}
-          NEW: ${{ steps.api_update.outputs.name }}
-        run: |
-          set -euo pipefail
-          echo "::error::Deploy failed after revision creation; reverting traffic to $PREV"
-          az containerapp ingress traffic set \
-            --name "$API_APP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --revision-weight "$PREV=100" "$NEW=0"
-
       - name: Update worker revision
-        # No traffic shift — worker has one always-on replica per
-        # ADR-0001 and no ingress to load-balance over. The worker container
-        # app is `activeRevisionsMode: Single` (see
-        # infra/modules/container-app-worker.bicep), so this update creates
-        # a new revision and ACA automatically deactivates the previous
-        # one once the new replica is healthy. No worker-side cleanup is
-        # needed.
+        # Same shape as the API update — Single mode, ACA auto-shifts
+        # and deactivates the previous revision once readiness is green.
+        # No traffic management because the worker has no ingress
+        # (ADR-0001: one always-on replica).
         run: |
           set -euo pipefail
           az containerapp update \
@@ -528,56 +429,9 @@ jobs:
             --image "ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \
             --revision-suffix "sha-$SHORT_SHA"
 
-      - name: Deactivate stale API revisions
-        # The API runs `activeRevisionsMode: Multiple` because the blue/green
-        # dance above relies on having two named revisions live at once
-        # (NEW at 100 %, PREV at 0 % as the rollback target). Multiple mode
-        # never auto-deactivates anything, so without this step every deploy
-        # leaves another revision active with its replica + SQLAlchemy
-        # connection pool still attached to Postgres. By 2026-06-06 the pile
-        # had grown to ~25 active API revisions; combined with the same
-        # pileup on the worker, the reseed ACA Job hit
-        # `FATAL: remaining connection slots are reserved for roles with the
-        # SUPERUSER attribute` an hour before the demo. See
-        # journal/260606-fix-revision-pileup.md.
-        #
-        # Cleanup policy: keep exactly two revisions active — NEW (current
-        # 100 %) and PREV (kept at 0 % for instant manual rollback per the
-        # runbook). Deactivate everything else.
-        #
-        # Gated on `steps.shift.conclusion == 'success'` so a failed deploy
-        # that has already been rolled back to PREV doesn't have PREV
-        # treated as the "current" survivor and a stale revision wrongly
-        # kept as the "rollback target". On bootstrap (PREV empty), the
-        # filter still works — `name != ''` excludes no real revision.
-        if: steps.shift.conclusion == 'success'
-        env:
-          NEW: ${{ steps.api_update.outputs.name }}
-          PREV: ${{ steps.prev.outputs.name }}
-        run: |
-          set -euo pipefail
-          STALE=$(az containerapp revision list \
-            --name "$API_APP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --query "[?properties.active && name != '$NEW' && name != '$PREV'].name" \
-            -o tsv)
-          if [[ -z "$STALE" ]]; then
-            echo "No stale active revisions to deactivate (keeping NEW=$NEW PREV=${PREV:-<none>})."
-            exit 0
-          fi
-          echo "Deactivating stale active API revisions (keeping NEW=$NEW PREV=${PREV:-<none>}):"
-          printf '  %s\n' $STALE
-          while IFS= read -r r; do
-            [[ -z "$r" ]] && continue
-            az containerapp revision deactivate \
-              --name "$API_APP_NAME" \
-              --resource-group "$AZURE_RESOURCE_GROUP" \
-              --revision "$r"
-          done <<< "$STALE"
-
   deploy-spa:
     name: Build + upload SPA, purge Front Door cache
-    # SPA deploy is independent of the API blue/green sequence. By
+    # SPA deploy is independent of the API revision update. By
     # depending on `prepare-infra` (not `deploy-services`), this job
     # runs in parallel with `deploy-services` and still ships even if
     # the API deploy fails.
