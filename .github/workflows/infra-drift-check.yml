@@ -55,7 +55,10 @@ env:
 
 jobs:
   drift:
-    name: az deployment what-if (${{ env.AZURE_RESOURCE_GROUP }})
+    # NB: job-level `name:` cannot use the `env` context (GitHub only
+    # exposes github/inputs/matrix/needs/strategy/vars there), so the RG
+    # is hardcoded. Keep in sync with AZURE_RESOURCE_GROUP in `env:` above.
+    name: az deployment what-if (horizons-nonprod)
     runs-on: ubuntu-latest
     # The `staging` environment is what GitHub binds the federated
     # credential to — WU6.1 created two creds, one per environment,
