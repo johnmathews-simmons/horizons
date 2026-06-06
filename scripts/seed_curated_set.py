@@ -18,7 +18,7 @@ Writes (idempotent):
                                   --stage-synthetic-v2 is passed
 
 DSN comes from $HORIZONS_DB_URL (same env var Alembic reads).
-See docs/seeding.md for the YAML schema and idempotency contract.
+See docs/runbooks/seeding.md for the YAML schema and idempotency contract.
 """
 
 from __future__ import annotations

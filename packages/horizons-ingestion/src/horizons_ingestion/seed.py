@@ -14,7 +14,7 @@ Library that bootstraps the ingestion worker's read-side substrate:
   re-runs skip any document that already has staged versions. Entry
   point: :func:`stage_synthetic_v2`.
 
-See ``docs/seeding.md`` for the YAML schema, idempotency contract, and
+See ``docs/runbooks/seeding.md`` for the YAML schema, idempotency contract, and
 WU8.0 hand-off plan. The CLI shim that calls into this module lives at
 ``scripts/seed_curated_set.py``.
 """
