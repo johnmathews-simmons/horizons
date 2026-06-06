@@ -40,6 +40,12 @@ def upgrade() -> None:
     # schema_owner` below succeed on re-run.
     op.execute("GRANT schema_owner TO current_user;")
 
+    # PG 18 + Azure Flex strip PUBLIC's CREATE on the `public` schema.
+    # `ALTER TYPE … OWNER TO schema_owner` requires the new owner to
+    # have CREATE on the type's schema, which schema_owner doesn't
+    # inherit by default. Grant it explicitly (idempotent).
+    op.execute("GRANT USAGE, CREATE ON SCHEMA public TO schema_owner;")
+
     # ENUM type for users.role. Created idempotently so a partial-failure
     # re-run does not abort on duplicate type.
     op.execute(

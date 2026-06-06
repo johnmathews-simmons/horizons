@@ -81,6 +81,12 @@ def upgrade() -> None:
     # ownership of `user_role`.
     op.execute("GRANT schema_owner TO current_user;")
 
+    # PG 18 + Azure Flex strip PUBLIC's CREATE on the `public` schema.
+    # ALTER OWNER on an object in `public` requires the new owner to
+    # have CREATE there. Grant it once so future DDL migrations can
+    # transfer ownership cleanly.
+    op.execute("GRANT USAGE, CREATE ON SCHEMA public TO schema_owner;")
+
 
 def downgrade() -> None:
     op.execute("DROP ROLE IF EXISTS admin_bypass;")
