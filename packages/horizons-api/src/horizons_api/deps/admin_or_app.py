@@ -34,7 +34,10 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, Request
 from horizons_core.core.auth import Principal, Role
-from horizons_core.core.auth.admin import _record_audit_row
+from horizons_core.core.auth.admin import _record_audit_row  # pyright: ignore[reportPrivateUsage]
+
+# _record_audit_row is the documented WU1.9 audit seam — leading underscore signals
+# "do not use without bracket discipline", and we satisfy that discipline below.
 from horizons_core.db.models.admin_access_log import AdminAccessMode
 from horizons_core.db.session import (
     get_engine,

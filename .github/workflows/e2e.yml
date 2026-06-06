@@ -79,6 +79,14 @@ jobs:
       - name: Seed e2e fixtures
         run: uv run packages/horizons-api/scripts/seed_e2e.py
 
+      - name: Seed demo accounts (UK/EU/admin) for home-dashboard e2e
+        # The home-overview tests login as demo-uk@demo.example.com and
+        # admin-demo@demo.example.com (see e2e/login-and-scope.spec.ts).
+        # --allow-dev-defaults lets the script use the baked-in passwords
+        # documented at the top of the spec, so CI doesn't need secret
+        # plumbing for the demo creds.
+        run: uv run packages/horizons-api/scripts/create_demo_accounts.py --allow-dev-defaults
+
       - name: Build webapp
         working-directory: packages/horizons-webapp
         run: npm run build
