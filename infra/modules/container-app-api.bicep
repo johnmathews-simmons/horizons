@@ -39,6 +39,36 @@ param maxReplicas int = 3
 @secure()
 param appInsightsConnectionString string
 
+@description('Postgres server FQDN, e.g. horizons-dev-pgsql.postgres.database.azure.com.')
+param postgresFqdn string
+
+@description('Postgres user the API authenticates as. Password-fallback posture for the demo — the long-term target is the UAMI registered as an AAD principal (deferred follow-up).')
+param postgresUser string = 'horizons_admin'
+
+@description('Database name.')
+param postgresDatabase string = 'horizons'
+
+@description('Postgres admin password. Combined with FQDN + user + db into HORIZONS_DB_URL, stored as a Container App secret.')
+@secure()
+param postgresAdminPassword string
+
+@description('RS256 JWT private key (PEM-encoded). Stored as a Container App secret.')
+@secure()
+param jwtPrivateKeyPem string
+
+@description('RS256 JWT public key (PEM-encoded). Stored as a Container App secret (the API verifies its own tokens with it).')
+@secure()
+param jwtPublicKeyPem string
+
+@description('JWT issuer claim. Demo default mirrors the env name.')
+param jwtIssuer string = 'horizons-api-dev'
+
+@description('JWT audience claim.')
+param jwtAudience string = 'horizons-webapp-dev'
+
+@description('CORS allow-list, comma-separated. Typically the Front Door endpoint URL for the SPA.')
+param corsOrigins string = ''
+
 @description('Tags applied to the container app.')
 param tags object = {}
 
@@ -81,7 +111,30 @@ resource api 'Microsoft.App/containerApps@2024-10-02-preview' = {
         // which is the correct bootstrap behaviour. Subsequent deploys
         // leave traffic untouched.
       }
-      secrets: []
+      // Short-circuit secret architecture for the demo: secrets live
+      // inline on the Container App, sourced from Bicep @secure() params.
+      // Post-demo refactor will move these behind Key Vault references
+      // with the UAMI as the resolver identity.
+      secrets: [
+        {
+          name: 'db-url'
+          // The asyncpg driver is what horizons-core/db/session.py expects;
+          // see also packages/horizons-api/src/horizons_api/.
+          // The concatenated URL embeds the @secure password — the
+          // ACA secrets channel keeps it sealed; suppress the linter
+          // warning that flags secure-into-string composition.
+          #disable-next-line use-secure-value-for-secure-inputs
+          value: 'postgresql+asyncpg://${postgresUser}:${postgresAdminPassword}@${postgresFqdn}:5432/${postgresDatabase}'
+        }
+        {
+          name: 'jwt-private-key-pem'
+          value: jwtPrivateKeyPem
+        }
+        {
+          name: 'jwt-public-key-pem'
+          value: jwtPublicKeyPem
+        }
+      ]
       registries: []
     }
     template: {
@@ -101,6 +154,30 @@ resource api 'Microsoft.App/containerApps@2024-10-02-preview' = {
             {
               name: 'HORIZONS_ENV'
               value: environmentName
+            }
+            {
+              name: 'HORIZONS_DB_URL'
+              secretRef: 'db-url'
+            }
+            {
+              name: 'HORIZONS_JWT_PRIVATE_KEY_PEM'
+              secretRef: 'jwt-private-key-pem'
+            }
+            {
+              name: 'HORIZONS_JWT_PUBLIC_KEY_PEM'
+              secretRef: 'jwt-public-key-pem'
+            }
+            {
+              name: 'HORIZONS_JWT_ISSUER'
+              value: jwtIssuer
+            }
+            {
+              name: 'HORIZONS_JWT_AUDIENCE'
+              value: jwtAudience
+            }
+            {
+              name: 'HORIZONS_CORS_ORIGINS'
+              value: corsOrigins
             }
           ]
           probes: [

@@ -167,6 +167,8 @@ jobs:
         # moving `:latest` tag points at right now.
         env:
           POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          JWT_PRIVATE_KEY_PEM: ${{ secrets.HORIZONS_JWT_PRIVATE_KEY_PEM }}
+          JWT_PUBLIC_KEY_PEM: ${{ secrets.HORIZONS_JWT_PUBLIC_KEY_PEM }}
           TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
         run: |
           set -euo pipefail
@@ -176,6 +178,8 @@ jobs:
             --template-file infra/main.bicep \
             --parameters @infra/main.parameters.example.json \
             --parameters postgresAdminPassword="$POSTGRES_ADMIN_PASSWORD" \
+            --parameters jwtPrivateKeyPem="$JWT_PRIVATE_KEY_PEM" \
+            --parameters jwtPublicKeyPem="$JWT_PUBLIC_KEY_PEM" \
             --parameters tenantId="$TENANT_ID" \
             --parameters apiImage="ghcr.io/johnmathews/horizons-api:sha-$SHORT_SHA" \
             --parameters workerImage="ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \

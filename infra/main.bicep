@@ -62,6 +62,14 @@ param tags object = {
   managedBy: 'bicep'
 }
 
+@description('RS256 JWT private key (PEM). Passed through to the API container as a secret. Sourced from secrets.HORIZONS_JWT_PRIVATE_KEY_PEM in deploy.yml.')
+@secure()
+param jwtPrivateKeyPem string
+
+@description('RS256 JWT public key (PEM). Same channel as the private key.')
+@secure()
+param jwtPublicKeyPem string
+
 @description('Email address that receives Azure Monitor alert notifications (WU7.3). Single email receiver on the action group; swap to a Slack webhook by extending alerts.bicep with a webhookReceivers param.')
 param alertEmail string = 'mthwsjc@gmail.com'
 
@@ -171,6 +179,16 @@ module containerApi 'modules/container-app-api.bicep' = {
     environmentId: containerEnv.outputs.environmentId
     image: apiImage
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
+    postgresFqdn: existingPostgres.properties.fullyQualifiedDomainName
+    postgresUser: postgresAdminLogin
+    postgresAdminPassword: postgresAdminPassword
+    jwtPrivateKeyPem: jwtPrivateKeyPem
+    jwtPublicKeyPem: jwtPublicKeyPem
+    // CORS allow-list is the Front Door endpoint URL — the SPA's origin.
+    // Bicep resolves the reference through frontDoor's outputs even
+    // though frontDoor is declared later in this file (declaration order
+    // doesn't drive dependency order).
+    corsOrigins: 'https://${frontDoor.outputs.endpointHostName}'
     tags: tags
   }
 }
