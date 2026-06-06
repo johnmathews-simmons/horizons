@@ -53,10 +53,11 @@ test('UK client browses documents, opens one, toggles the clause structure', asy
   await page.getByTestId('toggle-structure').click()
   const cards = page.getByTestId('clause-card')
   await expect(cards.first()).toBeVisible()
-  // The parser-assigned anchor path is visible as a chip.
-  await expect(
-    page.getByTestId('clause-anchor').filter({ hasText: UK_CLAUSE_PATH }),
-  ).toBeVisible()
+  // The parser-assigned anchor path is visible as a chip. Match by exact
+  // text — Playwright's `hasText` is a substring matcher, so the leaf path
+  // `PART_2/SECTION_12` would also match the deeper sibling
+  // `PART_2/SECTION_12/(a)` and trip strict mode.
+  await expect(page.getByTestId('clause-anchor').getByText(UK_CLAUSE_PATH, { exact: true })).toBeVisible()
 
   // -------- Toggle off --------
   await page.getByTestId('toggle-structure').click()
