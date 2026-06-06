@@ -92,7 +92,7 @@ exclude = ["**/__pycache__", ".claude", "packages/horizons-webapp"]
 # `importlib` import mode lets per-package tests share `test_smoke.py`
 # filenames without colliding (rootdir test-collection conflates same-named
 # modules otherwise).
-addopts = "-ra --strict-markers --strict-config --import-mode=importlib -m 'not nightly'"
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib -m 'not nightly' --cov --cov-report=term --cov-report=html"
 testpaths = [
     "packages/horizons-core/tests",
     "packages/horizons-ingestion/tests",
