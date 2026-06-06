@@ -98,11 +98,19 @@ if TYPE_CHECKING:
 # --- Account inventory ------------------------------------------------------
 
 
-DEMO_EMAIL_LIKE = "%@example.test"
+# `@example.test` is RFC-6761 special-use. pydantic's EmailStr rejects
+# it, so `/v1/auth/login` 422s on the demo accounts (the script can
+# seed them; the user can't log in). seed_e2e.py learned this and uses
+# `@e2e.example.com` instead; mirror that here with a demo-specific
+# subdomain so the two seed flows stay distinguishable in the users
+# table. The legacy LIKE pattern stays in the teardown set as a
+# transitional cleanup until a single deploy retires it.
+DEMO_EMAIL_LIKE = "%@demo.example.com"
+LEGACY_DEMO_EMAIL_LIKE = "%@example.test"
 
-UK_EMAIL = "demo-uk@example.test"
-EU_EMAIL = "demo-eu@example.test"
-ADMIN_EMAIL = "admin-demo@example.test"
+UK_EMAIL = "demo-uk@demo.example.com"
+EU_EMAIL = "demo-eu@demo.example.com"
+ADMIN_EMAIL = "admin-demo@demo.example.com"
 
 # Dev-only fallback passwords. Used only when --allow-dev-defaults is
 # passed. They are visible to anyone who reads the source and are NEVER
@@ -234,39 +242,43 @@ def _teardown(conn: Connection) -> None:
     UPDATE triggers, so no replication-role bypass is required here
     (unlike ``seed_e2e.py``, which deletes from append-only
     ``change_events``).
-    """
-    params = {"p": DEMO_EMAIL_LIKE}
 
-    conn.execute(
-        sqlalchemy.text(
-            "DELETE FROM watchlists WHERE user_id IN ("
-            "  SELECT id FROM users WHERE email LIKE :p"
-            ")"
-        ),
-        params,
-    )
-    conn.execute(
-        sqlalchemy.text(
-            "DELETE FROM subscription_scopes WHERE subscription_id IN ("
-            "  SELECT s.id FROM subscriptions s "
-            "  JOIN users u ON u.id = s.user_id "
-            "  WHERE u.email LIKE :p"
-            ")"
-        ),
-        params,
-    )
-    conn.execute(
-        sqlalchemy.text(
-            "DELETE FROM subscriptions WHERE user_id IN ("
-            "  SELECT id FROM users WHERE email LIKE :p"
-            ")"
-        ),
-        params,
-    )
-    conn.execute(
-        sqlalchemy.text("DELETE FROM users WHERE email LIKE :p"),
-        params,
-    )
+    Sweeps both the current ``DEMO_EMAIL_LIKE`` pattern AND the legacy
+    ``LEGACY_DEMO_EMAIL_LIKE`` so a transitional run cleans up
+    previously-seeded rows under an old TLD without operator action.
+    """
+    for pattern in (DEMO_EMAIL_LIKE, LEGACY_DEMO_EMAIL_LIKE):
+        params = {"p": pattern}
+        conn.execute(
+            sqlalchemy.text(
+                "DELETE FROM watchlists WHERE user_id IN ("
+                "  SELECT id FROM users WHERE email LIKE :p"
+                ")"
+            ),
+            params,
+        )
+        conn.execute(
+            sqlalchemy.text(
+                "DELETE FROM subscription_scopes WHERE subscription_id IN ("
+                "  SELECT s.id FROM subscriptions s "
+                "  JOIN users u ON u.id = s.user_id "
+                "  WHERE u.email LIKE :p"
+                ")"
+            ),
+            params,
+        )
+        conn.execute(
+            sqlalchemy.text(
+                "DELETE FROM subscriptions WHERE user_id IN ("
+                "  SELECT id FROM users WHERE email LIKE :p"
+                ")"
+            ),
+            params,
+        )
+        conn.execute(
+            sqlalchemy.text("DELETE FROM users WHERE email LIKE :p"),
+            params,
+        )
 
 
 # --- Create-or-rotate -----------------------------------------------------
@@ -432,6 +444,41 @@ def main(argv: list[str] | None = None) -> int:
     engine = create_engine(url, future=True)
     try:
         with engine.begin() as conn:
+            # Unconditional legacy sweep — rows matching the prior TLD
+            # (which the API can't authenticate) are by definition not
+            # ours-to-keep. Safe to drop on every run independent of
+            # --reset; idempotent when no matches exist.
+            conn.execute(
+                sqlalchemy.text(
+                    "DELETE FROM watchlists WHERE user_id IN ("
+                    "  SELECT id FROM users WHERE email LIKE :p"
+                    ")"
+                ),
+                {"p": LEGACY_DEMO_EMAIL_LIKE},
+            )
+            conn.execute(
+                sqlalchemy.text(
+                    "DELETE FROM subscription_scopes WHERE subscription_id IN ("
+                    "  SELECT s.id FROM subscriptions s "
+                    "  JOIN users u ON u.id = s.user_id "
+                    "  WHERE u.email LIKE :p"
+                    ")"
+                ),
+                {"p": LEGACY_DEMO_EMAIL_LIKE},
+            )
+            conn.execute(
+                sqlalchemy.text(
+                    "DELETE FROM subscriptions WHERE user_id IN ("
+                    "  SELECT id FROM users WHERE email LIKE :p"
+                    ")"
+                ),
+                {"p": LEGACY_DEMO_EMAIL_LIKE},
+            )
+            conn.execute(
+                sqlalchemy.text("DELETE FROM users WHERE email LIKE :p"),
+                {"p": LEGACY_DEMO_EMAIL_LIKE},
+            )
+
             if args.reset:
                 _teardown(conn)
             blocked = _downgrade_candidates(
