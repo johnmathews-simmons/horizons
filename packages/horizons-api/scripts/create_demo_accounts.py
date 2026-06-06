@@ -237,19 +237,24 @@ def _resolve_passwords(
 def _teardown(conn: Connection) -> None:
     """Remove every demo-account row plus its dependants. Safe when empty.
 
-    Watchlists, subscription_scopes, subscriptions, and users are all
-    purgeable; refresh_tokens cascade via FK ON DELETE.
+    Watchlists, subscription_scopes, subscriptions, admin_access_log
+    rows, and users are all purged; refresh_tokens cascade via FK ON
+    DELETE.
 
-    The append-only triggers on ``subscriptions`` / ``subscription_scopes``
-    reject UPDATEs by default. Plain DELETEs are unaffected by the
-    UPDATE triggers, so no replication-role bypass is required here
-    (unlike ``seed_e2e.py``, which deletes from append-only
-    ``change_events``).
+    ``admin_access_log`` is append-only (trigger rejects DELETE) and
+    has two ON DELETE RESTRICT FKs to ``users`` (admin_id,
+    target_user_id), so any audit row written by the admin demo
+    account would block ``DELETE FROM users`` with a 23503. Bypass
+    the trigger for this transaction with
+    ``SET LOCAL session_replication_role = 'replica'`` (same pattern
+    as ``seed_e2e.py``) and delete the audit rows first.
 
     Sweeps both the current ``DEMO_EMAIL_LIKE`` pattern AND the legacy
     ``LEGACY_DEMO_EMAIL_LIKE`` so a transitional run cleans up
     previously-seeded rows under an old TLD without operator action.
     """
+    conn.execute(sqlalchemy.text("SET LOCAL session_replication_role = 'replica'"))
+
     for pattern in (DEMO_EMAIL_LIKE, LEGACY_DEMO_EMAIL_LIKE):
         params = {"p": pattern}
         conn.execute(
@@ -273,6 +278,16 @@ def _teardown(conn: Connection) -> None:
         conn.execute(
             sqlalchemy.text(
                 "DELETE FROM subscriptions WHERE user_id IN ("
+                "  SELECT id FROM users WHERE email LIKE :p"
+                ")"
+            ),
+            params,
+        )
+        conn.execute(
+            sqlalchemy.text(
+                "DELETE FROM admin_access_log WHERE admin_id IN ("
+                "  SELECT id FROM users WHERE email LIKE :p"
+                ") OR target_user_id IN ("
                 "  SELECT id FROM users WHERE email LIKE :p"
                 ")"
             ),
