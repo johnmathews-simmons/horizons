@@ -68,10 +68,10 @@ workflow uploads `playwright-report/` and `test-results/` as artefacts.
 | Selector | Component | What it asserts |
 | --- | --- | --- |
 | `[data-testid="email-input"]` / `password-input` / `login-submit` | `LoginView.vue` | Login form |
-| `[data-testid="sign-out"]` | `HomeView.vue` | Logout button on `/` |
+| `[data-testid="sign-out"]` | `AppNavBar.vue` | Logout button (rendered by the shared navbar across all customer views) |
+| `[data-testid="nav-changes"]` | `AppNavBar.vue` | "Browse recent changes" link (also used as the back link from `/changes/:id`) |
 | `[data-testid="change-row"]` | `ChangesView.vue` | One row per visible event |
 | `[data-change-type="MODIFIED"]` etc. | `ChangeTypePill.vue` | Change-type filter / count |
 | `[data-confidence="high"]` / `medium` / `low` | `ConfidenceBadge.vue` | Badge tier |
 | `[data-testid="path-display"]` | `ChangeDetailView.vue` | Clause path on the detail page |
 | `[data-testid="not-found-state"]` | `ChangeDetailView.vue` | Out-of-scope event landed here |
-| `[data-testid="back-to-changes"]` | `ChangeDetailView.vue` | Back link |

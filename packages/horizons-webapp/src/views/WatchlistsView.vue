@@ -17,6 +17,7 @@ import {
   useWatchlistsQuery,
 } from '@/composables/useWatchlists'
 import { useToast } from '@/composables/useToast'
+import AppNavBar from '@/components/AppNavBar.vue'
 import type { Watchlist } from '@/api/watchlists'
 
 const query = useWatchlistsQuery()
@@ -72,15 +73,7 @@ function displayName(row: Watchlist): string {
 
 <template>
   <main class="min-h-screen bg-slate-50">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <span class="text-lg font-semibold tracking-tight text-slate-900">Horizons</span>
-        <nav class="flex gap-4 text-sm">
-          <RouterLink to="/" class="text-slate-600 hover:text-slate-900">Home</RouterLink>
-          <RouterLink to="/changes" class="text-slate-600 hover:text-slate-900">Changes</RouterLink>
-        </nav>
-      </div>
-    </header>
+    <AppNavBar />
 
     <section class="mx-auto max-w-5xl px-6 py-10">
       <div class="mb-6 flex items-end justify-between">

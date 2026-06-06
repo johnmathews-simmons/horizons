@@ -7,6 +7,7 @@ import { suppressBelowThreshold } from '@/constants/confidence'
 import { Button } from '@/components/ui/button'
 import { ConfidenceBadge } from '@/components/ui/confidence-badge'
 import { ChangeTypePill } from '@/components/ui/change-type-pill'
+import AppNavBar from '@/components/AppNavBar.vue'
 import type { DiscoveryItem } from '@/api/changes'
 
 const route = useRoute()
@@ -114,20 +115,7 @@ function measureRow(el: Element | null) {
 
 <template>
   <main class="min-h-screen bg-slate-50">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <span class="text-lg font-semibold tracking-tight text-slate-900">Horizons</span>
-        <nav class="flex gap-4 text-sm">
-          <RouterLink to="/" class="text-slate-600 hover:text-slate-900">Home</RouterLink>
-          <RouterLink
-            to="/documents"
-            class="text-slate-600 hover:text-slate-900"
-          >
-            Documents
-          </RouterLink>
-        </nav>
-      </div>
-    </header>
+    <AppNavBar />
 
     <section class="mx-auto max-w-5xl px-6 py-10">
       <div class="mb-6 flex items-end justify-between">

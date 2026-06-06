@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { listDocuments, type DocumentItem, type DocumentPage } from '@/api/documents'
-import { useAuthStore } from '@/stores/auth'
-import { Button } from '@/components/ui/button'
+import AppNavBar from '@/components/AppNavBar.vue'
 
-const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
-
-async function onSignOut(): Promise<void> {
-  await auth.logout()
-  await router.push({ name: 'login' })
-}
 
 const PAGE_SIZE = 50
 
@@ -67,36 +60,7 @@ function formatDate(iso: string): string {
 
 <template>
   <main class="min-h-screen bg-slate-50">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <div class="flex items-center gap-6">
-          <RouterLink to="/" class="text-lg font-semibold tracking-tight text-slate-900">
-            Horizons
-          </RouterLink>
-          <nav class="flex gap-4 text-sm">
-            <RouterLink to="/changes" class="text-slate-600 hover:text-slate-900">
-              Changes
-            </RouterLink>
-            <RouterLink
-              to="/documents"
-              class="text-slate-900 font-medium"
-              data-testid="nav-documents"
-            >
-              Documents
-            </RouterLink>
-            <RouterLink to="/watchlists" class="text-slate-600 hover:text-slate-900">
-              Watchlists
-            </RouterLink>
-          </nav>
-        </div>
-        <div class="flex items-center gap-3 text-sm text-slate-600">
-          <span v-if="auth.principal" data-testid="user-email">{{ auth.principal.email }}</span>
-          <Button variant="outline" size="sm" data-testid="sign-out" @click="onSignOut">
-            Sign out
-          </Button>
-        </div>
-      </div>
-    </header>
+    <AppNavBar />
 
     <section class="mx-auto max-w-6xl px-6 py-10">
       <div class="mb-6">

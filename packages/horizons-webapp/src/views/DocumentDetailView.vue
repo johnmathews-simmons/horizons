@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import {
   getClauses,
@@ -10,6 +10,7 @@ import {
 } from '@/api/documents'
 import { Button } from '@/components/ui/button'
 import ClauseOverlay from '@/components/documents/ClauseOverlay.vue'
+import AppNavBar from '@/components/AppNavBar.vue'
 
 const route = useRoute()
 
@@ -60,18 +61,7 @@ function isNotFound(): boolean {
 
 <template>
   <main class="min-h-screen bg-slate-50">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <span class="text-lg font-semibold tracking-tight text-slate-900">Horizons</span>
-        <RouterLink
-          to="/documents"
-          class="text-sm text-slate-600 hover:text-slate-900"
-          data-testid="back-to-documents"
-        >
-          ← All documents
-        </RouterLink>
-      </div>
-    </header>
+    <AppNavBar />
 
     <section class="mx-auto max-w-5xl px-6 py-10">
       <div

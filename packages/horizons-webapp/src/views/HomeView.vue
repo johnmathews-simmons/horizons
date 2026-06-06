@@ -1,19 +1,12 @@
 <script setup lang="ts">
-import { RouterLink, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 import { useMeOverview } from '@/composables/useMeOverview'
-import { Button } from '@/components/ui/button'
+import AppNavBar from '@/components/AppNavBar.vue'
 import JurisdictionCard from '@/components/overview/JurisdictionCard.vue'
 import SectorCard from '@/components/overview/SectorCard.vue'
 
-const auth = useAuthStore()
 const router = useRouter()
 const overview = useMeOverview()
-
-async function onSignOut(): Promise<void> {
-  await auth.logout()
-  await router.push({ name: 'login' })
-}
 
 function goToJurisdiction(code: string): void {
   router.push({ name: 'changes', query: { jurisdiction: code } })
@@ -26,40 +19,7 @@ function goToSector(code: string): void {
 
 <template>
   <main class="min-h-screen bg-slate-50">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <span class="text-lg font-semibold tracking-tight text-slate-900">Horizons</span>
-        <div class="flex items-center gap-3 text-sm">
-          <RouterLink
-            to="/changes"
-            class="rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-100"
-            data-testid="nav-changes"
-          >
-            Browse recent changes
-          </RouterLink>
-          <RouterLink
-            to="/documents"
-            class="rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-100"
-            data-testid="home-documents-cta"
-          >
-            Browse documents
-          </RouterLink>
-          <RouterLink
-            to="/watchlists"
-            class="rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-100"
-            data-testid="nav-watchlists"
-          >
-            Manage watchlists
-          </RouterLink>
-          <span v-if="auth.principal" data-testid="user-email" class="text-slate-600">
-            {{ auth.principal.email }}
-          </span>
-          <Button variant="outline" size="sm" data-testid="sign-out" @click="onSignOut">
-            Sign out
-          </Button>
-        </div>
-      </div>
-    </header>
+    <AppNavBar />
 
     <section class="mx-auto max-w-6xl px-6 py-10">
       <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Your corpus</h1>

@@ -93,7 +93,7 @@ test('UK + EU clients see disjoint clause-diff views', async ({ page }) => {
   await expect(page.locator('body')).toContainText(UK_AFTER_FRAGMENT)
 
   // -------- 4. Logout --------
-  await page.getByTestId('back-to-changes').click()
+  await page.getByTestId('nav-changes').click()
   await page.waitForURL('**/changes')
   await page.goto('/')
   await page.getByTestId('sign-out').click()

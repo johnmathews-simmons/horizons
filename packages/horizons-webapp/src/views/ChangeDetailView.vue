@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useDifferential } from '@/composables/useDifferential'
 import { Button } from '@/components/ui/button'
 import { ConfidenceBadge } from '@/components/ui/confidence-badge'
 import { ChangeTypePill } from '@/components/ui/change-type-pill'
 import { DiffView } from '@/components/ui/diff-view'
+import AppNavBar from '@/components/AppNavBar.vue'
 
 const route = useRoute()
 
@@ -33,18 +34,7 @@ function isNotFound(): boolean {
 
 <template>
   <main class="min-h-screen bg-slate-50">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <span class="text-lg font-semibold tracking-tight text-slate-900">Horizons</span>
-        <RouterLink
-          to="/changes"
-          class="text-sm text-slate-600 hover:text-slate-900"
-          data-testid="back-to-changes"
-        >
-          ← All changes
-        </RouterLink>
-      </div>
-    </header>
+    <AppNavBar />
 
     <section class="mx-auto max-w-5xl px-6 py-10">
       <div
