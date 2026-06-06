@@ -1,24 +1,55 @@
-import { describe, expect, it, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
 import { defineComponent, h } from 'vue'
 import HomeView from '../HomeView.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { MeResponse } from '@/api/me'
+import type { OverviewResponse } from '@/api/overview'
+
+vi.mock('@/api/overview', () => ({
+  fetchOverview: vi.fn<() => Promise<OverviewResponse>>().mockResolvedValue({
+    is_admin: false,
+    totals: {
+      documents: 10,
+      jurisdictions: 8,
+      sectors: 5,
+      subscribed_jurisdictions: 1,
+      subscribed_sectors: 1,
+    },
+    jurisdictions: [
+      { code: 'IE', document_count: 1, subscribed: false },
+      { code: 'UK', document_count: 1, subscribed: true },
+    ],
+    sectors: [
+      { code: 'BANKING', document_count: 5, subscribed: true },
+      { code: 'employment', document_count: 2, subscribed: false },
+    ],
+  }),
+}))
 
 const Stub = defineComponent({ render: () => h('div', 'stub') })
 
-function makeRouter(): Router {
-  return createRouter({
-    history: createMemoryHistory(),
-    routes: [
-      { path: '/', name: 'home', component: HomeView },
-      { path: '/login', name: 'login', component: Stub },
-      { path: '/changes', name: 'changes', component: Stub },
-      { path: '/watchlists', name: 'watchlists', component: Stub },
-    ],
+const routes = [
+  { path: '/', name: 'home', component: HomeView },
+  { path: '/changes', name: 'changes', component: Stub },
+  { path: '/login', name: 'login', component: Stub },
+  { path: '/watchlists', name: 'watchlists', component: Stub },
+]
+
+async function mountHome() {
+  setActivePinia(createPinia())
+  const router = createRouter({ history: createMemoryHistory(), routes })
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
   })
+  const wrapper = mount(HomeView, {
+    global: { plugins: [router, [VueQueryPlugin, { queryClient }]] },
+  })
+  await flushPromises()
+  return { wrapper, router }
 }
 
 function principal(overrides: Partial<MeResponse> = {}): MeResponse {
@@ -32,6 +63,54 @@ function principal(overrides: Partial<MeResponse> = {}): MeResponse {
   }
 }
 
+describe('HomeView', () => {
+  it('renders one jurisdiction card per code in the response', async () => {
+    const { wrapper } = await mountHome()
+    const cards = wrapper.findAll('[data-testid="jurisdiction-card"]')
+    expect(cards).toHaveLength(2)
+    const codes = cards.map((c) => c.attributes('data-code'))
+    expect(codes).toEqual(['IE', 'UK'])
+  })
+
+  it('marks not-subscribed cards as disabled', async () => {
+    const { wrapper } = await mountHome()
+    const ie = wrapper.find('[data-testid="jurisdiction-card"][data-code="IE"]')
+    expect(ie.attributes('data-subscribed')).toBe('false')
+    const uk = wrapper.find('[data-testid="jurisdiction-card"][data-code="UK"]')
+    expect(uk.attributes('data-subscribed')).toBe('true')
+  })
+
+  it('clicking a subscribed jurisdiction navigates to /changes?jurisdiction=UK', async () => {
+    const { wrapper, router } = await mountHome()
+    const push = vi.spyOn(router, 'push')
+    await wrapper.find('[data-testid="jurisdiction-card"][data-code="UK"]').trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'changes', query: { jurisdiction: 'UK' } })
+  })
+
+  it('clicking a not-subscribed jurisdiction does not navigate', async () => {
+    const { wrapper, router } = await mountHome()
+    const push = vi.spyOn(router, 'push')
+    await wrapper.find('[data-testid="jurisdiction-card"][data-code="IE"]').trigger('click')
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it('clicking a subscribed sector navigates to /changes?sector=BANKING', async () => {
+    const { wrapper, router } = await mountHome()
+    const push = vi.spyOn(router, 'push')
+    await wrapper.find('[data-testid="sector-card"][data-code="BANKING"]').trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'changes', query: { sector: 'BANKING' } })
+  })
+
+  it('shows the summary numbers from totals', async () => {
+    const { wrapper } = await mountHome()
+    const text = wrapper.text()
+    expect(text).toMatch(/Jurisdictions/)
+    expect(text).toMatch(/1\s*\/\s*8/)
+    expect(text).toMatch(/Sectors/)
+    expect(text).toMatch(/1\s*\/\s*5/)
+  })
+})
+
 describe('HomeView navbar', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -41,11 +120,16 @@ describe('HomeView navbar', () => {
     const auth = useAuthStore()
     auth.setPrincipal(principal({ email: 'alice@example.test' }))
 
-    const router = makeRouter()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/')
     await router.isReady()
 
-    const wrapper = mount(HomeView, { global: { plugins: [router] } })
+    const wrapper = mount(HomeView, {
+      global: { plugins: [router, [VueQueryPlugin, { queryClient }]] },
+    })
 
     const email = wrapper.get('[data-testid="user-email"]')
     expect(email.text()).toBe('alice@example.test')
@@ -55,11 +139,16 @@ describe('HomeView navbar', () => {
     const auth = useAuthStore()
     auth.setPrincipal(principal({ email: 'bob@example.test' }))
 
-    const router = makeRouter()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/')
     await router.isReady()
 
-    const wrapper = mount(HomeView, { global: { plugins: [router] } })
+    const wrapper = mount(HomeView, {
+      global: { plugins: [router, [VueQueryPlugin, { queryClient }]] },
+    })
 
     const header = wrapper.get('header')
     const emailIdx = header.html().indexOf('data-testid="user-email"')
@@ -70,12 +159,16 @@ describe('HomeView navbar', () => {
   })
 
   it('omits the email element when no principal is loaded', async () => {
-    // No setPrincipal — auth.principal stays null.
-    const router = makeRouter()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/')
     await router.isReady()
 
-    const wrapper = mount(HomeView, { global: { plugins: [router] } })
+    const wrapper = mount(HomeView, {
+      global: { plugins: [router, [VueQueryPlugin, { queryClient }]] },
+    })
 
     expect(wrapper.find('[data-testid="user-email"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="sign-out"]').exists()).toBe(true)
