@@ -32,6 +32,14 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # Self-grant schema_owner — a safety net for the existing demo
+    # deployment that ran 0001 before the self-grant was added there.
+    # Idempotent: GRANT of an already-held role is a no-op. Fresh
+    # deploys get this from 0001 (cleaner location); for already-
+    # bootstrapped envs the line here lets `ALTER … OWNER TO
+    # schema_owner` below succeed on re-run.
+    op.execute("GRANT schema_owner TO current_user;")
+
     # ENUM type for users.role. Created idempotently so a partial-failure
     # re-run does not abort on duplicate type.
     op.execute(

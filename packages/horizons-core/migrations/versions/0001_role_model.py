@@ -71,6 +71,16 @@ def upgrade() -> None:
         "explicit, logged admin endpoints.';"
     )
 
+    # Bootstrap: make the migration user a member of `schema_owner` so
+    # the following migrations can `ALTER … OWNER TO schema_owner` on
+    # the types/tables they create. The migration user (the Azure Flex
+    # admin login in deployed envs; the superuser in testcontainers)
+    # has CREATEROLE/superuser and can self-grant. Without this,
+    # 0002_tenancy_tables.py:156 fails with
+    # `permission denied for schema public` when it tries to transfer
+    # ownership of `user_role`.
+    op.execute("GRANT schema_owner TO current_user;")
+
 
 def downgrade() -> None:
     op.execute("DROP ROLE IF EXISTS admin_bypass;")
