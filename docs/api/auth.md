@@ -22,6 +22,11 @@ The same three flows — login, refresh, logout — serve two client postures:
   are different sites; under `Lax` the browser would withhold the cookie on
   cross-site XHR, which broke `/v1/auth/logout` and the cold-bootstrap
   `/v1/auth/refresh` (see `journal/260606-fix-logout-samesite.md`).
+  **Demo-window posture.** `SameSite=None` is accepted as the demo
+  configuration; the post-demo plan is to put the API behind Front Door at
+  a sibling subdomain of the SPA so the two are same-site under cookie
+  rules and `SameSite=Lax` can return. Tracked in the post-demo punch
+  list at `journal/260606-deploy-pipeline-end-to-end.md`.
 
 One endpoint per flow serves both postures. The server's signal differs
 by flow:

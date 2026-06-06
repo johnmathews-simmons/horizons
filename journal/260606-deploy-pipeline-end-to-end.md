@@ -98,6 +98,10 @@ In rough order of leverage; items here are explicit follow-ups, not nice-to-have
 - [ ] New ACA Job mirroring `migration-job.bicep`'s pattern. Image = the API image. Command = `python -m horizons_api.scripts.create_demo_accounts` (or however the script is invoked from within the workspace). Triggered by `deploy.yml` after migrations succeed. Per decision Q5.
 - [ ] Until that's in place, the SPA login screen has nothing to authenticate against — `demo-uk@example.test` etc. don't exist in the deployed DB.
 
+### Auth cookie posture (accepted for demo)
+
+- [ ] **Refresh cookie SameSite=None is a deliberate, demo-only choice.** As of commit `2632ee8` the refresh cookie is set with `SameSite=None` (was `Lax`) because the deployed SPA host (Front Door / Storage `$web`) and the API host (Container Apps default domain) are different *sites*; under `Lax` the browser withheld the cookie on the cross-site XHR to `/v1/auth/logout` (and to the cold-bootstrap `/v1/auth/refresh`). Full rationale, CSRF trade-off analysis, and remaining mitigations (`HttpOnly`, `Secure`, `Path=/v1/auth`, bearer-only data plane) in `journal/260606-fix-logout-samesite.md`. **John acknowledged this is acceptable for the 2026-06-08 demo window.** Post-demo: put the API behind Front Door at a sibling subdomain of the SPA (e.g. `app.<domain>` + `api.<domain>`) so the two are same-site under cookie rules, then revert to `SameSite=Lax`.
+
 ### Pipeline confidence
 
 - [ ] First-fresh-deploy runbook. Tear down `horizons-nonprod`, recreate from zero, document every step. Should reduce to: provision UAMI + federated cred (one-off; can't be in repo); `gh workflow run deploy-postgres.yml`; `gh workflow run deploy.yml`. Anything that requires additional manual steps is a bug — see "IaC drift" above.
