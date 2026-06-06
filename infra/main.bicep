@@ -258,6 +258,32 @@ module seedDemoAccountsJob 'modules/seed-demo-accounts-job.bicep' = {
   }
 }
 
+// ---------------------------------------------------------------------
+// 7e. Reseed-corpus ACA Job — operator-driven wipe + re-seed of the
+//     corpus. NOT triggered by deploy.yml. The operator runs
+//     `scripts/reseed_aca.sh` from a laptop, which calls
+//     `az containerapp job start` against this job after a typed-back
+//     confirmation. Uses the worker image because that's where the
+//     curated set + samples + reseed_corpus.py are baked in.
+// ---------------------------------------------------------------------
+module reseedCorpusJob 'modules/reseed-corpus-job.bicep' = {
+  name: 'reseed-corpus-job'
+  params: {
+    location: location
+    workloadPrefix: workloadPrefix
+    environmentName: environmentName
+    environmentId: containerEnv.outputs.environmentId
+    image: workerImage
+    postgresFqdn: existingPostgres.properties.fullyQualifiedDomainName
+    postgresUser: postgresAdminLogin
+    postgresAdminPassword: postgresAdminPassword
+    demoUkPassword: demoUkPassword
+    demoEuPassword: demoEuPassword
+    demoAdminPassword: demoAdminPassword
+    tags: tags
+  }
+}
+
 module migrationJob 'modules/migration-job.bicep' = {
   name: 'migration-job'
   params: {

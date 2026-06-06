@@ -2,45 +2,55 @@
 #
 # scripts/reseed_aca.sh — wipe + re-seed the staging corpus from a laptop.
 #
-# Dispatches `scripts/reseed_corpus.py` inside the worker container via
-# `az containerapp exec`. The worker image (built from the updated
-# `packages/horizons-ingestion/Dockerfile`) carries the curated set, the
-# fixture inventory, the synthetic-v2 markdown, and the two seed scripts;
-# this wrapper only does the safety dance + remote-exec.
+# Dispatches the `horizons-dev-reseed-corpus` Container Apps Job
+# (defined in `infra/modules/reseed-corpus-job.bicep`) via
+# `az containerapp job start`, polls until it exits, and surfaces the
+# in-container logs. The Job reuses the worker image — which has the
+# curated set, the fixture inventory, the synthetic-v2 markdown, and
+# the three seed scripts baked into /app — and runs
+# `python /app/scripts/reseed_corpus.py --yes`.
 #
-# Required env vars on the laptop (passed through to the container):
-#   HORIZONS_DEMO_UK_PASSWORD
-#   HORIZONS_DEMO_EU_PASSWORD
-#   HORIZONS_DEMO_ADMIN_PASSWORD
+# Why a Job instead of `az containerapp exec`: the exec websocket path is
+# fundamentally flaky against workers without HTTP ingress on the current
+# Azure-CLI extension (1.3.0b4). The Job pattern is what the existing
+# migration + demo-accounts seed already use, so this mirrors that.
 #
-# Optional env vars (default to the staging deployment):
-#   RG=horizons-nonprod         resource group
-#   WORKER=horizons-dev-worker  container app name
+# All Postgres + demo-password secrets are wired onto the Job at deploy
+# time (main.bicep → reseed-corpus-job.bicep); the laptop does NOT need
+# HORIZONS_DB_URL or the demo passwords.
 #
-# HORIZONS_DB_URL is NOT passed from the laptop — the worker container
-# already has it provisioned as a Container Apps secret.
+# Optional env vars:
+#   RG=horizons-nonprod                     resource group
+#   JOB=horizons-dev-reseed-corpus          job name
+#   POLL_INTERVAL=5                         seconds between status polls
+#   POLL_TIMEOUT=900                        give-up wall-clock seconds
 #
 # Safety:
-#   1. Confirms the active Azure subscription
-#   2. Lists the target container app and its active revision
-#   3. Requires the operator to type the worker name back to proceed
-#   4. The python script itself dry-runs unless --yes is passed
+#   1. Confirms the active Azure subscription, resource group, job name.
+#   2. Shows the worker's active revision + image tag so you can confirm
+#      the Job will pick up the same baked-in scripts you expect.
+#   3. Requires the operator to type the job name back to proceed.
+#   4. Without --yes, the script does a dry-run (prints the plan; never
+#      triggers the Job).
 #
 # Usage:
-#   scripts/reseed_aca.sh              # dry-run inside the container
-#   scripts/reseed_aca.sh --yes        # execute the wipe + reseed
+#   scripts/reseed_aca.sh              # dry-run
+#   scripts/reseed_aca.sh --yes        # execute the wipe + reseed Job
 
 set -euo pipefail
 
 RG="${RG:-horizons-nonprod}"
+JOB="${JOB:-horizons-dev-reseed-corpus}"
 WORKER="${WORKER:-horizons-dev-worker}"
+POLL_INTERVAL="${POLL_INTERVAL:-5}"
+POLL_TIMEOUT="${POLL_TIMEOUT:-900}"
 
 YES_FLAG=""
 for arg in "$@"; do
     case "$arg" in
         --yes) YES_FLAG="--yes" ;;
         -h|--help)
-            sed -n '2,30p' "$0"
+            sed -n '2,35p' "$0"
             exit 0
             ;;
         *)
@@ -50,22 +60,7 @@ for arg in "$@"; do
     esac
 done
 
-# --- 1. Local env vars --------------------------------------------------------
-
-missing=()
-for var in HORIZONS_DEMO_UK_PASSWORD HORIZONS_DEMO_EU_PASSWORD HORIZONS_DEMO_ADMIN_PASSWORD; do
-    if [[ -z "${!var:-}" ]]; then
-        missing+=("$var")
-    fi
-done
-if (( ${#missing[@]} > 0 )); then
-    echo "refusing to run: the following env vars are not set on the laptop:" >&2
-    printf '  - %s\n' "${missing[@]}" >&2
-    echo "set them and re-run." >&2
-    exit 1
-fi
-
-# --- 2. Azure CLI sanity ------------------------------------------------------
+# --- 1. Azure CLI sanity ------------------------------------------------------
 
 if ! command -v az >/dev/null 2>&1; then
     echo "az CLI not on PATH. Install it: https://aka.ms/install-az-cli" >&2
@@ -81,67 +76,133 @@ SUB_NAME="$(az account show --query name -o tsv)"
 SUB_ID="$(az account show --query id -o tsv)"
 echo "azure subscription: $SUB_NAME ($SUB_ID)"
 echo "resource group:     $RG"
-echo "worker app:         $WORKER"
+echo "reseed job:         $JOB"
+echo "worker app:         $WORKER (for image reference)"
 echo
 
-# Confirm the worker exists and grab its active revision (informational).
-if ! az containerapp show --name "$WORKER" --resource-group "$RG" --query name -o tsv >/dev/null 2>&1; then
-    echo "container app '$WORKER' not found in resource group '$RG'." >&2
-    echo "set WORKER= and RG= env vars if the target is different." >&2
+# --- 2. Confirm the job exists -----------------------------------------------
+
+if ! az containerapp job show --name "$JOB" --resource-group "$RG" --query name -o tsv >/dev/null 2>&1; then
+    echo "Container Apps Job '$JOB' not found in resource group '$RG'." >&2
+    echo "If you just pushed the Bicep change, wait for deploy.yml to finish." >&2
+    echo "Set JOB= / RG= env vars if the target name is different." >&2
     exit 1
 fi
 
-ACTIVE_REVISION="$(az containerapp revision list \
-    --name "$WORKER" --resource-group "$RG" \
-    --query "[?properties.active].name | [0]" -o tsv 2>/dev/null || true)"
+# --- 3. Show what's currently deployed on the worker -------------------------
+
 ACTIVE_IMAGE="$(az containerapp show \
     --name "$WORKER" --resource-group "$RG" \
     --query "properties.template.containers[0].image" -o tsv 2>/dev/null || true)"
-echo "active revision:    ${ACTIVE_REVISION:-<unknown>}"
-echo "active image:       ${ACTIVE_IMAGE:-<unknown>}"
+JOB_IMAGE="$(az containerapp job show \
+    --name "$JOB" --resource-group "$RG" \
+    --query "properties.template.containers[0].image" -o tsv 2>/dev/null || true)"
+echo "worker active image: ${ACTIVE_IMAGE:-<unknown>}"
+echo "job image:           ${JOB_IMAGE:-<unknown>}"
+if [[ -n "$ACTIVE_IMAGE" && -n "$JOB_IMAGE" && "$ACTIVE_IMAGE" != "$JOB_IMAGE" ]]; then
+    echo
+    echo "NOTE: worker and job point at different image tags. The Job uses"
+    echo "      its own image — check that '$JOB_IMAGE' is the one you expect"
+    echo "      (it must contain /app/scripts/reseed_corpus.py and /app/data/)."
+fi
 echo
 
-# --- 3. Typed confirmation ----------------------------------------------------
+# --- 4. Dry-run early exit ----------------------------------------------------
 
-if [[ "$YES_FLAG" == "--yes" ]]; then
+if [[ "$YES_FLAG" != "--yes" ]]; then
     cat <<EOF
-ABOUT TO WIPE AND RE-SEED the corpus on the deployed worker's DB.
+dry-run mode — no Job triggered.
 
-To confirm, type the worker app name back exactly:
+To execute the wipe + reseed:
+
+    $0 --yes
+
+You'll be asked to type the job name ($JOB) back as confirmation.
+The Job runs python /app/scripts/reseed_corpus.py --yes inside its
+own replica; logs stream to stdout via the polling loop and to
+'az containerapp job execution show' / 'az containerapp job logs show'.
 EOF
-    read -r typed
-    if [[ "$typed" != "$WORKER" ]]; then
-        echo "typed value '$typed' != '$WORKER'. Aborted." >&2
-        exit 1
-    fi
-else
-    echo "(dry-run mode — the script inside the container will only print the plan)"
+    exit 0
 fi
 
-# --- 4. Build the exec command -----------------------------------------------
+# --- 5. Typed confirmation ----------------------------------------------------
 
-# Shell-quote each password so any special chars survive the round-trip into
-# `az containerapp exec --command`, which itself runs a /bin/sh invocation.
-q_uk="$(printf '%q' "$HORIZONS_DEMO_UK_PASSWORD")"
-q_eu="$(printf '%q' "$HORIZONS_DEMO_EU_PASSWORD")"
-q_admin="$(printf '%q' "$HORIZONS_DEMO_ADMIN_PASSWORD")"
+cat <<EOF
+ABOUT TO WIPE AND RE-SEED the corpus on the deployed worker's DB by
+starting Container Apps Job: $JOB.
 
-# The container already has HORIZONS_DB_URL as a secret env var (per the
-# worker's Bicep template); we only inject the demo passwords. Run from
-# /app so the relative `scripts/...` paths resolve.
-REMOTE_CMD="cd /app && \
-HORIZONS_DEMO_UK_PASSWORD=${q_uk} \
-HORIZONS_DEMO_EU_PASSWORD=${q_eu} \
-HORIZONS_DEMO_ADMIN_PASSWORD=${q_admin} \
-python scripts/reseed_corpus.py ${YES_FLAG}"
+The Job runs reseed_corpus.py --yes, which:
+  - deletes from change_events, clauses, document_versions,
+    document_poll_schedule, documents (transactionally)
+  - re-runs seed_curated_set.py --stage-synthetic-v2
+  - re-runs create_demo_accounts.py --reset
 
-# --- 5. Dispatch --------------------------------------------------------------
+To confirm, type the job name back exactly:
+EOF
+read -r typed
+if [[ "$typed" != "$JOB" ]]; then
+    echo "typed value '$typed' != '$JOB'. Aborted." >&2
+    exit 1
+fi
+
+# --- 6. Start the Job ---------------------------------------------------------
 
 echo
-echo "dispatching reseed_corpus.py inside the worker container…"
+echo "starting job execution…"
+EXEC="$(az containerapp job start --name "$JOB" --resource-group "$RG" --query name -o tsv)"
+echo "execution name:     $EXEC"
 echo
 
-az containerapp exec \
-    --name "$WORKER" \
-    --resource-group "$RG" \
-    --command "/bin/sh -c $(printf '%q' "$REMOTE_CMD")"
+# --- 7. Poll until terminal --------------------------------------------------
+
+elapsed=0
+while (( elapsed < POLL_TIMEOUT )); do
+    STATUS="$(az containerapp job execution show \
+        --name "$JOB" \
+        --resource-group "$RG" \
+        --job-execution-name "$EXEC" \
+        --query "properties.status" -o tsv 2>/dev/null || echo "Unknown")"
+    printf '[%3ds] status: %s\n' "$elapsed" "$STATUS"
+    case "$STATUS" in
+        Succeeded)
+            echo
+            echo "Job succeeded."
+            echo
+            echo "Recent log lines from the execution:"
+            az containerapp job logs show \
+                --name "$JOB" \
+                --resource-group "$RG" \
+                --container reseed \
+                --tail 50 \
+                2>/dev/null || echo "(logs not available — try 'az containerapp job logs show -n $JOB -g $RG --container reseed' manually)"
+            exit 0
+            ;;
+        Failed|Stopped|Degraded)
+            echo
+            echo "Job ended non-success: $STATUS" >&2
+            echo "Execution details:"
+            az containerapp job execution show \
+                --name "$JOB" \
+                --resource-group "$RG" \
+                --job-execution-name "$EXEC" \
+                --query "properties" -o json
+            echo
+            echo "Recent log lines:"
+            az containerapp job logs show \
+                --name "$JOB" \
+                --resource-group "$RG" \
+                --container reseed \
+                --tail 100 \
+                2>/dev/null || echo "(logs not available)"
+            exit 1
+            ;;
+    esac
+    sleep "$POLL_INTERVAL"
+    elapsed=$(( elapsed + POLL_INTERVAL ))
+done
+
+echo
+echo "Timed out waiting for job (>${POLL_TIMEOUT}s); last status: $STATUS" >&2
+echo "Tail logs with:" >&2
+echo "  az containerapp job logs show -n $JOB -g $RG --container reseed --tail 200" >&2
+exit 1
