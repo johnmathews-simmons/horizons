@@ -142,6 +142,19 @@ resource worker 'Microsoft.App/containerApps@2024-10-02-preview' = {
               name: 'HORIZONS_INGESTION_BLOB_ACCOUNT_URL'
               value: blobAccountUrl
             }
+            // Lawstronaut credentials. The worker reads these at startup
+            // and KeyError-exits if absent, even in static-dataset mode
+            // (Q3, triage doc) where nothing will be claimed. Dummy
+            // values let the worker boot and idle on its loop. Swap to
+            // real ACA secrets when ingestion goes live post-demo.
+            {
+              name: 'LAWSTRONAUT_EMAIL'
+              value: 'demo-noop@horizons.invalid'
+            }
+            {
+              name: 'LAWSTRONAUT_PASSWORD'
+              value: 'demo-noop'
+            }
           ]
           probes: [
             {
