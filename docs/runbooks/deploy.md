@@ -1,7 +1,7 @@
 # Deploy runbook — staging pipeline (WU6.3)
 
 _Audience: operator running or watching `.github/workflows/deploy.yml`. Companion to [migrations.md](./migrations.md),
-which covers the expand-contract rule that keeps blue/green rollbacks safe._
+which covers the expand-contract rule that keeps rollbacks safe._
 
 ## What the pipeline does
 
@@ -14,8 +14,8 @@ Three jobs run after a `gate` step that filters on the upstream conclusion and c
 
 ```
 gate ─┬──> prepare-infra (Bicep + migration ACA Job)
-      ├──> deploy-services    (API blue/green + worker update)   parallel
-      └──> deploy-spa         (build, upload to $web, purge cache) parallel
+      ├──> deploy-services    (API revision update + worker update)   parallel
+      └──> deploy-spa         (build, upload to $web, purge cache)    parallel
 ```
 
 `deploy-services` and `deploy-spa` both depend only on `prepare-infra`; they do not block each other. A failed API deploy
@@ -29,48 +29,28 @@ does not stop the SPA from shipping the new bundle.
    no-ops for existing resources.
 2. **Migration ACA Job.** `az containerapp job start` invokes the `horizons-dev-migrate` Job (WU6.4), which runs
    `uv run alembic upgrade head`. The workflow polls `az containerapp job execution show` and fails fast on a `Failed` /
-   `Stopped` / `Degraded` status. The traffic shift below never runs against an un-migrated schema.
+   `Stopped` / `Degraded` status. The API revision update below never runs against an un-migrated schema.
 
-### deploy-services (API blue/green)
+### deploy-services (API)
 
-The API container app's Bicep deliberately omits the `traffic[]` block — see `infra/modules/container-app-api.bicep` — so
-traffic is managed imperatively here. The sequence:
+Both container apps run `activeRevisionsMode: Single`. The flow is the same for both, and minimal: a single
+`az containerapp update --image ghcr.io/johnmathews/horizons-api:sha-<short> --revision-suffix sha-<short>` creates a new
+revision named `horizons-dev-api--sha-<short>`, ACA waits for its `/healthz` readiness probe to come green (configured in
+`infra/modules/container-app-api.bicep`: `periodSeconds: 5`, `failureThreshold: 3`), shifts 100 % of traffic to the new
+revision, and deactivates the previous one. The `--revision-suffix` isn't required — ACA auto-generates a suffix when
+omitted — but is kept for traceability: a `sha-<short>` in the revision name makes "which build is this?" a one-liner.
 
-1. **Capture PREV.** Query the revision list for the revision currently at 100 % weight. On the very first deploy this is
-   empty and the rest of the dance simplifies to a "shift 100 % to NEW" step.
-2. **Pin PREV.** `az containerapp ingress traffic set --revision-weight PREV=100` converts the (possibly
-   platform-default) `latestRevision: true` traffic config into an explicit named-revision config, so the imminent
-   revision creation does **not** auto-take traffic.
-3. **Create NEW at 0 %.**
-   `az containerapp update --image ghcr.io/johnmathews/horizons-api:sha-<short> --revision-suffix sha-<short>` creates
-   revision `horizons-dev-api--sha-<short>`. PREV continues to serve 100 % of traffic.
-4. **Smoke-test NEW.** Each revision has its own FQDN of the form `<app>--<suffix>.<env-defaultDomain>`. The smoke step
-   polls `/healthz` until 200 OK (up to ~5 min cold-start budget) then asserts both `/healthz` and `/openapi.json`
-   respond. `curl --fail-with-body` surfaces the response body in the workflow log on non-2xx.
-5. **Shift to NEW.** `az containerapp ingress traffic set --revision-weight NEW=100 PREV=0`. NEW now serves 100 %; PREV
-   stays warm (active, 0 % weight) for instant rollback.
-6. **Rollback on failure.** If any step between (3) and (5) fails, an `if: failure()` step shifts traffic back to PREV
-   with NEW at 0 % and fails the workflow. The trigger condition explicitly excludes the case where shift (5) succeeded,
-   so a downstream worker-update failure does not undo a healthy API deploy.
-7. **Deactivate stale API revisions.** Gated on `steps.shift.conclusion == 'success'`. The API runs
-   `activeRevisionsMode: Multiple` so the blue/green dance can keep NEW and PREV active at once — but Multiple mode
-   never auto-deactivates anything, so without this step every deploy left another revision active with its replica
-   and SQLAlchemy pool still attached to Postgres. On 2026-06-06 the pile had grown to ~25 active API + ~25 active
-   worker revisions; the reseed ACA Job hit `FATAL: remaining connection slots are reserved for roles with the
-   SUPERUSER attribute` an hour before the demo. Cleanup policy: keep exactly NEW and PREV active, deactivate every
-   other active revision. See [`journal/260606-fix-revision-pileup.md`](../../journal/260606-fix-revision-pileup.md)
-   for the root-cause write-up.
+After the update returns, a smoke step curls the **stable** API FQDN (`<app>.<env-defaultDomain>`, not a per-revision
+FQDN) and asserts `/healthz` 200 OK and `/openapi.json` reachable. This is a tripwire, not a gate: traffic has already
+shifted by the time `az containerapp update` returned. If the smoke fails, the workflow fails, and the operator manually
+re-deploys the previous SHA (see [Manual rollback](#manual-rollback)). The pre-shift smoke against a per-revision FQDN
+that used to live here is gone — Single mode owns the shift, so there is no 0 %-weight window to test in.
 
 ### deploy-services (worker)
 
-After the API traffic shift, the worker is updated with the same `--revision-suffix sha-<short>` pattern but no traffic
-management. The worker container app is `activeRevisionsMode: Single`
-(see [`infra/modules/container-app-worker.bicep`](../../infra/modules/container-app-worker.bicep)); each update creates a
-new revision and ACA auto-deactivates the previous one once the new replica is healthy. The worker has one always-on
-replica per [ADR-0001](../adrs/0001-worker-shape.md), so there is no traffic to shift and no rollback affordance to
-preserve — Single mode is the natural fit. The previous `Multiple` setting was a copy of the API's convention without
-the API's reason for it, and was the source of the worker side of the revision pileup described in
-[`journal/260606-fix-revision-pileup.md`](../../journal/260606-fix-revision-pileup.md).
+Same shape as the API: `az containerapp update --image ghcr.io/johnmathews/horizons-worker:sha-<short> --revision-suffix sha-<short>`.
+The worker has one always-on replica per [ADR-0001](../adrs/0001-worker-shape.md) and no ingress, so there is no smoke
+step — ACA's readiness probe is the only gate.
 
 ### deploy-spa
 
@@ -110,71 +90,63 @@ gh run list --workflow=deploy.yml
 | `gate`            | Compute short SHA                    | `head=<40-char SHA>` followed by `short=<12-char prefix>`                                                |
 | `prepare-infra`   | Bicep deploy                         | `Bicep deploy complete. Storage account: horizonsdevst<6chars>; API FQDN: horizons-dev-api.<env>.westeurope.azurecontainerapps.io` |
 | `prepare-infra`   | Start migration ACA Job              | `[N/65] migration status: Succeeded` then `Migration succeeded.`                                         |
-| `deploy-services` | Capture previous active API revision | `Previous active revision: horizons-dev-api--<suffix>` (or `bootstrap deploy` warning on first ever run) |
-| `deploy-services` | Create new API revision (0% traffic) | `Created revision: horizons-dev-api--sha-<short>`                                                        |
-| `deploy-services` | Smoke test new revision              | `Smoke-testing https://<rev-fqdn>` → `[N/60] /healthz OK` → `/openapi.json reachable`                    |
-| `deploy-services` | Shift traffic to new revision        | `Shifted: <new>=100, <prev>=0`                                                                           |
-| `deploy-services` | Update worker revision               | The `az containerapp update` JSON response with `provisioningState: "Succeeded"`                         |
+| `deploy-services` | Update API revision                  | The `az containerapp update` JSON response with `provisioningState: "Succeeded"`; then `Updated to revision: horizons-dev-api--sha-<short>`. |
+| `deploy-services` | Smoke-test API (stable FQDN)         | `Smoke-testing https://horizons-dev-api.<env>.westeurope.azurecontainerapps.io` → `[N/12] /healthz OK` → `/openapi.json reachable`           |
+| `deploy-services` | Update worker revision               | The `az containerapp update` JSON response with `provisioningState: "Succeeded"`                                                              |
 | `deploy-spa`      | Inject production apiBaseUrl         | `dist/config.json rewritten:` followed by the JSON dump with `https://horizons-dev-api.<env>.westeurope.azurecontainerapps.io` |
 | `deploy-spa`      | Upload SPA bundle to $web            | The blob list with the uploaded asset names                                                              |
 | `deploy-spa`      | Purge Front Door cache               | `Successfully purged` (or empty success — `az afd endpoint purge` returns no JSON on success)            |
 
 ## Manual rollback
 
-The pipeline's automatic rollback only fires while the workflow is running. If a deploy completes green but an issue
-surfaces later (an alert fires, a regression report comes in), roll back by hand.
+There is no automatic rollback. If a deploy completes but a regression surfaces (alert fires, the smoke step failed,
+user report), roll back by re-deploying the previous image SHA.
 
-PREV is always the previous revision name — `az containerapp revision list` returns it sorted by creation time. For a
-single-hop rollback:
+Step 1 — find the previous SHA. The currently-active revision encodes the deployed SHA in its name
+(`horizons-dev-api--sha-<short>`). The previous deployment's commit SHA is whatever sat at `HEAD~1` on `main` when the
+current revision was built; `git log --oneline -5 main` is the fastest way to get it.
+
+Step 2 — re-deploy. Manually trigger the deploy workflow against the previous build's commit, or, faster, run the
+`az containerapp update` directly with the previous SHA:
 
 ```bash
-# Find the two most recent revisions, newest first.
-az containerapp revision list \
-  --name horizons-dev-api \
-  --resource-group horizons-nonprod \
-  --query "[].{name:name, weight:properties.trafficWeight, active:properties.active, created:properties.createdTime}" \
-  -o table | head -5
+PREV_SHORT_SHA=<12-char short SHA of the previous build>
 
-# Reactivate the previous revision if it has been deactivated (after
-# a while, idle revisions get deactivated automatically to free
-# replicas).
-az containerapp revision activate \
+# API
+az containerapp update \
   --name horizons-dev-api \
   --resource-group horizons-nonprod \
-  --revision <previous-revision-name>
+  --image "ghcr.io/johnmathews/horizons-api:sha-$PREV_SHORT_SHA" \
+  --revision-suffix "sha-$PREV_SHORT_SHA"
 
-# Flip traffic back. 100% to the previous revision, 0% to the
-# currently-active one.
-az containerapp ingress traffic set \
-  --name horizons-dev-api \
+# Worker, if it also regressed
+az containerapp update \
+  --name horizons-dev-worker \
   --resource-group horizons-nonprod \
-  --revision-weight <previous-revision-name>=100 <current-revision-name>=0
+  --image "ghcr.io/johnmathews/horizons-worker:sha-$PREV_SHORT_SHA" \
+  --revision-suffix "sha-$PREV_SHORT_SHA"
 ```
 
-The shift takes effect within a few seconds — ACA's load balancer re-routes immediately.
+ACA creates the rollback revision, waits for readiness, shifts traffic. ~3-5 min wall-clock per app. The image must
+already be in GHCR — the rollback target is whatever the previous successful `build-and-push.yml` pushed, so any SHA that
+ever made it to `main` is available.
 
 ### What rollback does NOT undo
 
 - **Database migrations.** Alembic upgrades are not auto-reverted on a code rollback. The expand-contract policy in
   [migrations.md](./migrations.md) is what keeps the rolled-back code compatible with the migrated schema. If a migration
   broke things, see that runbook for the downgrade procedure.
-- **Worker container.** A worker rollback uses the same `revision activate` + (no traffic step — single replica) pattern;
-  the worker has no `--revision-weight` semantics.
-
-  ```bash
-  az containerapp revision activate \
-    --name horizons-dev-worker \
-    --resource-group horizons-nonprod \
-    --revision <previous-revision-name>
-  az containerapp revision deactivate \
-    --name horizons-dev-worker \
-    --resource-group horizons-nonprod \
-    --revision <current-revision-name>
-  ```
-
 - **SPA bundle.** The current pipeline overwrites `$web` in place with no versioning. Rolling back the SPA requires
   re-running the build at the previous SHA. Future work: keep the previous bundle under a versioned prefix so a `cp`
   between prefixes is the rollback.
+
+### What we gave up
+
+The earlier version of this pipeline ran `activeRevisionsMode: Multiple` on the API, kept PREV warm at 0 % weight, and
+rolled back with a 5-second `az containerapp ingress traffic set` weight flip. We dropped that on 2026-06-06 (see
+[`journal/260606-api-revisionmode-single.md`](../../journal/260606-api-revisionmode-single.md)): the wall-clock
+difference (3-5 min vs. ~5s) doesn't pay for the maintenance cost of the traffic-shift + stale-revision-cleanup
+machinery in `deploy.yml` at demo-scale. If we ever need sub-minute rollback for prod, revisit the decision then.
 
 ## Production cutover follow-up
 
@@ -277,8 +249,7 @@ If the server doesn't exist yet (fresh resource group), run `Deploy Postgres` on
 - **Auto-enable WU7.3 alerts.** The alert rules ship `enabled: false` so they don't fire "no data" before traffic exists.
   Arming them is a manual ops step documented in the WU7.3 journal — flip `--parameters alertsEnabled=true` on a later
   `az deployment group create` once `AppRequests` / `AppTraces` rows are flowing.
-- **Smoke test through Front Door (vs. the revision FQDN).** Hitting the revision FQDN bypasses traffic weighting and
-  confirms the new code itself is healthy. A separate "post-shift" smoke through the Front Door endpoint would catch
-  ingress / DNS / TLS issues; not yet wired.
+- **Smoke test through Front Door.** The current smoke hits the stable API FQDN directly (skipping Front Door). A
+  separate smoke through the Front Door endpoint would catch ingress / DNS / TLS issues end-to-end; not yet wired.
 - **SPA versioning / rollback.** `$web` is overwritten in place per the trade-off above; previous bundles are not
   retained.
