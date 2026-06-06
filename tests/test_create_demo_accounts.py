@@ -64,7 +64,7 @@ def test_missing_env_vars_without_opt_in_lists_all_three(
     ]
     # When `missing` is non-empty the caller aborts before any DB
     # write; `resolved` is partial and ignored.
-    assert "demo-uk@example.test" not in resolved
+    assert "demo-uk@demo.example.com" not in resolved
     assert from_dev_default == set()
 
 
@@ -123,7 +123,7 @@ def test_whitespace_only_env_var_treated_as_unset(
         allow_dev_defaults=False,
     )
     assert missing == ["HORIZONS_DEMO_UK_PASSWORD"]
-    assert "demo-uk@example.test" not in resolved
+    assert "demo-uk@demo.example.com" not in resolved
 
 
 def test_env_var_with_surrounding_whitespace_is_stripped(
@@ -146,10 +146,10 @@ def test_env_var_with_surrounding_whitespace_is_stripped(
         allow_dev_defaults=False,
     )
     assert missing == []
-    assert resolved["demo-uk@example.test"] == "hunter2"
+    assert resolved["demo-uk@demo.example.com"] == "hunter2"
     # Internal whitespace is preserved.
-    assert resolved["demo-eu@example.test"] == "eu real pw"
-    assert resolved["admin-demo@example.test"] == "admin-real-pw"
+    assert resolved["demo-eu@demo.example.com"] == "eu real pw"
+    assert resolved["admin-demo@demo.example.com"] == "admin-real-pw"
 
 
 def test_all_env_vars_set_resolves_cleanly(
@@ -168,9 +168,9 @@ def test_all_env_vars_set_resolves_cleanly(
     assert missing == []
     assert from_dev_default == set()
     assert resolved == {
-        "demo-uk@example.test": "uk-real-pw",
-        "demo-eu@example.test": "eu-real-pw",
-        "admin-demo@example.test": "admin-real-pw",
+        "demo-uk@demo.example.com": "uk-real-pw",
+        "demo-eu@demo.example.com": "eu-real-pw",
+        "admin-demo@demo.example.com": "admin-real-pw",
     }
 
 
@@ -189,14 +189,14 @@ def test_opt_in_falls_back_to_defaults_when_unset(
     )
     assert missing == []
     assert from_dev_default == {
-        "demo-uk@example.test",
-        "demo-eu@example.test",
-        "admin-demo@example.test",
+        "demo-uk@demo.example.com",
+        "demo-eu@demo.example.com",
+        "admin-demo@demo.example.com",
     }
     assert resolved == {
-        "demo-uk@example.test": "demo-uk-pass-not-secret",
-        "demo-eu@example.test": "demo-eu-pass-not-secret",
-        "admin-demo@example.test": "admin-demo-pass-not-secret",
+        "demo-uk@demo.example.com": "demo-uk-pass-not-secret",
+        "demo-eu@demo.example.com": "demo-eu-pass-not-secret",
+        "admin-demo@demo.example.com": "admin-demo-pass-not-secret",
     }
 
 
@@ -349,12 +349,12 @@ def test_opt_in_still_prefers_env_var_when_set(
         allow_dev_defaults=True,
     )
     # Admin env-var wins; UK/EU fall back to the bake-in defaults.
-    assert resolved["admin-demo@example.test"] == "admin-real-pw"
-    assert resolved["demo-uk@example.test"] == "demo-uk-pass-not-secret"
-    assert resolved["demo-eu@example.test"] == "demo-eu-pass-not-secret"
+    assert resolved["admin-demo@demo.example.com"] == "admin-real-pw"
+    assert resolved["demo-uk@demo.example.com"] == "demo-uk-pass-not-secret"
+    assert resolved["demo-eu@demo.example.com"] == "demo-eu-pass-not-secret"
     # The from_dev_default set drives the no-downgrade rotate guard.
     # Admin is excluded because the env-var sourced its password.
     assert from_dev_default == {
-        "demo-uk@example.test",
-        "demo-eu@example.test",
+        "demo-uk@demo.example.com",
+        "demo-eu@demo.example.com",
     }

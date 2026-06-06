@@ -7,7 +7,7 @@ this runbook is shaped by that exposure window.*
 Companion runbooks:
 
 - [demo-accounts.md](./demo-accounts.md) — provisioning the three
-  `@example.test` accounts the demo uses.
+  `@demo.example.com` accounts the demo uses.
 - [deploy.md](./deploy.md) — `deploy.yml` mechanics, rollback, and
   the Front Door / ACA boundaries this runbook treats as a black box.
 - [migrations.md](./migrations.md) — the expand-contract rule and the
@@ -79,7 +79,7 @@ localhost.
       `2026-12-31 00:00:00+00` for every synthetic-v2 row so the
       worker tick cannot overwrite the headline diff during the show.
       See [Session P journal](../../journal/260605-fix-worker-staged-guard-and-env-validation.md).
-- [ ] **Demo accounts provisioned.** The three `@example.test`
+- [ ] **Demo accounts provisioned.** The three `@demo.example.com`
       accounts (UK client, EU client, admin) exist with the
       operator-chosen passwords. Use the script and checklist in
       [demo-accounts.md](./demo-accounts.md#provisioning); the
@@ -143,7 +143,7 @@ for an unhurried walk-through; total ≈ 7–9 minutes.
    visible element; no nav, no chrome.
    *Say:* "This is the client-facing app. We'll log in as a
    UK-scoped customer first."
-2. **Log in as `demo-uk@example.test`.** Submit the password from the
+2. **Log in as `demo-uk@demo.example.com`.** Submit the password from the
    operator's notes. On success the SPA navigates to `/changes`.
 3. **Browse `/changes`.** The list renders recent change events
    filtered to the UK + financial-services subscription scope. Each
@@ -175,7 +175,7 @@ for an unhurried walk-through; total ≈ 7–9 minutes.
 
 1. **Log out via the top-right menu.** The SPA returns to `/login`.
    The HttpOnly refresh cookie is revoked server-side.
-2. **Log in as `demo-eu@example.test`.** Same password discipline as
+2. **Log in as `demo-eu@demo.example.com`.** Same password discipline as
    above.
 3. **Browse `/changes`.** The list renders **disjoint** content from
    the UK view — same query path, different rows, because the
@@ -304,7 +304,7 @@ section open in a side window during the show.
 
 ### Admin demo account locked out
 
-- **Symptom:** Login as `admin-demo@example.test` returns 401, or
+- **Symptom:** Login as `admin-demo@demo.example.com` returns 401, or
   the audit view shows so many entries from rehearsal that the live
   demo's entry is hard to spot.
 - **Quick check:** Run the curl sanity check from
@@ -319,7 +319,7 @@ section open in a side window during the show.
   HORIZONS_DEMO_ADMIN_PASSWORD="$DEMO_ADMIN_PW" \
     uv run python packages/horizons-api/scripts/create_demo_accounts.py --reset
   ```
-  This wipes only the `@example.test` rows; corpus data and other
+  This wipes only the `@demo.example.com` rows; corpus data and other
   client accounts are untouched. See
   [demo-accounts.md → "Reset between dry-runs"](./demo-accounts.md#reset-between-dry-runs).
 

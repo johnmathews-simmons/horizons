@@ -1,7 +1,7 @@
 # Demo accounts runbook (WU8.1)
 
 The public demo (~2026-06-08) uses three pre-provisioned accounts under
-the IETF-reserved `@example.test` TLD. This runbook is the source of
+the IETF-reserved `@demo.example.com` TLD. This runbook is the source of
 truth for: how to provision them, how to log in, what each one shows,
 and how to reset between demo runs.
 
@@ -13,9 +13,9 @@ which live under `@e2e.test` and are managed by
 
 | Email | Role | Subscription scope |
 |-------|------|--------------------|
-| `demo-uk@example.test` | `client` | (jurisdiction=UK, sector=BANKING) |
-| `demo-eu@example.test` | `client` | (jurisdiction=EU, sector=BANKING) |
-| `admin-demo@example.test` | `admin` | none |
+| `demo-uk@demo.example.com` | `client` | (jurisdiction=UK, sector=BANKING) |
+| `demo-eu@demo.example.com` | `client` | (jurisdiction=EU, sector=BANKING) |
+| `admin-demo@demo.example.com` | `admin` | none |
 
 The UK and EU accounts have **disjoint** subscriptions: the demo
 narrative leans on showing the same `/changes` view rendering different
@@ -77,9 +77,9 @@ non-demo row.
 For local development the script can fall back to the dev-default
 passwords baked into the source:
 
-- `demo-uk@example.test` / `demo-uk-pass-not-secret`
-- `demo-eu@example.test` / `demo-eu-pass-not-secret`
-- `admin-demo@example.test` / `admin-demo-pass-not-secret`
+- `demo-uk@demo.example.com` / `demo-uk-pass-not-secret`
+- `demo-eu@demo.example.com` / `demo-eu-pass-not-secret`
+- `admin-demo@demo.example.com` / `admin-demo-pass-not-secret`
 
 The fallback is opt-in via `--allow-dev-defaults`:
 
@@ -99,13 +99,13 @@ rather than have them silently applied.
 ### Web UI (the demo path)
 
 1. Open the SPA at the demo URL — `https://<host>/login`.
-2. Submit `demo-uk@example.test` plus the configured password.
+2. Submit `demo-uk@demo.example.com` plus the configured password.
 3. On success the SPA navigates to `/changes` and renders the UK-scoped
    recent-change list.
 4. To switch tenants: log out (top-right user menu → Logout), then log
-   in as `demo-eu@example.test`. Confirm that `/changes` now renders the
+   in as `demo-eu@demo.example.com`. Confirm that `/changes` now renders the
    EU-scoped list with no UK entries visible.
-5. The admin walkthrough uses `admin-demo@example.test`; the SPA's
+5. The admin walkthrough uses `admin-demo@demo.example.com`; the SPA's
    admin nav appears only for the admin role.
 
 ### Curl (sanity check before the demo)
@@ -117,7 +117,7 @@ token in the JSON body.
 ```bash
 curl -sS -X POST "$HORIZONS_API_BASE/v1/auth/login" \
   -H "content-type: application/json" \
-  -d '{"email":"demo-uk@example.test","password":"'"$HORIZONS_DEMO_UK_PASSWORD"'"}' | jq .
+  -d '{"email":"demo-uk@demo.example.com","password":"'"$HORIZONS_DEMO_UK_PASSWORD"'"}' | jq .
 ```
 
 Expected shape:
@@ -134,7 +134,7 @@ Use the access token against the primitives:
 ```bash
 ACCESS=$(curl -sS -X POST "$HORIZONS_API_BASE/v1/auth/login" \
   -H "content-type: application/json" \
-  -d '{"email":"demo-uk@example.test","password":"'"$HORIZONS_DEMO_UK_PASSWORD"'"}' | jq -r .access_token)
+  -d '{"email":"demo-uk@demo.example.com","password":"'"$HORIZONS_DEMO_UK_PASSWORD"'"}' | jq -r .access_token)
 
 curl -sS -H "authorization: Bearer $ACCESS" \
   "$HORIZONS_API_BASE/v1/me" | jq .
@@ -181,14 +181,14 @@ watchlist entries):
 uv run python packages/horizons-api/scripts/create_demo_accounts.py --reset
 ```
 
-This wipes only the `@example.test` rows. The corpus (documents,
+This wipes only the `@demo.example.com` rows. The corpus (documents,
 versions, clauses, change_events) is preserved — those come from the
 WU8.0 seed and are reusable across demo runs.
 
 ## Public-exposure caveats
 
 - No real bank names, no client names, no firm names in any account or
-  copy. The `@example.test` TLD is the IETF reserved domain; do not
+  copy. The `@demo.example.com` TLD is the IETF reserved domain; do not
   substitute a real domain.
 - The dev-default passwords are visible in the script source and in
   this runbook. They are usable only behind `--allow-dev-defaults` and
