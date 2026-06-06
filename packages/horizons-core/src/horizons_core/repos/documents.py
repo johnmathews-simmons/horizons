@@ -14,12 +14,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from horizons_core.db.models.documents import Document
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
+
+_MAX_LIST_LIMIT = 200
 
 
 class DocumentDTO(BaseModel):
@@ -49,6 +52,52 @@ class DocumentsRepository:
         """
         rows = (await self._session.execute(select(Document))).scalars().all()
         return [DocumentDTO.model_validate(r) for r in rows]
+
+    async def list_filtered(
+        self,
+        *,
+        jurisdiction: str | None = None,
+        sector: str | None = None,
+        search: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[DocumentDTO], int]:
+        """Filtered, paginated list of in-scope documents.
+
+        Returns ``(rows, total)`` where ``total`` is the unpaginated
+        count under the same filters. The filters are AND-ed; ``search``
+        does a case-insensitive substring match on ``title``. RLS still
+        applies — out-of-scope rows are absent from both the page and
+        the total.
+        """
+        if limit < 1:
+            limit = 1
+        if limit > _MAX_LIST_LIMIT:
+            limit = _MAX_LIST_LIMIT
+        if offset < 0:
+            offset = 0
+
+        stmt = select(Document)
+        if jurisdiction is not None:
+            stmt = stmt.where(Document.jurisdiction == jurisdiction)
+        if sector is not None:
+            stmt = stmt.where(Document.sector == sector)
+        if search:
+            stmt = stmt.where(Document.title.ilike(f"%{search}%"))
+
+        total = (
+            await self._session.execute(
+                stmt.with_only_columns(func.count(Document.id)).order_by(None)
+            )
+        ).scalar_one()
+
+        page_stmt = (
+            stmt.order_by(Document.created_at.desc(), Document.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(page_stmt)).scalars().all()
+        return [DocumentDTO.model_validate(r) for r in rows], int(total)
 
     async def get_by_id(self, document_id: uuid.UUID) -> DocumentDTO | None:
         """Fetch one document by PK, or ``None`` if RLS filters it out."""

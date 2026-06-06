@@ -38,6 +38,7 @@ Conventions:
 - [auth](#auth)
 - [differential](#differential)
 - [discovery](#discovery)
+- [documents](#documents)
 - [health](#health)
 - [me](#me)
 - [temporal](#temporal)
@@ -433,6 +434,67 @@ Recent change events for the scope. No body text.
 | Status | Shape | Description |
 | --- | --- | --- |
 | `200` | `DiscoveryPage` | Successful Response |
+| `422` | `HTTPValidationError` | Validation Error |
+
+
+## documents
+
+### `GET /v1/documents`
+
+List Documents
+
+**Parameters**
+
+| In | Name | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `query` | `jurisdiction` | `string?` | no | — |
+| `query` | `limit` | `integer` | no | — |
+| `query` | `offset` | `integer` | no | — |
+| `query` | `search` | `string?` | no | — |
+| `query` | `sector` | `string?` | no | — |
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `DocumentPage` | Successful Response |
+| `422` | `HTTPValidationError` | Validation Error |
+
+
+### `GET /v1/documents/{document_id}`
+
+Get Document
+
+**Parameters**
+
+| In | Name | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `path` | `document_id` | `string (uuid)` | yes | — |
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `DocumentDetail` | Successful Response |
+| `422` | `HTTPValidationError` | Validation Error |
+
+
+### `GET /v1/documents/{document_id}/versions/{version_label}/clauses`
+
+Get Clauses
+
+**Parameters**
+
+| In | Name | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `path` | `document_id` | `string (uuid)` | yes | — |
+| `path` | `version_label` | `string` | yes | — |
+
+**Responses**
+
+| Status | Shape | Description |
+| --- | --- | --- |
+| `200` | `ClauseBundle` | Successful Response |
 | `422` | `HTTPValidationError` | Validation Error |
 
 

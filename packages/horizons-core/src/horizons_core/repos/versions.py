@@ -68,3 +68,21 @@ class DocumentVersionsRepository:
             )
         ).scalar_one_or_none()
         return DocumentVersionDTO.model_validate(row) if row is not None else None
+
+    async def get_by_label(
+        self, document_id: uuid.UUID, version_label: str
+    ) -> DocumentVersionDTO | None:
+        """Fetch one version by ``(document_id, version_label)``.
+
+        Returns ``None`` when the parent document or version row is out
+        of scope under RLS, or when the label doesn't exist.
+        """
+        row = (
+            await self._session.execute(
+                select(DocumentVersion).where(
+                    DocumentVersion.document_id == document_id,
+                    DocumentVersion.version_label == version_label,
+                )
+            )
+        ).scalar_one_or_none()
+        return DocumentVersionDTO.model_validate(row) if row is not None else None

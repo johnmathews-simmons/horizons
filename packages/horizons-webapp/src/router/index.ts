@@ -34,6 +34,26 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/documents',
+    name: 'documents',
+    component: () => import('@/views/DocumentsListView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/documents/:id',
+    name: 'document-detail',
+    component: () => import('@/views/DocumentDetailView.vue'),
+    meta: { requiresAuth: true },
+    props: true,
+  },
+  {
+    path: '/documents/:id/v/:version',
+    name: 'document-detail-versioned',
+    component: () => import('@/views/DocumentDetailView.vue'),
+    meta: { requiresAuth: true },
+    props: true,
+  },
+  {
     path: '/admin',
     component: () => import('@/views/AdminLayout.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },

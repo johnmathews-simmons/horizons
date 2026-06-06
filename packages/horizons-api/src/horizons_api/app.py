@@ -34,6 +34,7 @@ from horizons_api.middleware import RequestContextMiddleware  # noqa: E402
 from horizons_api.routes import (  # noqa: E402
     admin_subscriptions,
     auth,
+    documents,
     health,
     me,
     primitives,
@@ -76,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(me.router)
     app.include_router(watchlists.router)
+    app.include_router(documents.router)
     app.include_router(primitives.discovery_router)
     app.include_router(primitives.temporal_router)
     app.include_router(primitives.differential_router)

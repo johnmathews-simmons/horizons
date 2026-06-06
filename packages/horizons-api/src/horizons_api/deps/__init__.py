@@ -40,7 +40,7 @@ from horizons_api.deps.refresh import (
     require_refresh_principal,
     session_for_refresh,
 )
-from horizons_api.deps.session import session_for_request
+from horizons_api.deps.session import session_for_request, session_for_request_or_admin
 
 __all__ = [
     "REFRESH_COOKIE_NAME",
@@ -55,4 +55,5 @@ __all__ = [
     "require_refresh_principal",
     "session_for_refresh",
     "session_for_request",
+    "session_for_request_or_admin",
 ]

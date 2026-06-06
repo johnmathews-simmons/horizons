@@ -274,6 +274,33 @@ def _make_doc_with_version(
     return doc_id, ver_id
 
 
+def _insert_clauses(
+    conn: Connection,
+    version_id: uuid.UUID,
+    clauses: list[tuple[str, str]],
+) -> None:
+    """Insert ``(clause_path, text_content)`` pairs in order.
+
+    Used by the WU8.5 documents-viewer e2e: the structure-overlay toggle
+    needs real clauses to render.
+    """
+    for ord_value, (path, text_content) in enumerate(clauses, start=1):
+        conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO clauses "
+                "(document_version_id, clause_uid, clause_path, text_content, ord) "
+                "VALUES (:v, :u, :p, :t, :o)"
+            ),
+            {
+                "v": version_id,
+                "u": uuid.uuid4(),
+                "p": path,
+                "t": text_content,
+                "o": ord_value,
+            },
+        )
+
+
 def _emit_change_event(
     conn: Connection,
     document_id: uuid.UUID,
@@ -327,6 +354,32 @@ def _seed(conn: Connection) -> None:
     )
     eu_doc, eu_ver = _make_doc_with_version(
         conn, EU_DOC_LID, "EU", "BANKING", "EU Banking Directive (sample, e2e)"
+    )
+
+    # WU8.5 documents-viewer e2e: a handful of clauses on each version so
+    # the structure-overlay toggle has something to render. Clause paths
+    # follow the parser's anchor convention (PART_/SECTION_/(letter)).
+    _insert_clauses(
+        conn,
+        uk_ver,
+        [
+            ("PART_1", "Part 1 of the UK Banking Act sample."),
+            ("PART_1/SECTION_1", "Section 1: Preliminary provisions."),
+            ("PART_2/SECTION_12", "Section 12: Capital requirements."),
+            (
+                "PART_2/SECTION_12/(a)",
+                "(a) Capital ratio targets stated in this subsection.",
+            ),
+        ],
+    )
+    _insert_clauses(
+        conn,
+        eu_ver,
+        [
+            ("ARTICLE_1", "Article 1 of the EU Banking Directive sample."),
+            ("ARTICLE_4", "Article 4: Liquidity coverage."),
+            ("ARTICLE_4/CLAUSE_4.2", "Clause 4.2: Net cash outflow thresholds."),
+        ],
     )
 
     # 1. UK MODIFIED — primary assertion (green badge, "0.92"). Visible

@@ -98,8 +98,14 @@ function measureRow(el: Element | null) {
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <span class="text-lg font-semibold tracking-tight text-slate-900">Horizons</span>
-        <nav class="flex gap-2 text-sm">
+        <nav class="flex gap-4 text-sm">
           <RouterLink to="/" class="text-slate-600 hover:text-slate-900">Home</RouterLink>
+          <RouterLink
+            to="/documents"
+            class="text-slate-600 hover:text-slate-900"
+          >
+            Documents
+          </RouterLink>
         </nav>
       </div>
     </header>

@@ -29,6 +29,14 @@ async function onSignOut(): Promise<void> {
               Clients
             </RouterLink>
             <RouterLink
+              to="/documents"
+              class="text-slate-600 hover:text-slate-900"
+              active-class="text-slate-900 font-medium"
+              data-testid="nav-admin-documents"
+            >
+              Documents
+            </RouterLink>
+            <RouterLink
               :to="{ name: 'admin-audit' }"
               class="text-slate-600 hover:text-slate-900"
               active-class="text-slate-900 font-medium"

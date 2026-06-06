@@ -365,6 +365,21 @@
       }
     },
     {
+      "iso": "IE",
+      "portal_url": "irishstatutebook.ie",
+      "portal_name": "Irish Statute Book",
+      "document_id": "27732019",
+      "version": 1,
+      "title": "Protection of Employees (Employers' Insolvency) (Amendment) Act 2026",
+      "type_of_authority": "Act",
+      "language": "English",
+      "markdown_kb": 67.0,
+      "files": {
+        "markdown": "ie-27732019-v1.md",
+        "meta": "ie-27732019-v1.meta.json"
+      }
+    },
+    {
       "iso": "IT",
       "portal_url": "mef.gov.it/en",
       "portal_name": "Italy MEF (English)",
