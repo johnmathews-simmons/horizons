@@ -17,9 +17,6 @@ param environmentName string
 @description('Container Apps subnet ID (delegated to Microsoft.App/environments).')
 param infrastructureSubnetId string
 
-@description('Log Analytics workspace customer ID for ACA log shipping.')
-param logAnalyticsCustomerId string
-
 @description('Tags applied to the environment.')
 param tags object = {}
 
@@ -30,15 +27,6 @@ resource env 'Microsoft.App/managedEnvironments@2024-10-02-preview' = {
   location: location
   tags: tags
   properties: {
-    appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: logAnalyticsCustomerId
-        // sharedKey omitted — managed identity reads via the workspace
-        // resource ID once attached. Set in the prod parameters file if
-        // your tenant policy requires key-based shipping.
-      }
-    }
     vnetConfiguration: {
       infrastructureSubnetId: infrastructureSubnetId
       internal: false

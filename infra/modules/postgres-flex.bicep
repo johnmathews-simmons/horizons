@@ -27,13 +27,14 @@ param administratorLogin string = 'horizons_admin'
 @secure()
 param administratorPassword string
 
-@description('Postgres major version. PG 17 per the locked-in plan.')
+@description('Postgres major version. PG 18 per the locked-in plan.')
 @allowed([
   '15'
   '16'
   '17'
+  '18'
 ])
-param postgresVersion string = '17'
+param postgresVersion string = '18'
 
 @description('Compute tier.')
 @allowed([

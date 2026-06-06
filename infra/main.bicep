@@ -149,7 +149,6 @@ module containerEnv 'modules/container-app-env.bicep' = {
     workloadPrefix: workloadPrefix
     environmentName: environmentName
     infrastructureSubnetId: network.outputs.acaSubnetId
-    logAnalyticsCustomerId: observability.outputs.workspaceCustomerId
     tags: tags
   }
 }
