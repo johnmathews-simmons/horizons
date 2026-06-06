@@ -1,4 +1,4 @@
-name: Infra drift check
+name: Infra drift
 
 # WU6.6 — nightly `az deployment what-if` against the live infrastructure
 # resource group; opens a GitHub Issue (label `infra-drift`) when the
