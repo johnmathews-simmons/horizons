@@ -30,7 +30,10 @@ node_modules/
 dist/
 .vite/
 
-# Infra / docs / journal — not consumed by the runtime images
+# Infra / docs / journal — not consumed by the runtime images.
+# alembic.ini is intentionally NOT excluded: the API Dockerfile copies
+# it into the runtime image so the migration ACA Job (which reuses the
+# API image) has the config alongside packages/horizons-core/migrations.
 infra/
 docs/
 journal/
@@ -39,7 +42,6 @@ tests/
 data/
 README.md
 CLAUDE.md
-alembic.ini
 .github/
 .pre-commit-config.yaml
 
