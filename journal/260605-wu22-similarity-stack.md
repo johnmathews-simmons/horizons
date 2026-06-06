@@ -13,7 +13,7 @@ Third Track-2 unit. Builds the four similarity primitives the WU2.3 alignment pi
 5. `__init__.py` re-exports the new public surface (`shingle`, `minhash`, `jaccard`, `lsh_candidates`, `MINHASH_SEED`, `TuningConfig`, `default_tuning_config`, `load_tuning_config`, `list_tuning_config_names`).
 6. `packages/horizons-core/tests/test_similarity.py` (24 tests) — set-semantics, validators, statistical Jaccard bounds, LSH dedup + ordering, an engineered band-collision case to hit the post-filter rejection branch, and an end-to-end check that parses a real IE clause via the WU2.1 portal config and asserts `jaccard(original, single-word-mutation) > 0.7`.
 7. `packages/horizons-core/tests/test_tuning.py` (15 tests) — defaults, frozen, validators, YAML drift, empty-YAML fallback.
-8. `docs/2. clause-alignment.md` — added an *Implementation* section pointing at `similarity.py` and noting the `TuningConfig` knobs.
+8. `docs/RFC-2 clause-alignment.md` — added an *Implementation* section pointing at `similarity.py` and noting the `TuningConfig` knobs.
 9. `packages/horizons-core/pyproject.toml` — added `datasketch>=1.6` as a runtime dep.
 
 Final tally: 122 default-marker Python tests passing (was 84), 100% line + branch on `similarity.py` and `tuning.py`. Webapp lint/build/tests still green.
@@ -48,4 +48,4 @@ The whole `tuning_configs/` directory layout is a deliberate copy of `parser_con
 
 ## Next: WU2.3 — alignment pipeline
 
-The pieces are in place. WU2.3 composes them: parse v1 and v2 into clause trees (WU2.0/WU2.1), compute shingle + minhash per clause body, run `lsh_candidates` to surface candidate pairs, run a monotonic-ordering Needleman–Wunsch DP over the candidate pairs to choose the actual alignment, and emit `ChangeEvent` rows (ADDED / REMOVED / MODIFIED / MOVED) per `docs/2. clause-alignment.md`. `TuningConfig` is the seam the pipeline reads.
+The pieces are in place. WU2.3 composes them: parse v1 and v2 into clause trees (WU2.0/WU2.1), compute shingle + minhash per clause body, run `lsh_candidates` to surface candidate pairs, run a monotonic-ordering Needleman–Wunsch DP over the candidate pairs to choose the actual alignment, and emit `ChangeEvent` rows (ADDED / REMOVED / MODIFIED / MOVED) per `docs/RFC-2 clause-alignment.md`. `TuningConfig` is the seam the pipeline reads.

@@ -3,7 +3,7 @@
 *Session 2026-06-05. Branch `worktree-eng-wu3.4-poll-transaction` → ff-merged to `main`.*
 
 The body the WU3.3 claim loop calls for every due document. Replaces
-`noop_poll`. Implements `docs/4. services.md` §"Ingestion service":
+`noop_poll`. Implements `docs/RFC-4 services.md` §"Ingestion service":
 fetch markdown via the WU3.2 Lawstronaut client, hash, extend the live
 version's `valid_to` if unchanged; otherwise upload the blob and write
 a four-row tuple (`document_versions` + `clauses` +

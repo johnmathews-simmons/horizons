@@ -1,6 +1,6 @@
 # API sample data
 
-Real document captures from the Lawstronaut v2 API, used as fixtures for the clause parser, alignment, and diff engine (see `docs/2. clause-alignment.md`).
+Real document captures from the Lawstronaut v2 API, used as fixtures for the clause parser, alignment, and diff engine (see `docs/RFC-2 clause-alignment.md`).
 
 ## Layout
 
@@ -18,6 +18,6 @@ Re-running adds new fixtures (existing slugs are skipped).
 
 31 documents — the original Irish Statute Book Act plus 30 round-robin captures across 30 jurisdictions and ~30 different portals. Languages span Catalan, Arabic, English, German, French, Czech, Spanish, Greek, Croatian, Hungarian, Italian, Japanese, Korean, Latvian, Chinese, and others. Authority types include Acts, Regulations, Caselaw, Decrees, Practice Notes, and Notices.
 
-Size spread (markdown bytes): minimum 0.7 KB (HR), p50 ~12 KB, p90 ~160 KB, maximum 3.8 MB (AL). This range is deliberate — the large outliers stress-test the parser and the blob-vs-row threshold question raised in `docs/3. database-design.md`.
+Size spread (markdown bytes): minimum 0.7 KB (HR), p50 ~12 KB, p90 ~160 KB, maximum 3.8 MB (AL). This range is deliberate — the large outliers stress-test the parser and the blob-vs-row threshold question raised in `docs/RFC-3 database-design.md`.
 
 See `fixtures.json` for the full inventory.

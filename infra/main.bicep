@@ -207,7 +207,7 @@ module containerApi 'modules/container-app-api.bicep' = {
 
 // ---------------------------------------------------------------------
 // 7b. Ingestion-worker container app (ADR-0001: long-running, 1 replica).
-//     Must NEVER share a Container App with the API — docs/4. services.md
+//     Must NEVER share a Container App with the API — docs/RFC-4 services.md
 //     §"API responsiveness is non-negotiable".
 // ---------------------------------------------------------------------
 module containerWorker 'modules/container-app-worker.bicep' = {

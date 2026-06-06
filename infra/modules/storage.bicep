@@ -2,7 +2,7 @@
 //
 // Two roles:
 //   * 'originals' container — content-addressed legal markdown
-//     (originals/<sha256>.md) per docs/4. services.md.
+//     (originals/<sha256>.md) per docs/RFC-4 services.md.
 //   * '$web' static-website container — the Vue SPA bundle, fronted by
 //     Azure Front Door per locked-in plan item 11.
 

@@ -44,7 +44,7 @@ Three locked-in plan items + one ADR drove the choices:
    internal `/healthz` liveness probe on port 8080. **Not** a
    `Microsoft.App/jobs`. Anyone tempted to swap to ACA Job needs to
    re-open ADR-0001 first.
-2. **docs/4. services.md / locked-in plan §10.** API and worker are
+2. **docs/RFC-4 services.md / locked-in plan §10.** API and worker are
    two separate `Microsoft.App/containerApps` resources sharing the
    same `managedEnvironments` parent. The skeleton makes co-locating
    them inconvenient (separate modules, separate parameter blocks) so

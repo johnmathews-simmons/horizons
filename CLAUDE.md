@@ -20,10 +20,10 @@ Before doing anything substantive, read in this order:
 
 1. `docs/0. about-these-docs.md` — meta-doc framing the design-doc chain as a linked RFC chain (with ADRs as a complementary practice) and explaining why the chain exists in this form.
 2. The numbered design-doc chain — these build on each other:
-   - `docs/1. product-questions.md` — the three primitives the tool must answer (discovery, temporal, differential) and the scope/filter/delivery dimensions.
-   - `docs/2. clause-alignment.md` — how clauses keep identity across versions; the alignment pipeline and similarity stack.
-   - `docs/3. database-design.md` — performance target, scale assumptions, principles; depends on the identity model from doc 2.
-   - `docs/4. services.md` — the three deployable services (ingestion worker, public API, SPA webapp), their responsibilities and non-responsibilities, and the cross-cutting principles (multi-tenant isolation, API responsiveness, single API surface).
+   - `docs/RFC-1 product-questions.md` — the three primitives the tool must answer (discovery, temporal, differential) and the scope/filter/delivery dimensions.
+   - `docs/RFC-2 clause-alignment.md` — how clauses keep identity across versions; the alignment pipeline and similarity stack.
+   - `docs/RFC-3 database-design.md` — performance target, scale assumptions, principles; depends on the identity model from doc 2.
+   - `docs/RFC-4 services.md` — the three deployable services (ingestion worker, public API, SPA webapp), their responsibilities and non-responsibilities, and the cross-cutting principles (multi-tenant isolation, API responsiveness, single API surface).
    - `docs/5. clause-tree-parser.md` — markdown → `Clause` tree transform that produces the substrate doc 2's alignment pipeline consumes. Numbered 5 because added later, but conceptually a prerequisite to doc 2; read after the main chain.
 3. `docs/api/README.md` — index of two API surfaces. **Horizons (what we ship):** `endpoints.md` (auto-generated from FastAPI OpenAPI by `packages/horizons-api/scripts/regen_endpoints_md.py`; do not hand-edit), `horizons-primitives.md`, `auth.md`. **Lawstronaut (what we consume):** `getting-started.md`, `concepts.md`, `lawstronaut-endpoints.md`, `operational-notes.md`.
 4. `docs/plan/improvement-plan.md` — the work-unit roadmap (tracks 0–8, WU numbers referenced throughout `journal/`) produced from the 2026-06-04 engineering-team evaluation. `docs/plan/evaluation-report.md` is the baseline assessment it was built from; `docs/plan/discussions/` carries the per-dimension subagent reports.

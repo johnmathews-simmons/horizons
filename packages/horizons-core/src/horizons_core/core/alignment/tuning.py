@@ -29,7 +29,7 @@ class TuningConfig(BaseModel):
     Defaults are starting values from the MinHash / LSH literature, not
     calibrated against the production corpus — expect to revisit them
     in WU2.4's regression suite and during demo pre-flight tuning. See
-    ``docs/2. clause-alignment.md`` for the algorithmic context.
+    ``docs/RFC-2 clause-alignment.md`` for the algorithmic context.
     """
 
     model_config = ConfigDict(frozen=True)

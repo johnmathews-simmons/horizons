@@ -10,11 +10,11 @@ visible on the legal horizon, not changes already in force. This repo is the ear
 Design docs (read in order — each builds on the previous):
 
 1. [About these docs](docs/0.%20about-these-docs.md) — how the chain is structured and why.
-2. [Product questions](docs/1.%20product-questions.md) — the discovery / temporal / differential primitives the tool must
+2. [Product questions](docs/RFC-1%20product-questions.md) — the discovery / temporal / differential primitives the tool must
    answer.
-3. [Clause alignment](docs/2.%20clause-alignment.md) — how clauses keep identity across versions; the alignment pipeline.
-4. [Database design](docs/3.%20database-design.md) — performance target, scale assumptions, principles.
-5. [Services](docs/4.%20services.md) — the three deployable services and their cross-cutting principles.
+3. [Clause alignment](docs/RFC-2%20clause-alignment.md) — how clauses keep identity across versions; the alignment pipeline.
+4. [Database design](docs/RFC-3%20database-design.md) — performance target, scale assumptions, principles.
+5. [Services](docs/RFC-4%20services.md) — the three deployable services and their cross-cutting principles.
 
 Reference material:
 

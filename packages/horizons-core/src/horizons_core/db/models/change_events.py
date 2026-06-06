@@ -1,7 +1,7 @@
 """ORM model for the ``change_events`` table.
 
 One row per residual clause pairing emitted by the alignment pipeline
-(see ``docs/2. clause-alignment.md``). Append-only — UPDATE / DELETE
+(see ``docs/RFC-2 clause-alignment.md``). Append-only — UPDATE / DELETE
 are rejected by a trigger (WU3.4 migration 0010). RLS narrows reads
 to rows whose ``(jurisdiction, sector)`` is in the caller's
 subscription scope.

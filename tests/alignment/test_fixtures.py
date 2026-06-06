@@ -53,7 +53,7 @@ pairing), so an algorithm that's even minimally working surfaces both —
 ``TP_FLOOR = 2`` therefore catches catastrophic algorithm regressions
 without blocking boilerplate-rich corpora where precision degrades from
 spurious MOVED/MODIFIED pairings. WU2.4's deliverable is the score
-report (see ``docs/2. clause-alignment.md`` — *Calibration*), not a
+report (see ``docs/RFC-2 clause-alignment.md`` — *Calibration*), not a
 hard gate."""
 
 

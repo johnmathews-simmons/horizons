@@ -39,7 +39,7 @@ exist as distinct roles because their **read scope is different**:
   lets us GRANT on a per-table basis instead of relying solely on
   predicate-level isolation.
 
-This is the defence-in-depth posture from `docs/4. services.md`:
+This is the defence-in-depth posture from `docs/RFC-4 services.md`:
 RLS + role-grants + repository layer, not RLS alone.
 
 ## Why `admin_bypass` is separate from a generic `admin`
@@ -125,7 +125,7 @@ narrows the append-only trigger so it permits `UPDATE` iff `valid_to`
 is the only column that changed. `ingestion_worker` is granted
 `UPDATE (valid_to)` (column-scoped — the trigger is the substantive
 rule; the column grant is the cheap outer fence). This supports the
-ingestion path documented in `docs/4. services.md` §"Ingestion
+ingestion path documented in `docs/RFC-4 services.md` §"Ingestion
 service": on an unchanged poll the worker extends the live version's
 `valid_to`, and on a changed poll it closes the previous version's
 `valid_to` before inserting the new row. No other role gets `UPDATE`

@@ -10,7 +10,7 @@
 //   * No external ingress — the worker is reachable only by the ACA
 //     control plane (probe + revision lifecycle) and its database.
 //
-// Per docs/4. services.md, the worker MUST be a separate container app
+// Per docs/RFC-4 services.md, the worker MUST be a separate container app
 // from the API — never co-located, so an ingestion burst cannot starve
 // the API of CPU or connections.
 

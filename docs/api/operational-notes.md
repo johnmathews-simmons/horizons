@@ -126,7 +126,7 @@ Several captured documents have *no* markdown heading lines at all — clause st
 - `cz-29662776-v1.md` (Czech, 119 KB) — uses `ČÁST PRVNÍ` / `Čl. I` / `1\.` / `2\.` style markers; whole document is 17 newlines, no `#` headings, paragraphs run on.
 - Several other non-English captures show similar patterns: jurisdiction-specific labels (`§`, `Art.`, `Reg.`, roman numerals) in body text rather than markdown structure.
 
-The parser must accept both substrates — markdown-heading-driven (IE) *and* inline-label-driven (CZ and friends) — and apply a per-portal recognition strategy. Doc 2 (`docs/2. clause-alignment.md`) already anticipates this under "Irregular structure"; the fixtures confirm it.
+The parser must accept both substrates — markdown-heading-driven (IE) *and* inline-label-driven (CZ and friends) — and apply a per-portal recognition strategy. Doc 2 (`docs/RFC-2 clause-alignment.md`) already anticipates this under "Irregular structure"; the fixtures confirm it.
 
 ### `legal_link` URLs may contain source-portal session tokens
 

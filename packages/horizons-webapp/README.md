@@ -5,7 +5,7 @@ TanStack Vue Query, styled with Tailwind v4 + shadcn-style primitives.
 
 This is a customer of the public REST API exposed by `horizons-api`. No
 internal back-channel; the webapp talks to the same endpoints external
-integrators do. See `docs/4. services.md` in the repo root.
+integrators do. See `docs/RFC-4 services.md` in the repo root.
 
 The webapp is not a `uv` workspace member — it lives alongside the Python
 packages under `packages/` but uses npm.

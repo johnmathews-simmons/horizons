@@ -3,7 +3,7 @@
 *WU4.4. Doc-first; the OpenAPI-generated reference lands with WU4.6.*
 
 The Horizons public API exposes the three primitives from
-[`docs/1. product-questions.md`](../1.%20product-questions.md) as three
+[`docs/RFC-1 product-questions.md`](../1.%20product-questions.md) as three
 HTTP endpoints under `/v1/`. Each accepts the same **scope discriminator**;
 the response shape differs by primitive.
 

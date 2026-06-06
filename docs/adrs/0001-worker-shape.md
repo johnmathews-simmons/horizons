@@ -8,7 +8,7 @@
 
 ## Context and problem statement
 
-`docs/4. services.md` specifies a "stateless worker process, one
+`docs/RFC-4 services.md` specifies a "stateless worker process, one
 container", driven by a per-document schedule table and a
 `SELECT … FOR UPDATE SKIP LOCKED` claim pattern. It does *not* specify
 whether that container is a **long-running process with an in-process
@@ -118,6 +118,6 @@ batches; SIGTERM drains in flight work before the container exits;
 - Spike code: `spikes/wu30/{fake_schedule,asyncio_loop,aca_job}.py`
   at the introducing commit. Removed in a follow-up commit; git
   history retains the substrates for future re-examination.
-- `docs/4. services.md` ingestion section — substrate-agnostic
+- `docs/RFC-4 services.md` ingestion section — substrate-agnostic
   responsibilities and constraints. Unchanged by this ADR.
 - Improvement plan: WU3.0 (this unit), WU3.3, WU3.4, WU6.0.

@@ -2,7 +2,7 @@
 
 Composes the parser (WU2.0 / WU2.1) and the similarity primitives
 (WU2.2) into the four-pass alignment pipeline documented in
-``docs/2. clause-alignment.md``. The public entry point is
+``docs/RFC-2 clause-alignment.md``. The public entry point is
 :func:`align`; the residual change events are emitted as
 :class:`ChangeEvent` instances.
 
@@ -144,7 +144,7 @@ def align(
     The four passes — source-ID match (stubbed), heading+content
     corroboration, content-similarity with monotonic DP, and
     residual classification — are described in
-    ``docs/2. clause-alignment.md``.
+    ``docs/RFC-2 clause-alignment.md``.
 
     Identity rule: a paired clause whose path and body text are both
     identical is emitted as no event. This makes idempotent

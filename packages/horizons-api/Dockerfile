@@ -5,7 +5,7 @@
 # Multi-stage uv build targeting python:3.13-slim. Installs only the
 # horizons-api package and its workspace-graph dependency horizons-core;
 # horizons-ingestion is deliberately NOT installed (it belongs in the
-# worker image). docs/4. services.md requires API and worker to ship as
+# worker image). docs/RFC-4 services.md requires API and worker to ship as
 # separate images so an ingestion burst can't starve the API of CPU.
 #
 # Build context: the repository root. Build with:

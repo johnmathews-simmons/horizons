@@ -1,6 +1,6 @@
 // Container App — public REST API (FastAPI / uvicorn).
 //
-// Per docs/4. services.md, this is the single HTTP surface every client
+// Per docs/RFC-4 services.md, this is the single HTTP surface every client
 // talks to. External ingress on :8000 → port 8000 inside the container.
 // Multiple revisions per locked-in plan item 10 — `activeRevisionsMode:
 // Multiple` enables revision-based blue/green rollback via traffic shift.

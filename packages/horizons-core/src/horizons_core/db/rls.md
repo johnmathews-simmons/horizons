@@ -15,7 +15,7 @@ Read this alongside [roles.md](roles.md) (the four-role grant model) and
 
 ## Two axes of isolation
 
-From [design doc 4 §Multi-tenant isolation](../../../../../docs/4.%20services.md):
+From [design doc 4 §Multi-tenant isolation](../../../../../docs/RFC-4%20services.md):
 
 1. **Cross-client privacy.** Client A cannot observe any state belonging
    to client B — watchlists, alerts, saved queries, dashboards,
@@ -369,7 +369,7 @@ trail in place.
 - [schema.md](schema.md) — table definitions and `app_private` section.
 - [repos/repos.md](../repos/repos.md) — the repository layer shape,
   `user_id` discipline, ORM-only rule.
-- [design doc 3 §Multi-tenant isolation](../../../../../docs/3.%20database-design.md)
+- [design doc 3 §Multi-tenant isolation](../../../../../docs/RFC-3%20database-design.md)
   — the principle.
-- [design doc 4 §Defence-in-depth for isolation](../../../../../docs/4.%20services.md)
+- [design doc 4 §Defence-in-depth for isolation](../../../../../docs/RFC-4%20services.md)
   — the layered enforcement story.

@@ -7,7 +7,7 @@ name: Build and push container images
 #   * workflow_dispatch → manual rebuild (useful for re-tagging after a
 #     base-image security update).
 #
-# Per docs/4. services.md, API and worker are SEPARATE images; they MUST
+# Per docs/RFC-4 services.md, API and worker are SEPARATE images; they MUST
 # NOT be merged into a single multi-purpose image. The matrix below
 # enforces that — each entry is a self-contained image build.
 

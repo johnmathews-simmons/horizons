@@ -30,7 +30,7 @@ infra/
   and an internal `/healthz` probe — **not** a `Microsoft.App/jobs`. If you
   reach for `Microsoft.App/jobs`, you are arguing with the ADR; re-open the
   decision there first.
-- **API ≠ worker (docs/4. services.md):** They are two separate
+- **API ≠ worker (docs/RFC-4 services.md):** They are two separate
   `containerApps` resources inside the same `managedEnvironments`. They
   must not be co-located; an ingestion burst cannot starve the API of
   CPU.

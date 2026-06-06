@@ -2,7 +2,7 @@
 
 Heading-anchored fragment of a ``document_versions`` row. ``clause_uid``
 carries clause identity across versions of the same document — the
-alignment pipeline (see ``docs/2. clause-alignment.md``) is what assigns
+alignment pipeline (see ``docs/RFC-2 clause-alignment.md``) is what assigns
 matching uids when a new version lands. ``clause_path`` is the
 positional label (e.g. ``Part 2 / Section 4 / (a) / (i)``) and is free
 to renumber as neighbours change.

@@ -10,7 +10,7 @@ in corpus size via ``datasketch.MinHashLSH``.
 
 The MinHash seed (:data:`MINHASH_SEED`) is part of the wire format —
 change it and existing signatures stop matching. See
-``docs/2. clause-alignment.md`` for the algorithmic rationale.
+``docs/RFC-2 clause-alignment.md`` for the algorithmic rationale.
 
 These functions take primitive ints / floats rather than a
 ``TuningConfig``; the alignment pipeline (and, later, the admin UI) is

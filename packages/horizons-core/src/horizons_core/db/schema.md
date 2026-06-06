@@ -88,7 +88,7 @@ Each row is one jurisdiction × sector pair the subscription covers.
 A subscription with N scopes has N rows here. Jurisdiction and sector
 values live in configuration, not in code or in a separate lookup table —
 they come from the Lawstronaut taxonomy feed (see [design doc 3
-§Configuration over code](../../../../../docs/3.%20database-design.md#principles)).
+§Configuration over code](../../../../../docs/RFC-3%20database-design.md#principles)).
 
 **Writes:** `INSERT` is permitted. `UPDATE` is permitted in **exactly
 one shape** (WU4.5): setting `valid_to` from `NULL` to a non-`NULL`
@@ -166,7 +166,7 @@ Indexes:
 some upstream feeds omit one or both, and the ingester is allowed to
 record a row with the dates it has. Effective-date inference (publication
 + per-jurisdiction default lag — see [design doc 3 §Principles
-3](../../../../../docs/3.%20database-design.md#principles)) lives in the
+3](../../../../../docs/RFC-3%20database-design.md#principles)) lives in the
 ingester, not in the schema; this table just stores whatever the
 ingester computes.
 
@@ -179,7 +179,7 @@ avoid a round-trip when computing diffs.
 **Writes:** `INSERT` is permitted. `UPDATE` is rejected by the
 append-only trigger *except* when `valid_to` is the only column that
 changed — that single carve-out is the path the ingestion worker uses
-on every unchanged poll, per `docs/4. services.md` §"Ingestion service".
+on every unchanged poll, per `docs/RFC-4 services.md` §"Ingestion service".
 Content, metadata, and `valid_from` are immutable; corrections are a
 new version. `ingestion_worker` carries `GRANT UPDATE (valid_to)` as
 the cheap outer fence; the trigger is the substantive rule.
@@ -206,7 +206,7 @@ Indexes:
 
 `clause_uid` is the **stable identity** that carries a clause across
 re-issues of its parent document — see [design doc 2 §Clause
-identity](../../../../../docs/2.%20clause-alignment.md). The alignment
+identity](../../../../../docs/RFC-2%20clause-alignment.md). The alignment
 pipeline assigns the uid when a new version lands: matching clauses
 inherit the prior uid, genuinely new clauses get a fresh one. The
 pipeline itself lands in a later WU; for now the column exists and
@@ -270,7 +270,7 @@ Indexes:
 - `idx_change_events_document` on `(document_id, detected_at)` — per-document temporal lookup.
 - `idx_change_events_version` on `(document_version_id)` — per-version replay (sweeps, backfills).
 
-The load-bearing read artefact for the three primitives. Discovery, temporal, and differential all read from here (see [design doc 3 §Implications for the three primitives](../../../../../docs/3.%20database-design.md#implications-for-the-three-primitives)).
+The load-bearing read artefact for the three primitives. Discovery, temporal, and differential all read from here (see [design doc 3 §Implications for the three primitives](../../../../../docs/RFC-3%20database-design.md#implications-for-the-three-primitives)).
 
 `change_type` mirrors the `alignment.ChangeType` `Literal` exactly. Field-presence rules — `ADDED` carries only after-side fields, `REMOVED` only before-side, `MODIFIED` both with differing text, `MOVED` both with identical text and distinct paths — are enforced by the pydantic model at the application layer (`alignment.ChangeEvent`). The database stores any combination; the application contract is the gate.
 
@@ -537,7 +537,7 @@ architecture spec.
 
 - [roles.md](roles.md) — the four-role security model these grants key off.
 - [rls.md](rls.md) — the planned RLS policies and defence-in-depth layers.
-- [design doc 3](../../../../../docs/3.%20database-design.md) — schema
+- [design doc 3](../../../../../docs/RFC-3%20database-design.md) — schema
   principles (append-only, clause-level granularity, RLS posture).
-- [design doc 4](../../../../../docs/4.%20services.md) — how the three
+- [design doc 4](../../../../../docs/RFC-4%20services.md) — how the three
   services interact with the database under defence-in-depth isolation.

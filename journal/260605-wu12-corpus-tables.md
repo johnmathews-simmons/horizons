@@ -33,7 +33,7 @@ Constraints:
   integrity values at the DB layer.
 
 Indexes for the three product primitives (discovery / temporal /
-differential — see `docs/1. product-questions.md`):
+differential — see `docs/RFC-1 product-questions.md`):
 - `idx_documents_jurisdiction_sector` for subscription-scope filtering
   (every client query starts with "documents I'm subscribed to").
 - `idx_document_versions_doc_effective` for "what was in force at time

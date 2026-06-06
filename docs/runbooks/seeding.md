@@ -143,4 +143,4 @@ in code.
 
 - `packages/horizons-core/src/horizons_core/db/schema.md` §`documents` and §`document_poll_schedule` — the row shapes this script writes.
 - `data/samples/README.md` — the fixture-inventory provenance and refresh cadence.
-- `docs/4. services.md` §Ingestion service — where this substrate fits in the worker's lifecycle.
+- `docs/RFC-4 services.md` §Ingestion service — where this substrate fits in the worker's lifecycle.

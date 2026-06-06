@@ -14,7 +14,7 @@ startup and reuses it for the process lifetime. The class is an
 cleanly on shutdown.
 
 See ``../poll.md`` for the operating contract and
-``../../../../docs/4. services.md`` §"Ingestion service" for the
+``../../../../docs/RFC-4 services.md`` §"Ingestion service" for the
 two-substrate transaction model.
 """
 
