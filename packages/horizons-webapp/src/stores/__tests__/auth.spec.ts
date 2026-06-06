@@ -31,13 +31,20 @@ describe('useAuthStore', () => {
   })
 
   it('logout clears the access token even when the network call fails', async () => {
-    server.use(http.post(`${API}/v1/auth/logout`, () => HttpResponse.json({}, { status: 204 })))
+    // Backend returns 401 (e.g. refresh cookie already revoked / expired).
+    // logout() must still resolve normally so the caller can navigate to
+    // /login — otherwise the UI stays on the authed view until reload.
+    server.use(
+      http.post(`${API}/v1/auth/logout`, () =>
+        HttpResponse.json({ detail: 'invalid refresh token' }, { status: 401 }),
+      ),
+    )
 
     const auth = useAuthStore()
     auth.setAccessToken('access-2')
     expect(auth.isAuthenticated).toBe(true)
 
-    await auth.logout()
+    await expect(auth.logout()).resolves.toBeUndefined()
 
     expect(auth.accessToken).toBeNull()
     expect(auth.isAuthenticated).toBe(false)

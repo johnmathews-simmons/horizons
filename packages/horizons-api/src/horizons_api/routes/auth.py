@@ -123,7 +123,14 @@ def _set_refresh_cookie(response: Response, token: str, max_age_seconds: int) ->
         path=_REFRESH_COOKIE_PATH,
         secure=True,
         httponly=True,
-        samesite="lax",
+        # SameSite=None is required because the deployed SPA and API live
+        # on different sites (SPA on Front Door / Storage `$web`; API on
+        # the Container Apps default host). Under SameSite=Lax the browser
+        # withholds this cookie on cross-site XHR — breaking /v1/auth/refresh
+        # (cold-bootstrap on reload) and /v1/auth/logout. Secure + HttpOnly
+        # remain on; CSRF risk is bounded by the cookie being read only by
+        # require_refresh_principal on three explicit POST endpoints.
+        samesite="none",
     )
 
 
@@ -139,7 +146,7 @@ def _clear_refresh_cookie(response: Response) -> None:
         path=_REFRESH_COOKIE_PATH,
         secure=True,
         httponly=True,
-        samesite="lax",
+        samesite="none",
     )
 
 

@@ -81,8 +81,17 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(): Promise<void> {
+    // Best-effort server-side revocation. A failure here (stale refresh
+    // cookie, transient network error) must NOT propagate — the caller
+    // relies on this returning normally to then navigate to /login. If
+    // we rethrow, the SPA clears its bearer but stays on the authed view
+    // until the next reload. We warn rather than swallow silently so a
+    // real backend defect (e.g. the SameSite cookie-not-sent regression
+    // surfaced on 2026-06-06) leaves a breadcrumb in the console.
     try {
       await logoutRequest()
+    } catch (err) {
+      console.warn('logout: server-side revocation failed, clearing local state anyway', err)
     } finally {
       accessToken.value = null
       kind.value = 'access'
