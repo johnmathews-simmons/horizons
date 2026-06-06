@@ -128,7 +128,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'staging' }}
     outputs:
-      storage_account_name: ${{ steps.deploy.outputs.storage_account_name }}
+      storage_account_name: ${{ steps.deploy.outputs.storage_account_name || steps.deploy_reuse.outputs.storage_account_name }}
+      api_fqdn: ${{ steps.deploy.outputs.api_fqdn || steps.deploy_reuse.outputs.api_fqdn }}
     env:
       SHORT_SHA: ${{ needs.gate.outputs.short_sha }}
     steps:
@@ -136,6 +137,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.gate.outputs.head_sha }}
+          # Need HEAD~1 to diff for infra changes below.
+          fetch-depth: 2
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -151,11 +154,41 @@ jobs:
         # doesn't prompt.
         run: az config set extension.use_dynamic_install=yes_without_prompt
 
+      - name: Detect infra changes
+        id: infra_changed
+        # The Bicep deploy is purely idempotent reconciliation: image-only
+        # commits don't need it because `deploy-services` updates the
+        # container image directly via `az containerapp update`. Skip the
+        # full ARM walk (~mins) when nothing under infra/ or this workflow
+        # file changed in the head commit; the reuse path below fetches
+        # the existing outputs from the last successful deployment.
+        #
+        # Manual dispatch always reconciles — that's the escape hatch for
+        # forcing a Bicep deploy without an infra commit.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "Manual dispatch — forcing full Bicep deploy."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --quiet HEAD~1 HEAD -- infra/ .github/workflows/deploy.yml; then
+            echo "No infra changes vs HEAD~1 — skipping Bicep deploy, reusing previous outputs."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "infra/ or deploy.yml changed vs HEAD~1 — running Bicep deploy."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Bicep CLI
+        if: steps.infra_changed.outputs.changed == 'true'
         run: az bicep install
 
       - name: Bicep deploy
         id: deploy
+        if: steps.infra_changed.outputs.changed == 'true'
         # The Bicep deployment is incremental: existing resources are
         # left as-is unless their declared shape changed. The API's
         # ingress block deliberately omits `traffic[]` so this step
@@ -176,7 +209,7 @@ jobs:
           TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
         run: |
           set -euo pipefail
-          STORAGE_NAME=$(az deployment group create \
+          OUTPUTS=$(az deployment group create \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --name "deploy-$SHORT_SHA" \
             --template-file infra/main.bicep \
@@ -190,10 +223,42 @@ jobs:
             --parameters tenantId="$TENANT_ID" \
             --parameters apiImage="ghcr.io/johnmathews/horizons-api:sha-$SHORT_SHA" \
             --parameters workerImage="ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \
-            --query "properties.outputs.storageAccountName.value" \
-            -o tsv)
+            --query "properties.outputs" \
+            -o json)
+          STORAGE_NAME=$(echo "$OUTPUTS" | jq -r '.storageAccountName.value')
+          API_FQDN=$(echo "$OUTPUTS" | jq -r '.apiFqdn.value')
           echo "storage_account_name=$STORAGE_NAME" >> "$GITHUB_OUTPUT"
-          echo "Bicep deploy complete. Storage account: $STORAGE_NAME"
+          echo "api_fqdn=$API_FQDN" >> "$GITHUB_OUTPUT"
+          echo "Bicep deploy complete. Storage account: $STORAGE_NAME; API FQDN: $API_FQDN"
+
+      - name: Reuse outputs from last successful deployment
+        id: deploy_reuse
+        # Hit when infra/ + deploy.yml were unchanged in HEAD. Pull
+        # `storageAccountName` and `apiFqdn` from the most recent
+        # successful ARM deployment in the RG — these are stable resource
+        # identifiers, not per-deploy state, so reusing them is correct.
+        if: steps.infra_changed.outputs.changed != 'true'
+        run: |
+          set -euo pipefail
+          LAST=$(az deployment group list \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "[?properties.provisioningState=='Succeeded'] | [0].name" \
+            -o tsv)
+          if [[ -z "$LAST" ]]; then
+            echo "::error::No successful prior deployment found in $AZURE_RESOURCE_GROUP; re-run with workflow_dispatch to force a full Bicep deploy."
+            exit 1
+          fi
+          echo "Reusing outputs from deployment: $LAST"
+          OUTPUTS=$(az deployment group show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$LAST" \
+            --query "properties.outputs" \
+            -o json)
+          STORAGE_NAME=$(echo "$OUTPUTS" | jq -r '.storageAccountName.value')
+          API_FQDN=$(echo "$OUTPUTS" | jq -r '.apiFqdn.value')
+          echo "storage_account_name=$STORAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "api_fqdn=$API_FQDN" >> "$GITHUB_OUTPUT"
+          echo "Reused outputs. Storage account: $STORAGE_NAME; API FQDN: $API_FQDN"
 
       - name: Start migration ACA Job
         # The job is `triggerType: Manual` per WU6.4; nothing else fires
@@ -458,6 +523,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'staging' }}
     env:
       STORAGE_ACCOUNT: ${{ needs.prepare-infra.outputs.storage_account_name }}
+      API_FQDN: ${{ needs.prepare-infra.outputs.api_fqdn }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -477,6 +543,25 @@ jobs:
           set -euo pipefail
           npm ci
           npm run build
+
+      - name: Inject production apiBaseUrl into config.json
+        # Vite copies public/config.json (dev default: localhost:8000) into
+        # dist/ verbatim. Rewrite apiBaseUrl to the deployed API's FQDN so
+        # the SPA, served from Front Door, talks to ACA instead of the
+        # browser's own localhost. tuningThresholds + featureFlags are
+        # preserved from the bundled file.
+        working-directory: packages/horizons-webapp
+        run: |
+          set -euo pipefail
+          if [[ -z "${API_FQDN:-}" ]]; then
+            echo "::error::API_FQDN is empty; cannot rewrite dist/config.json"
+            exit 1
+          fi
+          tmp=$(mktemp)
+          jq --arg url "https://${API_FQDN}" '.apiBaseUrl = $url' dist/config.json > "$tmp"
+          mv "$tmp" dist/config.json
+          echo "dist/config.json rewritten:"
+          cat dist/config.json
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
