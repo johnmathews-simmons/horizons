@@ -28,9 +28,6 @@ param environmentName string
 ])
 param skuName string = 'Standard_LRS'
 
-@description('Object ID of the UAMI that uploads the SPA bundle to $web. Granted `Storage Blob Data Contributor` so `az storage blob upload-batch --auth-mode login` from deploy.yml can write. Without it the upload step 403s.')
-param spaUploaderPrincipalId string
-
 @description('Tags applied to the storage account.')
 param tags object = {}
 
@@ -98,21 +95,18 @@ resource webContainer 'Microsoft.Storage/storageAccounts/blobServices/containers
   }
 }
 
-// Storage Blob Data Contributor — RBAC data-plane role required for
-// `az storage blob upload-batch --auth-mode login`. Granting at the
-// storage-account scope so any container under it (originals + $web)
-// is writable by the UAMI. ID per
-// https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
-var blobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-resource spaUploaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storage
-  name: guid(storage.id, spaUploaderPrincipalId, blobDataContributorRoleId)
-  properties: {
-    principalId: spaUploaderPrincipalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
-  }
-}
+// `Storage Blob Data Contributor` for the SPA uploader UAMI is granted
+// out-of-band — see `docs/runbooks/deploy.md` "Prerequisites" table.
+// The UAMI's RG-scoped Contributor role does NOT permit
+// Microsoft.Authorization/roleAssignments/write, so the natural Bicep
+// roleAssignment block fails authz at deploy time. Encoding this in
+// Bicep needs the UAMI elevated to `User Access Administrator` first;
+// that's a post-demo cleanup. Until then, the role is created once via:
+//   az role assignment create \
+//     --assignee-object-id <UAMI principal> \
+//     --assignee-principal-type ServicePrincipal \
+//     --role "Storage Blob Data Contributor" \
+//     --scope <storage account ID>
 
 output storageAccountId string = storage.id
 output storageAccountName string = storage.name
