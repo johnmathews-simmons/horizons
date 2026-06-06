@@ -15,8 +15,13 @@ The same three flows — login, refresh, logout — serve two client postures:
 
 - **Browser clients** (the SPA at `webapp/`). The access token is held in
   memory only (JS heap, never `localStorage`); the refresh token is held in
-  a `HttpOnly; Secure; SameSite=Lax` cookie the browser cannot read. Refresh
+  a `HttpOnly; Secure; SameSite=None` cookie the browser cannot read. Refresh
   / logout do not send the refresh token explicitly — it rides on the cookie.
+  `SameSite=None` (not `Lax`) is required because the deployed SPA host
+  (Front Door / Storage `$web`) and API host (Container Apps default domain)
+  are different sites; under `Lax` the browser would withhold the cookie on
+  cross-site XHR, which broke `/v1/auth/logout` and the cold-bootstrap
+  `/v1/auth/refresh` (see `journal/260606-fix-logout-samesite.md`).
 
 One endpoint per flow serves both postures. The server's signal differs
 by flow:
@@ -87,7 +92,7 @@ token.
 Plus:
 
 ```
-Set-Cookie: refresh_token=eyJ...; HttpOnly; Secure; SameSite=Lax;
+Set-Cookie: refresh_token=eyJ...; HttpOnly; Secure; SameSite=None;
   Path=/v1/auth; Max-Age=2592000
 ```
 
