@@ -67,6 +67,8 @@ These are load-bearing — don't relitigate them without checking with John firs
 
 The repo is a `uv` workspace (root `pyproject.toml` with `[tool.uv.workspace]`) plus a separate npm-managed webapp under `packages/horizons-webapp`. The Python members live under `packages/horizons-{core,ingestion,api}`; the webapp is not a `uv` workspace member.
 
+**To boot the stack on your laptop** (Postgres + API + webapp), follow `docs/runbooks/local-dev.md`. The worker is documented at the bottom of that runbook but is not part of the default local flow — it needs Azure Blob + Lawstronaut credentials.
+
 **First-time setup after cloning:**
 
 ```bash

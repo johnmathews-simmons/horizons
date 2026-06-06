@@ -20,53 +20,41 @@ RFC-2606 reserved; `.test` would have been more idiomatic but pydantic's
 
 ## Local boot sequence
 
-The test expects the API on `http://localhost:8000` and the webapp on
-`http://localhost:5173`. Both must be running before `playwright test` starts.
+Boot Postgres + API + webapp following
+[`docs/runbooks/local-dev.md`](../../../docs/runbooks/local-dev.md) with
+three e2e-specific substitutions:
 
-```bash
-# 0. From the repo root.
-cd /Users/john/projects/syncthing/agent-lxc/horizons
+1. **Seed with `seed_e2e.py`**, not `seed_curated_set.py` — the e2e
+   asserts against the two-tenant UK/EU fixture that script writes.
 
-# 1. Start a Postgres 18 (uuidv7() is a v18 built-in).
-docker run --rm -d --name horizons-e2e-pg \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 \
-  postgres:18-alpine
+   ```bash
+   uv run python packages/horizons-api/scripts/seed_e2e.py
+   ```
 
-export HORIZONS_DB_URL='postgresql+psycopg://postgres:postgres@localhost:5432/postgres'
+2. **Build + preview the webapp**, not `npm run dev`. Playwright
+   targets a production-shaped bundle so the dev HMR runtime can't
+   confound it.
 
-# 2. Migrate.
-uv run alembic upgrade head
+   ```bash
+   cd packages/horizons-webapp
+   npm run build
+   npx vite preview --port 5173
+   ```
 
-# 3. Seed the e2e fixtures (idempotent — re-running wipes prior fixtures).
-uv run packages/horizons-api/scripts/seed_e2e.py
+3. **Run the test in a third terminal** (after the API is healthy and
+   the preview is up):
 
-# 4. Start uvicorn in terminal A. The CORS origin and JWT keys must be set.
-#    For a one-shot local run, any valid PEM key works — the integration
-#    tests' RSA fixture is fine. See tests/conftest.py for an example.
-export HORIZONS_CORS_ORIGINS='http://localhost:5173'
-export HORIZONS_JWT_ISSUER='horizons-e2e'
-export HORIZONS_JWT_AUDIENCE='horizons-e2e'
-# (export HORIZONS_JWT_PRIVATE_KEY_PEM / HORIZONS_JWT_PUBLIC_KEY_PEM too)
-uv run uvicorn horizons_api.app:create_app --factory --port 8000
-
-# 5. Start the webapp preview in terminal B.
-cd packages/horizons-webapp
-npm ci                                  # if you haven't already
-npm run build
-npx vite preview --port 5173
-
-# 6. Run the test in terminal C.
-cd packages/horizons-webapp
-npx playwright install --with-deps chromium   # first time only
-npm run test:e2e
-```
+   ```bash
+   cd packages/horizons-webapp
+   npx playwright install --with-deps chromium   # first time only
+   npm run test:e2e
+   ```
 
 ## Cleanup
 
 ```bash
-HORIZONS_DB_URL=... uv run packages/horizons-api/scripts/seed_e2e.py --teardown
-docker rm -f horizons-e2e-pg
+HORIZONS_DB_URL=... uv run python packages/horizons-api/scripts/seed_e2e.py --teardown
+docker rm -f horizons-pg
 ```
 
 ## CI
