@@ -504,10 +504,13 @@ jobs:
         # per build and the CDN's cache misses on its own. `/config.json`
         # is the per-environment runtime config (WU5.1) and is not
         # content-hashed.
+        # without --no-wait this will wait until the changes are propogated 
+        # to every edge node which is very slow
         run: |
           set -euo pipefail
           az afd endpoint purge \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --profile-name "$FRONT_DOOR_PROFILE" \
             --endpoint-name "$FRONT_DOOR_ENDPOINT" \
-            --content-paths '/' '/index.html' '/config.json'
+            --content-paths '/' '/index.html' '/config.json' \
+            --no-wait
