@@ -4,7 +4,18 @@ version = "0.0.0"
 description = "Shared library: domain types, schema models, repository base classes, Lawstronaut client."
 requires-python = ">=3.13"
 dependencies = [
+    # Migration tooling — horizons-core owns the migration tree, so
+    # alembic + psycopg (sync driver) are runtime deps for any image
+    # that needs to run migrations. The API image hosts the migration
+    # ACA Job via a command override; without these here, --no-dev in
+    # the Dockerfile strips them and the job exit-127s.
+    "alembic>=1.14",
     "argon2-cffi>=23.1",
+    # asyncpg is the async PG driver SQLAlchemy uses for the API +
+    # worker connections (HORIZONS_DB_URL is shaped as
+    # postgresql+asyncpg://...). Previously dev-only — moved here so
+    # runtime images can actually connect to PG.
+    "asyncpg>=0.30",
     "azure-identity>=1.19",
     "azure-monitor-opentelemetry>=1.6",
     "azure-monitor-query>=1.4",
@@ -15,6 +26,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.50b0",
     "opentelemetry-instrumentation-httpx>=0.50b0",
     "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
+    "psycopg[binary]>=3.2",
     "pydantic>=2.9",
     "pyjwt[crypto]>=2.9",
     "pyyaml>=6.0",
