@@ -237,15 +237,27 @@ jobs:
         # `storageAccountName` and `apiFqdn` from the most recent
         # successful ARM deployment in the RG — these are stable resource
         # identifiers, not per-deploy state, so reusing them is correct.
+        #
+        # JMESPath query, two non-obvious constraints:
+        #
+        # 1. `az deployment group list` does NOT guarantee ordering, so
+        #    `[0]` is not "most recent". Explicitly `sort_by(...,
+        #    &properties.timestamp) | [-1]` to take the newest.
+        # 2. The resource group also contains ARM deployments that don't
+        #    expose `storageAccountName` / `apiFqdn` — e.g. the post-deploy
+        #    `alerts` deployment that wires up the alert rules. Filter to
+        #    deployments whose outputs actually carry the keys we need;
+        #    otherwise we silently get `null` and torch the downstream
+        #    SPA + API jobs (the 559e435 deploy on 2026-06-06).
         if: steps.infra_changed.outputs.changed != 'true'
         run: |
           set -euo pipefail
           LAST=$(az deployment group list \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --query "[?properties.provisioningState=='Succeeded'] | [0].name" \
+            --query "sort_by([?properties.provisioningState=='Succeeded' && properties.outputs.storageAccountName != null], &properties.timestamp) | [-1].name" \
             -o tsv)
           if [[ -z "$LAST" ]]; then
-            echo "::error::No successful prior deployment found in $AZURE_RESOURCE_GROUP; re-run with workflow_dispatch to force a full Bicep deploy."
+            echo "::error::No successful prior deployment with storageAccountName output found in $AZURE_RESOURCE_GROUP; re-run with workflow_dispatch to force a full Bicep deploy."
             exit 1
           fi
           echo "Reusing outputs from deployment: $LAST"
