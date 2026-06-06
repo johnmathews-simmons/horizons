@@ -64,9 +64,13 @@ revision once it is healthy and deactivates the previous one.
 Runs in parallel with `deploy-services`:
 
 1. `npm ci && npm run build` in `packages/horizons-webapp/`.
-2. `az storage blob upload-batch --overwrite --auth-mode login` to the storage account's `$web` container. The account
+2. Rewrite `dist/config.json`'s `apiBaseUrl` to `https://<apiFqdn>` using `jq`. Vite copies `public/config.json` (dev
+   default: `http://localhost:8000`) into `dist/` verbatim; without this step the deployed SPA would call localhost from
+   an https origin and fail with a mixed-content "CORS request did not succeed" error. `apiFqdn` is read from the
+   `prepare-infra` job's Bicep outputs; `tuningThresholds` + `featureFlags` are preserved from the bundled file.
+3. `az storage blob upload-batch --overwrite --auth-mode login` to the storage account's `$web` container. The account
    name comes from the `prepare-infra` job's Bicep outputs.
-3. `az afd endpoint purge` for `/`, `/index.html`, `/config.json`. The hashed asset URLs Vite emits don't need purging —
+4. `az afd endpoint purge` for `/`, `/index.html`, `/config.json`. The hashed asset URLs Vite emits don't need purging —
    their URLs change per build and the CDN misses on its own.
 
 ## Triggering a deploy
@@ -91,13 +95,14 @@ gh run list --workflow=deploy.yml
 | Job               | Step                                 | Expected log line                                                                                        |
 | ----------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | `gate`            | Compute short SHA                    | `head=<40-char SHA>` followed by `short=<12-char prefix>`                                                |
-| `prepare-infra`   | Bicep deploy                         | `Bicep deploy complete. Storage account: horizonsdevst<6chars>`                                          |
+| `prepare-infra`   | Bicep deploy                         | `Bicep deploy complete. Storage account: horizonsdevst<6chars>; API FQDN: horizons-dev-api.<env>.westeurope.azurecontainerapps.io` |
 | `prepare-infra`   | Start migration ACA Job              | `[N/65] migration status: Succeeded` then `Migration succeeded.`                                         |
 | `deploy-services` | Capture previous active API revision | `Previous active revision: horizons-dev-api--<suffix>` (or `bootstrap deploy` warning on first ever run) |
 | `deploy-services` | Create new API revision (0% traffic) | `Created revision: horizons-dev-api--sha-<short>`                                                        |
 | `deploy-services` | Smoke test new revision              | `Smoke-testing https://<rev-fqdn>` → `[N/60] /healthz OK` → `/openapi.json reachable`                    |
 | `deploy-services` | Shift traffic to new revision        | `Shifted: <new>=100, <prev>=0`                                                                           |
 | `deploy-services` | Update worker revision               | The `az containerapp update` JSON response with `provisioningState: "Succeeded"`                         |
+| `deploy-spa`      | Inject production apiBaseUrl         | `dist/config.json rewritten:` followed by the JSON dump with `https://horizons-dev-api.<env>.westeurope.azurecontainerapps.io` |
 | `deploy-spa`      | Upload SPA bundle to $web            | The blob list with the uploaded asset names                                                              |
 | `deploy-spa`      | Purge Front Door cache               | `Successfully purged` (or empty success — `az afd endpoint purge` returns no JSON on success)            |
 

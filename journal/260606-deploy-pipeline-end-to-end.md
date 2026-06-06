@@ -30,8 +30,9 @@ The 8-bug ledger in `260606-deploy-pipeline-triage.md` catalogues each contract 
 10. **`horizons` database missing** — Bicep created the flex server but no databases. Fix: child `Microsoft.DBforPostgreSQL/flexibleServers/databases` resource.
 11. **ACA env log destination** — `appLogsConfiguration` was a manual `az containerapp env update` step. Without it, the worker's `KeyError` traceback was invisible. Fix: wire `customerId` + `listKeys().primarySharedKey` into the env Bicep.
 12. **SPA upload role + static-website flag** — `Storage Blob Data Contributor` on the GitHub OIDC UAMI + worker's SystemAssigned identity, plus `az storage blob service-properties update --static-website`. Both are manual one-offs (the role assignment is blocked by the UAMI lacking `User Access Administrator`; the static-website flag has no Bicep representation today).
+13. **SPA runtime config shipped the dev default** — `packages/horizons-webapp/public/config.json` declares `apiBaseUrl: "http://localhost:8000"` for local `npm run dev`. Vite copies `public/*` into `dist/*` verbatim, and the deploy pipeline uploaded `dist/` unchanged. Live SPA on `https://horizons-dev-<...>azurefd.net` therefore tried to hit `http://localhost:8000/v1/auth/login` on click of *Sign in* — browser-blocked as mixed content, surfaced in the console as `CORS request did not succeed. Status code: (null)` (no response object reaches the page). Hotfix: download `$web/config.json` via storage key, `jq --arg url "https://<api_fqdn>" '.apiBaseUrl = $url'`, re-upload, purge `/config.json` on Front Door. Persistent fix: `prepare-infra` now exposes `apiFqdn` as a job output alongside `storageAccountName`, and `deploy-spa` has a new step between `npm run build` and `az storage blob upload-batch` that rewrites `dist/config.json` with `jq`. Same `tuningThresholds` + `featureFlags` are preserved from the bundled file.
 
-19 commits, mostly small. The triage doc is the bug-by-bug detail.
+19 commits, mostly small, plus the bug-#13 follow-up. The triage doc is the bug-by-bug detail.
 
 ## Five learnings worth carrying forward
 
