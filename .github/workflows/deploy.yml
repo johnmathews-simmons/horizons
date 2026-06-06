@@ -514,8 +514,12 @@ jobs:
 
       - name: Update worker revision
         # No traffic shift — worker has one always-on replica per
-        # ADR-0001 and no ingress to load-balance over. ACA promotes
-        # the new revision once it's healthy and deactivates the old.
+        # ADR-0001 and no ingress to load-balance over. The worker container
+        # app is `activeRevisionsMode: Single` (see
+        # infra/modules/container-app-worker.bicep), so this update creates
+        # a new revision and ACA automatically deactivates the previous
+        # one once the new replica is healthy. No worker-side cleanup is
+        # needed.
         run: |
           set -euo pipefail
           az containerapp update \
@@ -523,6 +527,53 @@ jobs:
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --image "ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \
             --revision-suffix "sha-$SHORT_SHA"
+
+      - name: Deactivate stale API revisions
+        # The API runs `activeRevisionsMode: Multiple` because the blue/green
+        # dance above relies on having two named revisions live at once
+        # (NEW at 100 %, PREV at 0 % as the rollback target). Multiple mode
+        # never auto-deactivates anything, so without this step every deploy
+        # leaves another revision active with its replica + SQLAlchemy
+        # connection pool still attached to Postgres. By 2026-06-06 the pile
+        # had grown to ~25 active API revisions; combined with the same
+        # pileup on the worker, the reseed ACA Job hit
+        # `FATAL: remaining connection slots are reserved for roles with the
+        # SUPERUSER attribute` an hour before the demo. See
+        # journal/260606-fix-revision-pileup.md.
+        #
+        # Cleanup policy: keep exactly two revisions active — NEW (current
+        # 100 %) and PREV (kept at 0 % for instant manual rollback per the
+        # runbook). Deactivate everything else.
+        #
+        # Gated on `steps.shift.conclusion == 'success'` so a failed deploy
+        # that has already been rolled back to PREV doesn't have PREV
+        # treated as the "current" survivor and a stale revision wrongly
+        # kept as the "rollback target". On bootstrap (PREV empty), the
+        # filter still works — `name != ''` excludes no real revision.
+        if: steps.shift.conclusion == 'success'
+        env:
+          NEW: ${{ steps.api_update.outputs.name }}
+          PREV: ${{ steps.prev.outputs.name }}
+        run: |
+          set -euo pipefail
+          STALE=$(az containerapp revision list \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "[?properties.active && name != '$NEW' && name != '$PREV'].name" \
+            -o tsv)
+          if [[ -z "$STALE" ]]; then
+            echo "No stale active revisions to deactivate (keeping NEW=$NEW PREV=${PREV:-<none>})."
+            exit 0
+          fi
+          echo "Deactivating stale active API revisions (keeping NEW=$NEW PREV=${PREV:-<none>}):"
+          printf '  %s\n' $STALE
+          while IFS= read -r r; do
+            [[ -z "$r" ]] && continue
+            az containerapp revision deactivate \
+              --name "$API_APP_NAME" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --revision "$r"
+          done <<< "$STALE"
 
   deploy-spa:
     name: Build + upload SPA, purge Front Door cache

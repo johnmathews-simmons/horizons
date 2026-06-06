@@ -52,12 +52,25 @@ traffic is managed imperatively here. The sequence:
 6. **Rollback on failure.** If any step between (3) and (5) fails, an `if: failure()` step shifts traffic back to PREV
    with NEW at 0 % and fails the workflow. The trigger condition explicitly excludes the case where shift (5) succeeded,
    so a downstream worker-update failure does not undo a healthy API deploy.
+7. **Deactivate stale API revisions.** Gated on `steps.shift.conclusion == 'success'`. The API runs
+   `activeRevisionsMode: Multiple` so the blue/green dance can keep NEW and PREV active at once — but Multiple mode
+   never auto-deactivates anything, so without this step every deploy left another revision active with its replica
+   and SQLAlchemy pool still attached to Postgres. On 2026-06-06 the pile had grown to ~25 active API + ~25 active
+   worker revisions; the reseed ACA Job hit `FATAL: remaining connection slots are reserved for roles with the
+   SUPERUSER attribute` an hour before the demo. Cleanup policy: keep exactly NEW and PREV active, deactivate every
+   other active revision. See [`journal/260606-fix-revision-pileup.md`](../../journal/260606-fix-revision-pileup.md)
+   for the root-cause write-up.
 
 ### deploy-services (worker)
 
 After the API traffic shift, the worker is updated with the same `--revision-suffix sha-<short>` pattern but no traffic
-management. The worker has one always-on replica per [ADR-0001](../adrs/0001-worker-shape.md); ACA promotes the new
-revision once it is healthy and deactivates the previous one.
+management. The worker container app is `activeRevisionsMode: Single`
+(see [`infra/modules/container-app-worker.bicep`](../../infra/modules/container-app-worker.bicep)); each update creates a
+new revision and ACA auto-deactivates the previous one once the new replica is healthy. The worker has one always-on
+replica per [ADR-0001](../adrs/0001-worker-shape.md), so there is no traffic to shift and no rollback affordance to
+preserve — Single mode is the natural fit. The previous `Multiple` setting was a copy of the API's convention without
+the API's reason for it, and was the source of the worker side of the revision pileup described in
+[`journal/260606-fix-revision-pileup.md`](../../journal/260606-fix-revision-pileup.md).
 
 ### deploy-spa
 
