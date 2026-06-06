@@ -504,7 +504,7 @@ jobs:
         # per build and the CDN's cache misses on its own. `/config.json`
         # is the per-environment runtime config (WU5.1) and is not
         # content-hashed.
-        # without --no-wait this will wait until the changes are propogated 
+        # without --no-wait this will wait until the changes are propagated
         # to every edge node which is very slow
         run: |
           set -euo pipefail
