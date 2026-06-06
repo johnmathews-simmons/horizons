@@ -49,15 +49,15 @@ param postgresUser string
 @secure()
 param postgresAdminPassword string
 
-@description('Password for demo-uk@example.test. Secret-backed.')
+@description('Password for demo-uk@demo.example.com. Secret-backed.')
 @secure()
 param demoUkPassword string
 
-@description('Password for demo-eu@example.test. Secret-backed.')
+@description('Password for demo-eu@demo.example.com. Secret-backed.')
 @secure()
 param demoEuPassword string
 
-@description('Password for admin-demo@example.test. Secret-backed.')
+@description('Password for admin-demo@demo.example.com. Secret-backed.')
 @secure()
 param demoAdminPassword string
 

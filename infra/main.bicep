@@ -70,15 +70,15 @@ param jwtPrivateKeyPem string
 @secure()
 param jwtPublicKeyPem string
 
-@description('Password for demo-uk@example.test. Threaded through the demo-accounts seed ACA Job. Sourced from secrets.HORIZONS_DEMO_UK_PASSWORD in deploy.yml.')
+@description('Password for demo-uk@demo.example.com. Threaded through the demo-accounts seed ACA Job. Sourced from secrets.HORIZONS_DEMO_UK_PASSWORD in deploy.yml.')
 @secure()
 param demoUkPassword string
 
-@description('Password for demo-eu@example.test. Same channel as the UK password.')
+@description('Password for demo-eu@demo.example.com. Same channel as the UK password.')
 @secure()
 param demoEuPassword string
 
-@description('Password for admin-demo@example.test. Same channel.')
+@description('Password for admin-demo@demo.example.com. Same channel.')
 @secure()
 param demoAdminPassword string
 
