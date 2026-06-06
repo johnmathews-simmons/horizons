@@ -78,7 +78,23 @@ def upgrade() -> None:
     op.execute("GRANT EXECUTE ON FUNCTION app_public.corpus_shape() TO api_app;")
     op.execute("GRANT EXECUTE ON FUNCTION app_public.corpus_shape() TO admin_bypass;")
 
+    # ``documents`` has FORCE ROW LEVEL SECURITY (migration 0005), so
+    # ``schema_owner`` — despite owning the table — is subject to RLS
+    # when SECURITY DEFINER runs the function body. The two existing
+    # policies only cover ``api_app`` and ``ingestion_worker``; without a
+    # policy for ``schema_owner`` the default is deny-by-default → 0 rows.
+    # Add an unconditional read policy so the SECURITY DEFINER call-path
+    # works as intended.
+    op.execute(
+        """
+        CREATE POLICY documents_schema_owner_read ON documents
+            FOR SELECT TO schema_owner
+            USING (true);
+        """
+    )
+
 
 def downgrade() -> None:
+    op.execute("DROP POLICY IF EXISTS documents_schema_owner_read ON documents;")
     op.execute("DROP FUNCTION IF EXISTS app_public.corpus_shape();")
     op.execute("DROP SCHEMA IF EXISTS app_public;")
