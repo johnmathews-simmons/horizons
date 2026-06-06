@@ -202,6 +202,14 @@ def main(argv: list[str] | None = None) -> int:
         # --- 2. Wipe (transactional) ----------------------------------------
         print("\nwiping corpus tables (transactional)…")
         with engine.begin() as conn:
+            # change_events carries an append-only BEFORE DELETE trigger
+            # (`reject_change_event_mutation`, migration 0010) that rejects
+            # plain DELETEs outright. Bypass non-system triggers for this
+            # transaction only — same pattern as seed_e2e.py:127-130, where
+            # the e2e teardown wipes its change_events fixtures the same way.
+            # SET LOCAL is scoped to this connection's transaction; it does
+            # not leak to any other session and unwinds on COMMIT/ROLLBACK.
+            conn.execute(text("SET LOCAL session_replication_role = 'replica'"))
             for stmt in _WIPE_STATEMENTS:
                 result = conn.execute(text(stmt))
                 print(f"  {stmt:50s} -> {result.rowcount} row(s)")
