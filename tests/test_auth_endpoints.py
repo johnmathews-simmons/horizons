@@ -15,7 +15,7 @@ source). Coverage:
 - Login programmatic: 200 with both tokens; ``Cache-Control: private,
   no-store``; refresh-token row persisted.
 - Login browser: 200 with access only; refresh-token in
-  ``HttpOnly; Secure; SameSite=Lax; Path=/v1/auth`` cookie; refresh-token
+  ``HttpOnly; Secure; SameSite=None; Path=/v1/auth`` cookie; refresh-token
   row persisted.
 - Login wrong password / unknown email: 401 with uniform body.
 - Refresh programmatic: 200, old jti revoked, new tokens issued.
@@ -240,7 +240,7 @@ def test_login_browser_sets_httponly_cookie_and_omits_refresh_from_body(
     assert "refresh_token=" in set_cookie
     assert "httponly" in lowered
     assert "secure" in lowered
-    assert "samesite=lax" in lowered
+    assert "samesite=none" in lowered
     assert "path=/v1/auth" in lowered
 
     refresh_cookie = client.cookies.get("refresh_token")
