@@ -42,10 +42,10 @@ param environmentName string = 'dev'
 @description('Tenant ID for Key Vault and PostgreSQL AAD admin.')
 param tenantId string = subscription().tenantId
 
-@description('PostgreSQL admin login.')
+@description('PostgreSQL admin login. Used by the migration ACA Job to connect to the server; the server itself is owned by infra/postgres.bicep.')
 param postgresAdminLogin string = 'horizons_admin'
 
-@description('PostgreSQL admin password. In real deployments this is sourced from Key Vault via a secure parameter file — never committed.')
+@description('PostgreSQL admin password. Used by the migration ACA Job at runtime. The server resource is owned by infra/postgres.bicep — this template does not assert the server password.')
 @secure()
 param postgresAdminPassword string
 
@@ -123,20 +123,14 @@ module storage 'modules/storage.bicep' = {
 }
 
 // ---------------------------------------------------------------------
-// 5. PostgreSQL Flexible Server (VNet-integrated, PG 17).
+// 5. PostgreSQL Flexible Server — deployed by infra/postgres.bicep, not
+//    here. The server is stateful; re-asserting it on every routine app
+//    deploy held a control-plane lock that caused repeated ServerIsBusy
+//    failures. We read its FQDN via `existing` and never touch the
+//    server resource itself in this template.
 // ---------------------------------------------------------------------
-module postgres 'modules/postgres-flex.bicep' = {
-  name: 'postgres'
-  params: {
-    location: location
-    workloadPrefix: workloadPrefix
-    environmentName: environmentName
-    delegatedSubnetId: network.outputs.pgsqlSubnetId
-    privateDnsZoneId: network.outputs.pgsqlDnsZoneId
-    administratorLogin: postgresAdminLogin
-    administratorPassword: postgresAdminPassword
-    tags: tags
-  }
+resource existingPostgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' existing = {
+  name: '${workloadPrefix}-${environmentName}-pgsql'
 }
 
 // ---------------------------------------------------------------------
@@ -202,7 +196,7 @@ module migrationJob 'modules/migration-job.bicep' = {
     environmentName: environmentName
     environmentId: containerEnv.outputs.environmentId
     image: apiImage
-    postgresFqdn: postgres.outputs.serverFqdn
+    postgresFqdn: existingPostgres.properties.fullyQualifiedDomainName
     postgresUser: postgresAdminLogin
     // Password is the demo fallback — see migration-job.bicep header.
     // Once the UAMI is registered as a Postgres AAD principal, this
@@ -256,7 +250,7 @@ module alerts 'modules/alerts.bicep' = {
 // ---------------------------------------------------------------------
 output keyVaultName string = keyVault.outputs.keyVaultName
 output storageAccountName string = storage.outputs.storageAccountName
-output postgresFqdn string = postgres.outputs.serverFqdn
+output postgresFqdn string = existingPostgres.properties.fullyQualifiedDomainName
 output containerEnvName string = containerEnv.outputs.environmentName
 output apiContainerAppName string = containerApi.outputs.appName
 output apiFqdn string = containerApi.outputs.fqdn

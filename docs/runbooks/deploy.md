@@ -239,6 +239,7 @@ The workflow assumes these are already in place:
 | GHCR packages `horizons-api`, `horizons-worker` set to public visibility | github.com package settings | WU6.2 (post-first-push flip) |
 | Static-website hosting enabled on the storage account | One-off `az storage blob service-properties update --static-website` | First deploy follow-up — see `infra/README.md` |
 | ACA env bound to App Insights via `az containerapp env update --logs-destination log-analytics` | One-off control-plane action | First deploy follow-up — see `infra/README.md` |
+| Postgres Flexible Server `horizons-dev-pgsql` | Manual `Deploy Postgres` workflow (`deploy-postgres.yml`) | Split out of routine deploy — see below |
 
 `Contributor` is a control-plane role — it grants permission to
 create / modify / delete resources but **not** to read or write
@@ -269,6 +270,33 @@ The two "one-off" rows are idempotent and can be re-run safely. The
 storage-website flip is what makes the SPA reachable through Front
 Door at all — without it, the upload succeeds but `/` returns 404
 from the storage origin.
+
+### Postgres lives in its own deploy
+
+The Flexible Server is deployed by a separate manual workflow,
+`.github/workflows/deploy-postgres.yml`, against
+`infra/postgres.bicep`. The routine `deploy.yml` reads the server
+FQDN via an `existing` lookup in `infra/main.bicep` and never asserts
+the server resource. Reason: re-asserting the server (in particular
+the `@secure()` admin password) on every push held a control-plane
+lock for ~5 min after each write, and the next push collided with it,
+producing repeated `ServerIsBusy` failures.
+
+Run the Postgres deploy when you actually need to change the server
+— version bump, SKU change, storage scale, password rotation:
+
+```bash
+gh workflow run deploy-postgres.yml \
+  --field environment=staging \
+  --field confirm=DEPLOY
+```
+
+The `confirm=DEPLOY` literal is a guard against accidental dispatch.
+The workflow refuses to run without it.
+
+If the server doesn't exist yet (fresh resource group), run
+`Deploy Postgres` once before the first `Deploy` run — `main.bicep`'s
+`existing` lookup fails compile-time if the server is absent.
 
 ## Things deliberately NOT in this pipeline
 
