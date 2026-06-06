@@ -17,9 +17,12 @@ async function onSignOut(): Promise<void> {
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <span class="text-lg font-semibold tracking-tight text-slate-900">Horizons</span>
-        <Button variant="outline" size="sm" data-testid="sign-out" @click="onSignOut">
-          Sign out
-        </Button>
+        <div class="flex items-center gap-3 text-sm text-slate-600">
+          <span v-if="auth.principal" data-testid="user-email">{{ auth.principal.email }}</span>
+          <Button variant="outline" size="sm" data-testid="sign-out" @click="onSignOut">
+            Sign out
+          </Button>
+        </div>
       </div>
     </header>
 
