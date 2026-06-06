@@ -49,6 +49,19 @@ CLAUDE.md
 .github/
 .pre-commit-config.yaml
 
+# Re-include the substrate the worker Dockerfile bakes in for the
+# operator-driven reseed path (scripts/reseed_corpus.py +
+# scripts/seed_curated_set.py + the curated set + the v1/v2 markdown).
+# Negations must follow the broad exclusions above. ~1 MB of payload;
+# the API image still skips these because its Dockerfile doesn't COPY
+# them.
+!/scripts/seed_curated_set.py
+!/scripts/reseed_corpus.py
+!data
+!data/curated_set.yaml
+!data/samples
+!data/samples/**
+
 # The webapp is its own deploy unit, not bundled into the Python images
 packages/horizons-webapp/
 
