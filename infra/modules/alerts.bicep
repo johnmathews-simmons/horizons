@@ -157,7 +157,12 @@ resource alertApi5xx 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview'
     targetResourceTypes: [
       'microsoft.insights/components'
     ]
-    evaluationFrequency: 'PT1M'
+    // PT5M (not PT1M): 1-minute evaluation is only allowed for queries
+    // against the platform's "known table" fast-path. The fuzzy-union
+    // sentinel wrapper (see KQL section above) disqualifies these queries
+    // from that fast-path, so PT1M is rejected with QueryNotContainKnownTable.
+    // PT5M matches windowSize, so we were oversampling at PT1M anyway.
+    evaluationFrequency: 'PT5M'
     windowSize: 'PT5M'
     autoMitigate: true
     criteria: {
@@ -208,7 +213,12 @@ resource alertApiP95 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview'
     targetResourceTypes: [
       'microsoft.insights/components'
     ]
-    evaluationFrequency: 'PT1M'
+    // PT5M (not PT1M): 1-minute evaluation is only allowed for queries
+    // against the platform's "known table" fast-path. The fuzzy-union
+    // sentinel wrapper (see KQL section above) disqualifies these queries
+    // from that fast-path, so PT1M is rejected with QueryNotContainKnownTable.
+    // PT5M matches windowSize, so we were oversampling at PT1M anyway.
+    evaluationFrequency: 'PT5M'
     windowSize: 'PT5M'
     autoMitigate: true
     criteria: {
