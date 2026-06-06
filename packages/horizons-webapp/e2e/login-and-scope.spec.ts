@@ -181,10 +181,18 @@ test('demo-admin home dashboard: all jurisdictions subscribed + nav-changes', as
     page.locator('[data-testid="jurisdiction-card"][data-subscribed="false"]'),
   ).toHaveCount(0)
 
-  // -------- 4. At least 3 jurisdiction cards total --------
-  const allCards = page.locator('[data-testid="jurisdiction-card"]')
-  const cardCount = await allCards.count()
-  expect(cardCount).toBeGreaterThanOrEqual(3)
+  // -------- 4. Admin sees both UK and EU cards --------
+  // The e2e seed only creates UK + EU documents (seed_e2e.py), so the
+  // corpus has exactly 2 jurisdictions in CI. The point of this assertion
+  // is corpus-wide visibility: admin sees BOTH of them, whereas the UK
+  // client (test at line 61) only sees one. Locally with the demo seed
+  // there will be more cards; that's fine — both UK and EU still appear.
+  await expect(
+    page.locator('[data-testid="jurisdiction-card"][data-code="UK"]'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-testid="jurisdiction-card"][data-code="EU"]'),
+  ).toBeVisible()
 
   // -------- 5. "Browse recent changes" nav link → /changes --------
   await page.getByTestId('nav-changes').click()
