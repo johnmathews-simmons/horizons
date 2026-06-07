@@ -7,12 +7,13 @@ import { expect, test } from '@playwright/test'
  * 1. UK client login → /changes shows the UK MODIFIED event (confidence
  *    0.92, green badge) and DOES NOT show the EU event or the
  *    suppressed-by-default UK MOVED event.
- * 2. Clicking the UK row lands on /changes/:id with the before/after text
- *    rendered in the diff view and a green "0.92" badge.
+ * 2. Clicking the UK row lands on /documents/:id (the side-by-side
+ *    viewer) with the before and after clause text both visible.
  * 3. Logout → /login.
  * 4. EU client login → /changes shows the EU MODIFIED event (confidence
  *    0.78, amber badge) and DOES NOT show the UK event.
- * 5. Clicking the EU row shows the amber "0.78" badge.
+ * 5. Clicking the EU row lands on /documents/:id with the EU before
+ *    and after clause text both visible.
  *
  * The asymmetric visibility in steps 1 and 4 is the proof of subscription-
  * scoped RLS at the browser layer.
@@ -84,11 +85,14 @@ test('UK + EU clients see disjoint clause-diff views', async ({ page }) => {
     page.getByTestId('change-row').filter({ hasText: UK_MOVED_PATH_FRAGMENT }),
   ).toHaveCount(0)
 
-  // -------- 3. UK clause diff --------
+  // -------- 3. UK clause in document context --------
   await ukRow.click()
-  await page.waitForURL('**/changes/*')
-  await expect(page.getByTestId('path-display')).toContainText(UK_PATH)
-  await expect(page.locator('[data-confidence="high"]')).toHaveText('0.92')
+  await page.waitForURL('**/documents/**')
+  // Document title visible (regardless of single- or two-pane layout).
+  await expect(page.getByTestId('document-title')).toBeVisible()
+  // Both before and after clause text are visible somewhere on the page
+  // (e2e seed creates one v1 with the before text and one v2 with the
+  // after text — both render in the side-by-side viewer).
   await expect(page.locator('body')).toContainText(UK_BEFORE_FRAGMENT)
   await expect(page.locator('body')).toContainText(UK_AFTER_FRAGMENT)
 
@@ -118,11 +122,10 @@ test('UK + EU clients see disjoint clause-diff views', async ({ page }) => {
     page.getByTestId('change-row').filter({ hasText: UK_PATH }),
   ).toHaveCount(0)
 
-  // -------- 7. EU clause diff --------
+  // -------- 7. EU clause in document context --------
   await euRow.click()
-  await page.waitForURL('**/changes/*')
-  await expect(page.getByTestId('path-display')).toContainText(EU_PATH)
-  await expect(page.locator('[data-confidence="medium"]')).toHaveText('0.78')
+  await page.waitForURL('**/documents/**')
+  await expect(page.getByTestId('document-title')).toBeVisible()
   await expect(page.locator('body')).toContainText(EU_BEFORE_FRAGMENT)
   await expect(page.locator('body')).toContainText(EU_AFTER_FRAGMENT)
 })
