@@ -432,7 +432,7 @@ def run_seed(
                 # legacy "stub" outcome) for that one doc only. Docs in
                 # ``skip_v1_set`` are reserved for ``stage_synthetic_v2``
                 # which will write v1 + v2 atomically.
-                if samples_dir is None:
+                if inserted_id is None or samples_dir is None:
                     continue
                 if row.lawstronaut_document_id in skip_v1_set:
                     v1_skipped_synthetic += 1
