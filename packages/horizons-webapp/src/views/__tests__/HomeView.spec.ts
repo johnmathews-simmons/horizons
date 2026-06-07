@@ -20,12 +20,13 @@ vi.mock('@/api/overview', () => ({
       subscribed_sectors: 1,
     },
     jurisdictions: [
-      { code: 'IE', document_count: 1, subscribed: false },
-      { code: 'UK', document_count: 1, subscribed: true },
+      { code: 'AL', document_count: 1, change_count: 0, subscribed: true },
+      { code: 'IE', document_count: 1, change_count: 4, subscribed: false },
+      { code: 'UK', document_count: 1, change_count: 3, subscribed: true },
     ],
     sectors: [
-      { code: 'BANKING', document_count: 5, subscribed: true },
-      { code: 'employment', document_count: 2, subscribed: false },
+      { code: 'BANKING', document_count: 5, change_count: 7, subscribed: true },
+      { code: 'employment', document_count: 2, change_count: 0, subscribed: false },
     ],
   }),
 }))
@@ -35,6 +36,7 @@ const Stub = defineComponent({ render: () => h('div', 'stub') })
 const routes = [
   { path: '/', name: 'home', component: HomeView },
   { path: '/changes', name: 'changes', component: Stub },
+  { path: '/documents', name: 'documents', component: Stub },
   { path: '/login', name: 'login', component: Stub },
   { path: '/watchlists', name: 'watchlists', component: Stub },
 ]
@@ -67,9 +69,9 @@ describe('HomeView', () => {
   it('renders one jurisdiction card per code in the response', async () => {
     const { wrapper } = await mountHome()
     const cards = wrapper.findAll('[data-testid="jurisdiction-card"]')
-    expect(cards).toHaveLength(2)
+    expect(cards).toHaveLength(3)
     const codes = cards.map((c) => c.attributes('data-code'))
-    expect(codes).toEqual(['IE', 'UK'])
+    expect(codes).toEqual(['AL', 'IE', 'UK'])
   })
 
   it('marks not-subscribed cards as disabled', async () => {
@@ -80,11 +82,18 @@ describe('HomeView', () => {
     expect(uk.attributes('data-subscribed')).toBe('true')
   })
 
-  it('clicking a subscribed jurisdiction navigates to /changes?jurisdiction=UK', async () => {
+  it('clicking a subscribed jurisdiction with changes navigates to /changes', async () => {
     const { wrapper, router } = await mountHome()
     const push = vi.spyOn(router, 'push')
     await wrapper.find('[data-testid="jurisdiction-card"][data-code="UK"]').trigger('click')
     expect(push).toHaveBeenCalledWith({ name: 'changes', query: { jurisdiction: 'UK' } })
+  })
+
+  it('clicking a subscribed jurisdiction with 0 changes navigates to /documents', async () => {
+    const { wrapper, router } = await mountHome()
+    const push = vi.spyOn(router, 'push')
+    await wrapper.find('[data-testid="jurisdiction-card"][data-code="AL"]').trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'documents', query: { jurisdiction: 'AL' } })
   })
 
   it('clicking a not-subscribed jurisdiction does not navigate', async () => {
@@ -94,11 +103,19 @@ describe('HomeView', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
-  it('clicking a subscribed sector navigates to /changes?sector=BANKING', async () => {
+  it('clicking a subscribed sector with changes navigates to /changes', async () => {
     const { wrapper, router } = await mountHome()
     const push = vi.spyOn(router, 'push')
     await wrapper.find('[data-testid="sector-card"][data-code="BANKING"]').trigger('click')
     expect(push).toHaveBeenCalledWith({ name: 'changes', query: { sector: 'BANKING' } })
+  })
+
+  it('shows the change count on each jurisdiction card', async () => {
+    const { wrapper } = await mountHome()
+    const uk = wrapper.find('[data-testid="jurisdiction-card"][data-code="UK"]')
+    expect(uk.text()).toMatch(/3\s+recent\s+changes/)
+    const al = wrapper.find('[data-testid="jurisdiction-card"][data-code="AL"]')
+    expect(al.text()).toMatch(/0\s+recent\s+changes/)
   })
 
   it('shows the summary numbers from totals', async () => {

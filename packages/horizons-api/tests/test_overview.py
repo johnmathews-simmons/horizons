@@ -173,6 +173,46 @@ def _seed_doc_ov(
     return doc_id
 
 
+def _seed_change_event_ov(
+    engine: Engine,
+    *,
+    document_id: uuid.UUID,
+    jurisdiction: str,
+    sector: str,
+) -> None:
+    """Insert one change_events row pinned to an existing document.
+
+    Creates the document_version row required by the FK on the fly so
+    the test does not depend on the ingestion-worker code path.
+    """
+    with engine.begin() as conn:
+        version_id = conn.execute(
+            text(
+                "INSERT INTO document_versions "
+                "(document_id, version_label, content_sha256, content_bytes, "
+                "content_blob_container, content_blob_key) "
+                "VALUES (:d, :v, :h, :b, :c, :k) RETURNING id"
+            ),
+            {
+                "d": document_id,
+                "v": f"v_{uuid.uuid4().hex[:6]}",
+                "h": _sha256(),
+                "b": 1,
+                "c": "test",
+                "k": f"k/{uuid.uuid4()}",
+            },
+        ).scalar_one()
+        conn.execute(
+            text(
+                "INSERT INTO change_events "
+                "(document_id, document_version_id, jurisdiction, sector, "
+                "change_type, alignment_confidence) "
+                "VALUES (:d, :v, :j, :s, 'MODIFIED', 0.95)"
+            ),
+            {"d": document_id, "v": version_id, "j": jurisdiction, "s": sector},
+        )
+
+
 def _seed_user_ov(
     engine: Engine,
     email: str,
@@ -387,6 +427,56 @@ def test_overview_cache_control_no_store(
     assert response.status_code == 200, response.text
     cache_header = response.headers.get("Cache-Control", "")
     assert "no-store" in cache_header, f"expected no-store in Cache-Control, got: {cache_header!r}"
+
+
+@pytest.mark.integration
+def test_overview_change_count_rolls_up(
+    client_ov: TestClient,
+    migrated_postgres_ov: Engine,
+    seeded_curated_set: None,
+) -> None:
+    """change_count rolls up per jurisdiction and sector; defaults to 0."""
+    doc_id = _seed_doc_ov(
+        migrated_postgres_ov,
+        jurisdiction="FR",
+        sector="BANKING",
+        label="changecount",
+    )
+    _seed_change_event_ov(
+        migrated_postgres_ov,
+        document_id=doc_id,
+        jurisdiction="FR",
+        sector="BANKING",
+    )
+    _seed_change_event_ov(
+        migrated_postgres_ov,
+        document_id=doc_id,
+        jurisdiction="FR",
+        sector="BANKING",
+    )
+
+    _seed_user_ov(
+        migrated_postgres_ov,
+        "ov_changecount@example.com",
+        scope=(),
+        role="admin",
+    )
+    token = _login_ov(client_ov, "ov_changecount@example.com")
+    response = client_ov.get("/v1/me/overview", headers=_bearer_ov(token))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    juris_by_code = {j["code"]: j for j in body["jurisdictions"]}
+    assert "change_count" in juris_by_code["FR"], "change_count must be present on every entry"
+    assert juris_by_code["FR"]["change_count"] >= 2
+
+    # Jurisdictions with no recorded changes report 0, not missing.
+    for code, item in juris_by_code.items():
+        assert isinstance(item["change_count"], int), f"{code} change_count must be int"
+
+    sector_by_code = {s["code"]: s for s in body["sectors"]}
+    assert sector_by_code["BANKING"]["change_count"] >= 2
 
 
 @pytest.mark.integration

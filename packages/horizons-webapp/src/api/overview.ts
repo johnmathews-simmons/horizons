@@ -3,12 +3,14 @@ import { apiClient } from './client'
 export interface JurisdictionOverviewItem {
   code: string
   document_count: number
+  change_count: number
   subscribed: boolean
 }
 
 export interface SectorOverviewItem {
   code: string
   document_count: number
+  change_count: number
   subscribed: boolean
 }
 

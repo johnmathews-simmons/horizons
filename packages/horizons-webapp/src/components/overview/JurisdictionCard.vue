@@ -4,15 +4,16 @@ import { computed } from 'vue'
 const props = defineProps<{
   code: string
   documentCount: number
+  changeCount: number
   subscribed: boolean
 }>()
 
-const emit = defineEmits<{ select: [code: string] }>()
+const emit = defineEmits<{ select: [code: string, changeCount: number] }>()
 
 const title = computed(() => (props.subscribed ? '' : 'Subscribe to view'))
 
 function onClick(): void {
-  if (props.subscribed) emit('select', props.code)
+  if (props.subscribed) emit('select', props.code, props.changeCount)
 }
 </script>
 
@@ -30,11 +31,15 @@ function onClick(): void {
     data-testid="jurisdiction-card"
     :data-code="code"
     :data-subscribed="subscribed"
+    :data-change-count="changeCount"
     @click="onClick"
   >
     <span class="text-lg font-semibold tracking-tight">{{ code }}</span>
     <span class="mt-1 text-sm">
       {{ documentCount }} {{ documentCount === 1 ? 'document' : 'documents' }}
+    </span>
+    <span class="mt-0.5 text-xs text-slate-500" data-testid="change-count">
+      {{ changeCount }} recent {{ changeCount === 1 ? 'change' : 'changes' }}
     </span>
     <span
       v-if="!subscribed"

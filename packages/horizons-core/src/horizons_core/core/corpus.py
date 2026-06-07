@@ -35,6 +35,14 @@ class CorpusShapeRow(BaseModel):
     document_count: int
 
 
+class ChangeEventShapeRow(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    jurisdiction: str
+    sector: str
+    change_count: int
+
+
 async def corpus_shape(session: AsyncSession) -> list[CorpusShapeRow]:
     cs = (
         func.app_public.corpus_shape()
@@ -53,6 +61,37 @@ async def corpus_shape(session: AsyncSession) -> list[CorpusShapeRow]:
             jurisdiction=r.jurisdiction,
             sector=r.sector,
             document_count=int(r.document_count),
+        )
+        for r in rows
+    ]
+
+
+async def change_event_shape(session: AsyncSession) -> list[ChangeEventShapeRow]:
+    """Per-(jurisdiction, sector) count of recorded change events.
+
+    Reads through the ``app_public.change_event_shape()`` SECURITY
+    DEFINER function (migration 0014). Same rationale as
+    ``corpus_shape``: change-event counts are catalog-shape, not tenant
+    data, so we expose the unscoped roll-up via SECURITY DEFINER rather
+    than escalating to admin_bypass per page load.
+    """
+    ces = (
+        func.app_public.change_event_shape()
+        .table_valued(
+            Column("jurisdiction", String),
+            Column("sector", String),
+            Column("change_count", BIGINT),
+        )
+        .alias("ces")
+    )
+    rows = (
+        await session.execute(select(ces.c.jurisdiction, ces.c.sector, ces.c.change_count))
+    ).all()
+    return [
+        ChangeEventShapeRow(
+            jurisdiction=r.jurisdiction,
+            sector=r.sector,
+            change_count=int(r.change_count),
         )
         for r in rows
     ]

@@ -50,6 +50,13 @@ const isInitialLoading = computed(() => query.isPending.value)
 const hasError = computed(() => query.isError.value)
 const isEmpty = computed(() => !isInitialLoading.value && filteredItems.value.length === 0)
 
+const emptyMessage = computed(() => {
+  if (activeFilter.value) {
+    return `No recent changes recorded for ${activeFilter.value.value}.`
+  }
+  return 'No recent changes recorded yet.'
+})
+
 const listContainerRef = ref<HTMLElement | null>(null)
 
 const virtualizer = useWindowVirtualizer({
@@ -184,7 +191,7 @@ function measureRow(el: Element | null) {
         data-testid="empty-state"
         class="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-500"
       >
-        No recent changes in your scope.
+        {{ emptyMessage }}
       </div>
 
       <ul

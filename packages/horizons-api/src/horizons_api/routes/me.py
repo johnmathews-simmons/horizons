@@ -27,7 +27,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from horizons_core.core.auth import Principal, Role
-from horizons_core.core.corpus import corpus_shape
+from horizons_core.core.corpus import change_event_shape, corpus_shape
 from horizons_core.core.subscriptions import (
     SubscriptionSummaryDTO,
     current_scope_pairs,
@@ -66,6 +66,7 @@ class JurisdictionOverviewItem(BaseModel):
 
     code: str
     document_count: int
+    change_count: int
     subscribed: bool
 
 
@@ -74,6 +75,7 @@ class SectorOverviewItem(BaseModel):
 
     code: str
     document_count: int
+    change_count: int
     subscribed: bool
 
 
@@ -146,6 +148,7 @@ async def get_me_overview(
     response.headers["Cache-Control"] = "private, no-store"
 
     matrix = await corpus_shape(session)
+    change_matrix = await change_event_shape(session)
 
     is_admin = principal.role == Role.ADMIN
 
@@ -167,11 +170,25 @@ async def get_me_overview(
     for row in matrix:
         sector_counts[row.sector] = sector_counts.get(row.sector, 0) + row.document_count
 
+    # Per-(jurisdiction, sector) change-event counts. Roll up to the
+    # same axes as the corpus matrix; defaults to 0 for any axis present
+    # in the corpus but absent from change_matrix.
+    juris_change_counts: dict[str, int] = {}
+    sector_change_counts: dict[str, int] = {}
+    for crow in change_matrix:
+        juris_change_counts[crow.jurisdiction] = (
+            juris_change_counts.get(crow.jurisdiction, 0) + crow.change_count
+        )
+        sector_change_counts[crow.sector] = (
+            sector_change_counts.get(crow.sector, 0) + crow.change_count
+        )
+
     jurisdictions = sorted(
         [
             JurisdictionOverviewItem(
                 code=code,
                 document_count=count,
+                change_count=juris_change_counts.get(code, 0),
                 subscribed=is_admin or code in subscribed_jurisdictions,
             )
             for code, count in juris_counts.items()
@@ -184,6 +201,7 @@ async def get_me_overview(
             SectorOverviewItem(
                 code=code,
                 document_count=count,
+                change_count=sector_change_counts.get(code, 0),
                 subscribed=is_admin or code in subscribed_sectors,
             )
             for code, count in sector_counts.items()
