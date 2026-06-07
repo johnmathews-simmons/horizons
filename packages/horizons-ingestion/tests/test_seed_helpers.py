@@ -7,6 +7,7 @@ full-flow insert live at ``tests/integration/test_seed_curated_set.py``.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -319,4 +320,4 @@ def test_compute_v1_staging_payload_parses_clauses() -> None:
     assert "Alpha clause." in bodies
     assert "Beta clause." in bodies
     assert payload.content_bytes == len(markdown.encode("utf-8"))
-    assert len(payload.content_sha256) == 32  # SHA-256 digest length
+    assert payload.content_sha256 == hashlib.sha256(markdown.encode("utf-8")).digest()
