@@ -2,24 +2,14 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
-import {
-  getClauses,
-  getDocument,
-  type ClauseBundle,
-  type DocumentDetail,
-} from '@/api/documents'
+import { getDocument, type DocumentDetail, type DocumentVersion } from '@/api/documents'
 import { Button } from '@/components/ui/button'
-import ClauseOverlay from '@/components/documents/ClauseOverlay.vue'
+import VersionPane from '@/components/documents/VersionPane.vue'
 import AppNavBar from '@/components/AppNavBar.vue'
 
 const route = useRoute()
 
 const documentId = computed(() => String(route.params.id))
-const requestedVersion = computed<string | null>(() => {
-  const v = route.params.version
-  if (typeof v !== 'string' || !v) return null
-  return v
-})
 
 const docQuery = useQuery<DocumentDetail>({
   queryKey: computed(() => ['document-detail', documentId.value]),
@@ -28,27 +18,23 @@ const docQuery = useQuery<DocumentDetail>({
 
 const document = computed<DocumentDetail | null>(() => docQuery.data.value ?? null)
 
-const activeVersionLabel = computed<string | null>(() => {
-  if (requestedVersion.value !== null) return requestedVersion.value
+const sortedVersions = computed<DocumentVersion[]>(() => {
   const versions = document.value?.versions ?? []
-  if (versions.length === 0) return null
-  // Pick the latest by effective_date; fall back to last in list.
-  const sorted = [...versions].sort((a, b) => {
+  return [...versions].sort((a, b) => {
     const ad = a.effective_date ?? a.created_at
     const bd = b.effective_date ?? b.created_at
     return ad.localeCompare(bd)
   })
-  return sorted[sorted.length - 1]!.version_label
 })
 
-const clausesQuery = useQuery<ClauseBundle>({
-  queryKey: computed(() => [
-    'document-clauses',
-    documentId.value,
-    activeVersionLabel.value,
-  ]),
-  queryFn: () => getClauses(documentId.value, activeVersionLabel.value!),
-  enabled: computed(() => activeVersionLabel.value !== null),
+const beforePath = computed<string | null>(() => {
+  const v = route.query.before
+  return typeof v === 'string' && v.length > 0 ? v : null
+})
+
+const afterPath = computed<string | null>(() => {
+  const v = route.query.after
+  return typeof v === 'string' && v.length > 0 ? v : null
 })
 
 const showStructure = ref(false)
@@ -57,13 +43,26 @@ function isNotFound(): boolean {
   const err = docQuery.error.value as { response?: { status?: number } } | null
   return err?.response?.status === 404
 }
+
+// Single-pane case: which version do we show? Latest.
+const lonePaneVersion = computed<DocumentVersion | null>(() => {
+  const versions = sortedVersions.value
+  if (versions.length === 0) return null
+  return versions[versions.length - 1]!
+})
+
+// Highlight for the single-pane case: whichever of before/after is set.
+// after takes precedence (matches the conceptual "current state").
+const lonePaneHighlight = computed<string | null>(
+  () => afterPath.value ?? beforePath.value,
+)
 </script>
 
 <template>
   <main class="min-h-screen bg-slate-50">
     <AppNavBar />
 
-    <section class="mx-auto max-w-5xl px-6 py-10">
+    <section class="mx-auto max-w-7xl px-6 py-10">
       <div
         v-if="docQuery.isPending.value"
         data-testid="loading-state"
@@ -96,16 +95,11 @@ function isNotFound(): boolean {
               {{ document.title }}
             </h1>
             <div class="mt-1 text-sm text-slate-500">
-              {{ document.jurisdiction }} · {{ document.sector }}<template
-                v-if="activeVersionLabel"
-              >
-                ·
-                <span data-testid="document-version-label">version {{ activeVersionLabel }}</span>
-              </template>
+              {{ document.jurisdiction }} · {{ document.sector }}
             </div>
           </div>
           <Button
-            v-if="activeVersionLabel"
+            v-if="sortedVersions.length > 0"
             variant="outline"
             size="sm"
             data-testid="toggle-structure"
@@ -117,35 +111,46 @@ function isNotFound(): boolean {
         </div>
 
         <div
-          v-if="!activeVersionLabel"
+          v-if="sortedVersions.length === 0"
           data-testid="no-versions-state"
           class="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-600"
         >
-          No content has been ingested for this document yet. The Horizons worker fetches and aligns clauses on its next scheduled poll.
+          No content has been ingested for this document yet. The Horizons
+          worker fetches and aligns clauses on its next scheduled poll.
         </div>
 
+        <!-- Single-version: one full-width pane. -->
+        <div v-else-if="sortedVersions.length === 1 && lonePaneVersion" class="grid grid-cols-1">
+          <VersionPane
+            :document-id="documentId"
+            :version-label="lonePaneVersion.version_label"
+            :seen-at="lonePaneVersion.created_at"
+            :show-structure="showStructure"
+            :highlight-path="lonePaneHighlight"
+          />
+        </div>
+
+        <!-- Multi-version: two equal-width panes side-by-side, oldest left. -->
         <div
-          v-else-if="clausesQuery.isPending.value"
-          data-testid="clauses-loading"
-          class="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-500"
+          v-else
+          data-testid="side-by-side"
+          class="grid grid-cols-1 gap-6 md:grid-cols-2"
         >
-          Loading clauses…
+          <VersionPane
+            :document-id="documentId"
+            :version-label="sortedVersions[0]!.version_label"
+            :seen-at="sortedVersions[0]!.created_at"
+            :show-structure="showStructure"
+            :highlight-path="beforePath"
+          />
+          <VersionPane
+            :document-id="documentId"
+            :version-label="sortedVersions[sortedVersions.length - 1]!.version_label"
+            :seen-at="sortedVersions[sortedVersions.length - 1]!.created_at"
+            :show-structure="showStructure"
+            :highlight-path="afterPath"
+          />
         </div>
-
-        <div
-          v-else-if="clausesQuery.isError.value"
-          role="alert"
-          data-testid="clauses-error-state"
-          class="rounded-md border border-red-200 bg-red-50 p-6 text-sm text-red-800"
-        >
-          Could not load the clauses for this version.
-        </div>
-
-        <ClauseOverlay
-          v-else-if="clausesQuery.data.value"
-          :clauses="clausesQuery.data.value.clauses"
-          :show-structure="showStructure"
-        />
       </template>
     </section>
   </main>
