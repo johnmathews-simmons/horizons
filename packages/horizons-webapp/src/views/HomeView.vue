@@ -8,11 +8,11 @@ import SectorCard from '@/components/overview/SectorCard.vue'
 const router = useRouter()
 const overview = useMeOverview()
 
-function goToJurisdiction(code: string, _changeCount: number): void {
+function goToJurisdiction(code: string): void {
   router.push({ name: 'documents', query: { jurisdiction: code } })
 }
 
-function goToSector(code: string, _changeCount: number): void {
+function goToSector(code: string): void {
   router.push({ name: 'documents', query: { sector: code } })
 }
 </script>

@@ -8,7 +8,7 @@ import * as docsApi from '@/api/documents'
 
 vi.mock('@/api/documents', async (orig) => {
   const actual = (await orig()) as typeof import('@/api/documents')
-  return { ...actual, listDocuments: vi.fn() }
+  return { ...actual, listDocuments: vi.fn<typeof actual.listDocuments>() }
 })
 
 function makeDoc(overrides: Partial<docsApi.DocumentItem> = {}): docsApi.DocumentItem {

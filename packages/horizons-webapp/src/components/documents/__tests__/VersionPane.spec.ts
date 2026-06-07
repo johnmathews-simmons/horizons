@@ -144,9 +144,8 @@ describe('VersionPane', () => {
     await flushPromises()
 
     const overlay = wrapper.findComponent({ name: 'ClauseOverlay' })
-    if (overlay.exists()) {
-      expect(overlay.props('changeMap')).toEqual({ 'PART_1/SECTION_1': 'ADDED' })
-      expect(overlay.props('scrollToPath')).toBe('PART_1/SECTION_1')
-    }
+    expect(overlay.exists()).toBe(true)
+    expect(overlay.props('changeMap')).toEqual({ 'PART_1/SECTION_1': 'ADDED' })
+    expect(overlay.props('scrollToPath')).toBe('PART_1/SECTION_1')
   })
 })
