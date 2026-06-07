@@ -56,10 +56,16 @@ documents:
   # IE — Irish Statute Book Act; the dense PART/Section/(a)/(i) fixture.
   # Relabelled to UK so it shows up in the UK list as a long, well-
   # structured doc to demo the clause-overlay toggle on.
+  # Synthetic v2 carries the demo's only MOVED change event (section 11
+  # renumbered to 11A) plus one MODIFIED edit (Minister's order-making
+  # power upper bound widened from 12 to 16 weeks).
   - id: "27732019"
     jurisdiction: UK
     sector: BANKING
 
+  # Synthetic v2 staged with ADDED (new Schedule 1 closing sentence
+  # pinning the LGA boundary reference date) + REMOVED (sewage-
+  # contamination limb of the major damage definition) edits.
   - id: "2145602"           # AU
     jurisdiction: UK
     sector: BANKING
@@ -99,6 +105,9 @@ documents:
   # =====================================================================
 
   # EU — BEREC press item, native EU jurisdiction.
+  # Synthetic v2 staged with MODIFIED (debriefing date postponed from
+  # 10 to 17 June 2026) + REMOVED (closing paragraph on livestream/Q&A)
+  # edits.
   - id: "31366184"
     sector: BANKING
 
