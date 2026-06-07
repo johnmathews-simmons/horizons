@@ -17,6 +17,7 @@ const props = defineProps<Props>()
 const query = useQuery<ClauseBundle>({
   queryKey: computed(() => ['document-clauses', props.documentId, props.versionLabel]),
   queryFn: () => getClauses(props.documentId, props.versionLabel),
+  enabled: computed(() => props.versionLabel.length > 0),
 })
 
 const seenDate = computed<string>(() => props.seenAt.slice(0, 10))
