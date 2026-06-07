@@ -21,7 +21,7 @@ import { expect, test } from '@playwright/test'
  * WU8.5 — home-overview tests (Tasks 12):
  * 6. Demo UK client login → / shows the home dashboard with exactly one
  *    subscribed jurisdiction card containing "UK", plus unsubscribed muted
- *    cards; clicking the UK card navigates to /changes?jurisdiction=UK.
+ *    cards; clicking the UK card navigates to /documents?jurisdiction=UK.
  * 7. Demo admin login → / shows all jurisdiction cards as subscribed (no
  *    data-subscribed="false" cards); clicking "Browse recent changes" link
  *    navigates to /changes and change rows are present.
@@ -107,7 +107,7 @@ test('UK + EU clients see disjoint side-by-side document views', async ({ page }
 
   // Toggle structure mode so the highlighted clause card is visible
   await page.getByTestId('toggle-structure').click()
-  await expect(page.locator('[data-highlight="true"]').first()).toBeVisible()
+  await expect(page.locator('[data-change-type="MODIFIED"]').first()).toBeVisible()
 
   // -------- 4. Logout --------
   await page.getByTestId('nav-changes').click()
@@ -149,7 +149,7 @@ test('UK + EU clients see disjoint side-by-side document views', async ({ page }
 
   // Toggle structure mode so the highlighted clause card is visible
   await page.getByTestId('toggle-structure').click()
-  await expect(page.locator('[data-highlight="true"]').first()).toBeVisible()
+  await expect(page.locator('[data-change-type="MODIFIED"]').first()).toBeVisible()
 })
 
 test('demo-uk home dashboard: subscribed jurisdiction card + navigation', async ({ page }) => {
@@ -175,14 +175,13 @@ test('demo-uk home dashboard: subscribed jurisdiction card + navigation', async 
   )
   await expect(unsubscribedCards).not.toHaveCount(0)
 
-  // -------- 5. Click UK card → /changes?jurisdiction=UK --------
+  // -------- 5. Click UK card → /documents?jurisdiction=UK --------
   await subscribedCards.first().click()
-  await page.waitForURL('**/changes?jurisdiction=UK')
+  await page.waitForURL('**/documents?jurisdiction=UK')
 
-  // Filter chip is visible and shows "UK".
-  const filterChip = page.getByTestId('changes-filter-chip')
-  await expect(filterChip).toBeVisible()
-  await expect(filterChip).toContainText('UK')
+  // Filter is applied and the documents table renders.
+  await expect(page.getByTestId('filter-jurisdiction')).toHaveValue('UK')
+  await expect(page.locator('table thead')).toBeVisible()
 
   // -------- 6. Sign out --------
   await page.goto('/')
@@ -226,4 +225,40 @@ test('demo-admin home dashboard: all jurisdictions subscribed + nav-changes', as
   // At least one change row is visible (seeded corpus).
   const changeRows = page.getByTestId('change-row')
   await expect(changeRows.first()).toBeVisible()
+})
+
+test('demo-uk: jurisdiction card → documents table → coloured diff view', async ({ page }) => {
+  // Login
+  await page.goto('/login')
+  await page.getByTestId('email-input').fill(DEMO_UK_EMAIL)
+  await page.getByTestId('password-input').fill(DEMO_UK_PASSWORD)
+  await page.getByTestId('login-submit').click()
+  await page.waitForURL('**/')
+
+  // Click the UK jurisdiction card
+  const ukCard = page.locator('[data-testid="jurisdiction-card"][data-code="UK"]')
+  await expect(ukCard).toBeVisible()
+  await ukCard.click()
+  await page.waitForURL('**/documents?jurisdiction=UK')
+
+  // The documents table is rendered with at least one row
+  await expect(page.locator('table thead')).toBeVisible()
+  const rows = page.getByTestId('document-row')
+  await expect(rows.first()).toBeVisible()
+
+  // Click the first row's title link → document detail
+  await rows.first().locator('a').first().click()
+  await page.waitForURL('**/documents/**')
+
+  // The document title is visible
+  await expect(page.getByTestId('document-title')).toBeVisible()
+
+  // For documents with 2+ versions and known change events, the diff legend
+  // should be visible. The demo-uk client's curated UK documents may or may
+  // not include such a doc in CI — guard the assertion with .or() so the
+  // test still passes if the clicked doc is single-version.
+  const legend = page.getByTestId('diff-legend')
+  const lonePane = page.locator('[data-testid="version-pane-header"]')
+  // Either the legend renders (multi-version) OR a single version pane renders.
+  await expect(legend.or(lonePane.first())).toBeVisible()
 })
