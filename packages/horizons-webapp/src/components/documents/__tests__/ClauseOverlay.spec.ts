@@ -89,7 +89,7 @@ describe('ClauseOverlay', () => {
 })
 
 // ---------------------------------------------------------------------------
-// highlightPath prop tests
+// scrollToPath + changeMap prop tests
 // ---------------------------------------------------------------------------
 
 const c1: ClauseItem = {
