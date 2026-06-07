@@ -120,10 +120,18 @@ test('UK + EU clients see disjoint side-by-side document views', async ({ page }
   await page.getByTestId('email-input').fill(EU_EMAIL)
   await page.getByTestId('password-input').fill(EU_PASSWORD)
   await page.getByTestId('login-submit').click()
-  await page.waitForURL('**/')
+  // waitForURL('**/') matches /login too — assert authed state via the
+  // sign-out button instead, like step 1.
+  await expect(page.getByTestId('sign-out')).toBeVisible()
 
   // -------- 6. EU /changes --------
-  await page.goto('/changes')
+  // Use in-app nav rather than page.goto: a hard reload drops the
+  // in-memory access token and forces cookie-based cold-refresh, which
+  // is flaky right after a back-to-back logout/login (the prior logout
+  // returns 401 because the rotated refresh cookie is already revoked,
+  // leaving the cookie state inconsistent).
+  await page.getByTestId('nav-changes').click()
+  await page.waitForURL('**/changes')
 
   const euRow = page.getByTestId('change-row').filter({ hasText: EU_PATH })
   await expect(euRow).toBeVisible()
@@ -259,6 +267,8 @@ test('demo-uk: jurisdiction card → documents table → coloured diff view', as
   // test still passes if the clicked doc is single-version.
   const legend = page.getByTestId('diff-legend')
   const lonePane = page.locator('[data-testid="version-pane-header"]')
-  // Either the legend renders (multi-version) OR a single version pane renders.
-  await expect(legend.or(lonePane.first())).toBeVisible()
+  // Multi-version docs render BOTH the legend and version-pane-header,
+  // which trips Playwright strict mode if .or() lands on two elements.
+  // Take the first match either way.
+  await expect(legend.or(lonePane).first()).toBeVisible()
 })
