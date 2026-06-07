@@ -190,6 +190,7 @@ def test_corpus_tables_exist_with_expected_columns(
     assert cols[("clauses", "clause_uid")] == ("uuid", "NO")
     assert cols[("clauses", "clause_path")] == ("text", "NO")
     assert cols[("clauses", "text_content")] == ("text", "NO")
+    assert cols[("clauses", "heading_text")] == ("text", "YES")
     assert cols[("clauses", "ord")] == ("integer", "NO")
 
 

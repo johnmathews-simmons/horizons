@@ -323,6 +323,24 @@ def test_compute_v1_staging_payload_parses_clauses() -> None:
     assert payload.content_sha256 == hashlib.sha256(markdown.encode("utf-8")).digest()
 
 
+def test_compute_v1_staging_payload_keeps_heading_only_clauses() -> None:
+    """Section headings without direct body text still produce a clause row.
+
+    The persistence walk is a superset of the alignment walk: heading-only
+    nodes survive so the API can serve them and the webapp can render
+    section structure. The aligner still ignores them — they have no body
+    to diff.
+    """
+    markdown = "## Top heading\n\n### Sub heading\n\nBody paragraph.\n"
+    payload = compute_v1_staging_payload(markdown)
+    headings = [c.heading_text for c in payload.clauses if c.heading_text is not None]
+    assert "Top heading" in headings
+    assert "Sub heading" in headings
+    # The body-bearing leaf is present too.
+    bodies = [c.body_text.strip() for c in payload.clauses if c.body_text.strip()]
+    assert "Body paragraph." in bodies
+
+
 def test_compute_v1_staging_payload_propagates_parser_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

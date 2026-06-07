@@ -192,7 +192,8 @@ the cheap outer fence; the trigger is the substantive rule.
 | `document_version_id` | `uuid NOT NULL REFERENCES document_versions(id) ON DELETE RESTRICT` | FK |
 | `clause_uid` | `uuid NOT NULL` | identity across versions; assigned by the alignment pipeline |
 | `clause_path` | `text NOT NULL` | positional label, e.g. `Part 1 / Section 4 / (a) / (i)` |
-| `text_content` | `text NOT NULL` | the clause body, in markdown |
+| `text_content` | `text NOT NULL` | the clause body, in plain text — may be empty for heading-only clauses |
+| `heading_text` | `text NULL` | section title for heading-anchored clauses; NULL for plain leaf paragraphs (added in 0015) |
 | `ord` | `int NOT NULL` | sequence number within the version |
 
 Constraints: `UNIQUE(document_version_id, clause_path)` so a given

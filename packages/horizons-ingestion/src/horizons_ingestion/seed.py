@@ -537,8 +537,8 @@ _INSERT_VERSION_SQL = text(
 
 _INSERT_CLAUSE_SQL = text(
     "INSERT INTO clauses "
-    "(document_version_id, clause_uid, clause_path, text_content, ord) "
-    "VALUES (:dv, :uid, :path, :body, :ord)"
+    "(document_version_id, clause_uid, clause_path, text_content, heading_text, ord) "
+    "VALUES (:dv, :uid, :path, :body, :head, :ord)"
 )
 
 _INSERT_CHANGE_EVENT_SQL = text(
@@ -604,6 +604,7 @@ def _insert_v1_only(
                 "uid": _uuid.uuid4(),
                 "path": "/".join(node.path),
                 "body": node.body_text,
+                "head": node.heading_text,
                 "ord": ord_i,
             },
         )
@@ -611,9 +612,20 @@ def _insert_v1_only(
     return inserted
 
 
-def _walk_emitting_leaves(tree: Clause) -> list[Clause]:
-    """Return clauses the aligner treats as units: every node with non-empty body."""
-    return [node for node in tree.walk() if node.body_text.strip()]
+def _walk_for_persistence(tree: Clause) -> list[Clause]:
+    """Return every clause that should land as a row in ``clauses``.
+
+    Includes both body-bearing nodes and heading-only nodes
+    (``heading_text`` set, ``body_text`` empty) so the API can render
+    the section structure. The aligner walks the full tree itself and
+    filters internally to body-bearing nodes; heading-only rows take
+    no part in change detection.
+    """
+    return [
+        node
+        for node in tree.walk()
+        if node.body_text.strip() or (node.heading_text and node.heading_text.strip())
+    ]
 
 
 def _build_uid_map_for_v2(
@@ -633,7 +645,7 @@ def _build_uid_map_for_v2(
             pair_by_after_path[ev.after_path] = ev.before_path
 
     out: dict[tuple[str, ...], UUID] = {}
-    for node in _walk_emitting_leaves(v2_tree):
+    for node in _walk_for_persistence(v2_tree):
         before_path = pair_by_after_path.get(node.path)
         if before_path is not None and before_path in prev_uid_by_path:
             out[node.path] = prev_uid_by_path[before_path]
@@ -663,7 +675,7 @@ def compute_v1_staging_payload(markdown_text: str) -> V1StagingPayload:
     encoded = markdown_text.encode("utf-8")
     tree = parse(markdown_text)
     return V1StagingPayload(
-        clauses=_walk_emitting_leaves(tree),
+        clauses=_walk_for_persistence(tree),
         content_bytes=len(encoded),
         content_sha256=hashlib.sha256(encoded).digest(),
     )
@@ -721,7 +733,7 @@ def _stage_one_pair(
 
     prev_uid_by_path: dict[tuple[str, ...], UUID] = {}
     clause_count = 0
-    for ord_i, node in enumerate(_walk_emitting_leaves(v1_tree), start=1):
+    for ord_i, node in enumerate(_walk_for_persistence(v1_tree), start=1):
         uid = _uuid.uuid4()
         prev_uid_by_path[node.path] = uid
         conn.execute(
@@ -731,6 +743,7 @@ def _stage_one_pair(
                 "uid": uid,
                 "path": "/".join(node.path),
                 "body": node.body_text,
+                "head": node.heading_text,
                 "ord": ord_i,
             },
         )
@@ -754,7 +767,7 @@ def _stage_one_pair(
     ).scalar_one()
 
     uid_map = _build_uid_map_for_v2(v2_tree, events, prev_uid_by_path)
-    for ord_i, node in enumerate(_walk_emitting_leaves(v2_tree), start=1):
+    for ord_i, node in enumerate(_walk_for_persistence(v2_tree), start=1):
         conn.execute(
             _INSERT_CLAUSE_SQL,
             {
@@ -762,6 +775,7 @@ def _stage_one_pair(
                 "uid": uid_map[node.path],
                 "path": "/".join(node.path),
                 "body": node.body_text,
+                "head": node.heading_text,
                 "ord": ord_i,
             },
         )
@@ -839,8 +853,8 @@ def stage_synthetic_v2(
         for pair in pairs_list:
             v1_tree = parse(pair.v1_path.read_text(encoding="utf-8"))
             v2_tree = parse(pair.v2_path.read_text(encoding="utf-8"))
-            v1_leaves = _walk_emitting_leaves(v1_tree)
-            v2_leaves = _walk_emitting_leaves(v2_tree)
+            v1_leaves = _walk_for_persistence(v1_tree)
+            v2_leaves = _walk_for_persistence(v2_tree)
             clauses += len(v1_leaves) + len(v2_leaves)
             events += len(align(v1_tree, v2_tree, tuning=tuning))
         return StagingResult(

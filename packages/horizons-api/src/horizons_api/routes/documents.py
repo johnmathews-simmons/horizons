@@ -94,6 +94,7 @@ class ClauseItem(BaseModel):
     clause_uid: uuid.UUID
     clause_path: str
     text_content: str
+    heading_text: str | None = None
     ord: int
 
 
@@ -216,6 +217,7 @@ async def get_clauses(
                 clause_uid=c.clause_uid,
                 clause_path=c.clause_path,
                 text_content=c.text_content,
+                heading_text=c.heading_text,
                 ord=c.ord,
             )
             for c in clauses

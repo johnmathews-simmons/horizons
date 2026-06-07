@@ -13,13 +13,25 @@ const props = withDefaults(defineProps<Props>(), { highlightPath: null })
 interface DepthClause {
   clause: ClauseItem
   depth: number
+  headingTag: string
+}
+
+// Depth 0 → h2 … depth ≥4 → h6. h1 is reserved for the document title
+// in the page header above the panes.
+function tagForDepth(depth: number): string {
+  const level = Math.min(6, Math.max(2, depth + 2))
+  return `h${level}`
 }
 
 const decorated = computed<DepthClause[]>(() =>
-  props.clauses.map((c) => ({
-    clause: c,
-    depth: Math.max(0, c.clause_path.split('/').length - 1),
-  })),
+  props.clauses.map((c) => {
+    const depth = Math.max(0, c.clause_path.split('/').length - 1)
+    return {
+      clause: c,
+      depth,
+      headingTag: tagForDepth(depth),
+    }
+  }),
 )
 
 const root = ref<HTMLElement | null>(null)
@@ -34,7 +46,8 @@ function scrollToHighlight(): void {
     return
   }
   // Look up the rendered element by its data attribute. Works for both
-  // flat and structure modes — both emit data-clause-path.
+  // flat and structure modes — both emit data-clause-path on the
+  // clause's outer container.
   // Inside an attribute value selector [attr="…"] only backslash and
   // the quote delimiter need escaping; spaces are fine as-is.
   const safe = target.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
@@ -59,6 +72,27 @@ watch(
 function isHighlighted(path: string): boolean {
   return props.highlightPath !== null && props.highlightPath === path
 }
+
+function hasHeading(c: ClauseItem): boolean {
+  return c.heading_text !== null && c.heading_text !== undefined && c.heading_text.trim().length > 0
+}
+
+function hasBody(c: ClauseItem): boolean {
+  return c.text_content.trim().length > 0
+}
+
+const HEADING_BASE = 'mb-2 mt-4 font-semibold text-slate-900'
+const HEADING_BY_TAG: Record<string, string> = {
+  h2: 'text-xl border-b border-slate-200 pb-1',
+  h3: 'text-lg',
+  h4: 'text-base',
+  h5: 'text-sm uppercase tracking-wide text-slate-700',
+  h6: 'text-xs uppercase tracking-wide text-slate-600',
+}
+
+function headingClass(tag: string): string {
+  return `${HEADING_BASE} ${HEADING_BY_TAG[tag] ?? ''}`.trim()
+}
 </script>
 
 <template>
@@ -66,19 +100,33 @@ function isHighlighted(path: string): boolean {
     <!-- Continuous mode: clauses run together, parser boundaries invisible. -->
     <template v-if="!showStructure">
       <article class="prose prose-slate max-w-none">
-        <pre
+        <div
           v-for="dc in decorated"
           :key="dc.clause.id"
           data-testid="clause-flat"
           :data-clause-path="dc.clause.clause_path"
           :data-highlight="isHighlighted(dc.clause.clause_path) ? 'true' : undefined"
-          class="mb-4 whitespace-pre-wrap font-serif text-base text-slate-800"
+          class="mb-4"
           :class="
             isHighlighted(dc.clause.clause_path)
               ? 'rounded-md bg-amber-100 ring-2 ring-amber-400 p-3'
               : ''
           "
-        >{{ dc.clause.text_content }}</pre>
+        >
+          <component
+            :is="dc.headingTag"
+            v-if="hasHeading(dc.clause)"
+            data-testid="clause-heading"
+            :data-heading-level="dc.headingTag"
+            :class="headingClass(dc.headingTag)"
+          >
+            {{ dc.clause.heading_text }}
+          </component>
+          <pre
+            v-if="hasBody(dc.clause)"
+            class="whitespace-pre-wrap font-serif text-base text-slate-800"
+          >{{ dc.clause.text_content }}</pre>
+        </div>
       </article>
     </template>
 
@@ -112,9 +160,21 @@ function isHighlighted(path: string): boolean {
             </code>
             <span class="text-xs text-slate-400">#{{ dc.clause.ord }}</span>
           </div>
-          <pre
-            class="whitespace-pre-wrap px-3 py-3 font-serif text-sm text-slate-800"
-          >{{ dc.clause.text_content }}</pre>
+          <div class="px-3 py-3">
+            <component
+              :is="dc.headingTag"
+              v-if="hasHeading(dc.clause)"
+              data-testid="clause-heading"
+              :data-heading-level="dc.headingTag"
+              :class="headingClass(dc.headingTag)"
+            >
+              {{ dc.clause.heading_text }}
+            </component>
+            <pre
+              v-if="hasBody(dc.clause)"
+              class="whitespace-pre-wrap font-serif text-sm text-slate-800"
+            >{{ dc.clause.text_content }}</pre>
+          </div>
         </li>
       </ol>
     </template>

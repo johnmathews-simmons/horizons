@@ -154,7 +154,7 @@ def _clauses_for_version(
     with sync_engine.connect() as conn:
         rows = conn.execute(
             text(
-                "SELECT clause_uid, clause_path, text_content, ord "
+                "SELECT clause_uid, clause_path, text_content, heading_text, ord "
                 "FROM clauses WHERE document_version_id = :v ORDER BY ord"
             ),
             {"v": document_version_id},
@@ -236,10 +236,12 @@ async def test_first_poll_inserts_version_clauses_and_added_events(
     # Clauses parsed.
     clauses = _clauses_for_version(migrated_db.sync_engine, v["id"])
     assert len(clauses) >= 1
-    # Every clause has a non-empty path and text.
+    # Every clause has a non-empty path. Heading-only clauses may have
+    # empty ``text_content`` but must carry ``heading_text``; body-bearing
+    # clauses must have non-empty text.
     for c in clauses:
         assert c["clause_path"]
-        assert c["text_content"]
+        assert c["text_content"] or c["heading_text"]
 
     # Every event is ADDED at confidence 1.0 because there is no
     # predecessor.

@@ -51,7 +51,7 @@ SELECT id, content_sha256, version_no
 """
 
 PREV_CLAUSES_SQL: Final = """
-SELECT clause_uid, clause_path, text_content, ord
+SELECT clause_uid, clause_path, text_content, heading_text, ord
   FROM clauses
  WHERE document_version_id = $1
  ORDER BY ord
@@ -86,8 +86,8 @@ UPDATE document_versions
 
 INSERT_CLAUSE_SQL: Final = """
 INSERT INTO clauses
-       (document_version_id, clause_uid, clause_path, text_content, ord)
-VALUES ($1, $2, $3, $4, $5)
+       (document_version_id, clause_uid, clause_path, text_content, heading_text, ord)
+VALUES ($1, $2, $3, $4, $5, $6)
 """
 
 INSERT_CHANGE_EVENT_SQL: Final = """
@@ -224,6 +224,18 @@ def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def _persistable(node: Clause) -> bool:
+    """True if this node should land as a ``clauses`` row.
+
+    Heading-only nodes (``heading_text`` set, ``body_text`` empty) and
+    body-bearing nodes both qualify. Pure structural shells with neither
+    are skipped — the parser's root node is the main example.
+    """
+    if node.body_text.strip():
+        return True
+    return bool(node.heading_text and node.heading_text.strip())
+
+
 async def _load_previous_tree(
     conn: PoolConnection,
     document_version_id: _uuid.UUID,
@@ -249,7 +261,7 @@ async def _load_previous_tree(
         children.append(
             Clause(
                 path=path,
-                heading_text=None,
+                heading_text=cast("str | None", row["heading_text"]),
                 body_text=cast("str", row["text_content"]),
                 numbering_label=None,
             )
@@ -309,7 +321,7 @@ def _build_clause_uid_map(
 
     out: dict[tuple[str, ...], _uuid.UUID] = {}
     for node in new_tree.walk():
-        if not node.body_text.strip():
+        if not _persistable(node):
             continue
         # 1. Explicit pairing recorded on an event.
         before_path = pair_by_after_path.get(node.path)
@@ -318,6 +330,9 @@ def _build_clause_uid_map(
             continue
         # 2. Unchanged clause (same path, same text) — :func:`align`
         #    emits no event for it but identity must still carry over.
+        #    Also covers heading-only clauses: they never appear in
+        #    ``events`` (the aligner ignores them), so path-equality is
+        #    their only way to inherit a uid.
         if node.path in prev_uid_by_path:
             out[node.path] = prev_uid_by_path[node.path]
             continue
@@ -330,12 +345,12 @@ def _clause_insert_rows(
     new_tree: Clause,
     uid_map: dict[tuple[str, ...], _uuid.UUID],
     document_version_id: _uuid.UUID,
-) -> list[tuple[_uuid.UUID, _uuid.UUID, str, str, int]]:
-    """Yield ``(document_version_id, clause_uid, clause_path, text_content, ord)``."""
-    rows: list[tuple[_uuid.UUID, _uuid.UUID, str, str, int]] = []
+) -> list[tuple[_uuid.UUID, _uuid.UUID, str, str, str | None, int]]:
+    """Yield ``(document_version_id, clause_uid, clause_path, text_content, heading_text, ord)``."""
+    rows: list[tuple[_uuid.UUID, _uuid.UUID, str, str, str | None, int]] = []
     ord_counter = 0
     for node in new_tree.walk():
-        if not node.body_text.strip():
+        if not _persistable(node):
             continue
         ord_counter += 1
         rows.append(
@@ -344,6 +359,7 @@ def _clause_insert_rows(
                 uid_map[node.path],
                 "/".join(node.path),
                 node.body_text,
+                node.heading_text,
                 ord_counter,
             )
         )

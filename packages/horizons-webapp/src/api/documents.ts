@@ -34,6 +34,7 @@ export interface ClauseItem {
   clause_uid: string
   clause_path: string
   text_content: string
+  heading_text: string | null
   ord: number
 }
 

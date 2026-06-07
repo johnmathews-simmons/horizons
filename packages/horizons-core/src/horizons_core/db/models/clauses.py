@@ -73,6 +73,7 @@ class Clause(Base):
     )
     clause_path: Mapped[str] = mapped_column(Text, nullable=False)
     text_content: Mapped[str] = mapped_column(Text, nullable=False)
+    heading_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     ord: Mapped[int] = mapped_column(Integer, nullable=False)
 
     document_version: Mapped[DocumentVersion] = relationship(

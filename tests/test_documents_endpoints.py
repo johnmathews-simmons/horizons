@@ -406,6 +406,8 @@ def test_get_clauses_returns_ordered_list(
         "PART_1/SECTION_3/(a)",
     ]
     assert body["clauses"][0]["text_content"] == "first clause"
+    # heading_text appears on every clause (null for body-only rows).
+    assert body["clauses"][0]["heading_text"] is None
 
 
 @pytest.mark.integration

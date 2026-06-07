@@ -21,6 +21,7 @@ const CLAUSES: ClauseItem[] = [
     clause_uid: 'uid-1',
     clause_path: 'PART_1',
     text_content: 'Part 1 preamble text.',
+    heading_text: null,
     ord: 1,
   },
   {
@@ -28,6 +29,7 @@ const CLAUSES: ClauseItem[] = [
     clause_uid: 'uid-2',
     clause_path: 'PART_1/SECTION_2',
     text_content: 'Section 2 body.',
+    heading_text: null,
     ord: 2,
   },
   {
@@ -35,6 +37,7 @@ const CLAUSES: ClauseItem[] = [
     clause_uid: 'uid-3',
     clause_path: 'PART_1/SECTION_2/(a)/(i)',
     text_content: 'Nested clause (a)(i).',
+    heading_text: null,
     ord: 3,
   },
 ]
@@ -94,6 +97,7 @@ const c1: ClauseItem = {
   clause_uid: '00000000-0000-4000-8000-000000000a01',
   clause_path: 'PART_1/SECTION_1',
   text_content: 'first clause',
+  heading_text: null,
   ord: 1,
 }
 
@@ -102,6 +106,7 @@ const c2: ClauseItem = {
   clause_uid: '00000000-0000-4000-8000-000000000a02',
   clause_path: 'PART_1/SECTION_2',
   text_content: 'second clause',
+  heading_text: null,
   ord: 2,
 }
 
@@ -184,5 +189,105 @@ describe('ClauseOverlay — highlightPath', () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// heading_text rendering
+// ---------------------------------------------------------------------------
+
+const HEADED_CLAUSES: ClauseItem[] = [
+  {
+    id: 'h1',
+    clause_uid: 'uid-h1',
+    clause_path: 'what-to-expect',
+    text_content: '',
+    heading_text: 'What to expect',
+    ord: 1,
+  },
+  {
+    id: 'h2',
+    clause_uid: 'uid-h2',
+    clause_path: 'what-to-expect/#1',
+    text_content: 'The Chair will present the assessment.',
+    heading_text: null,
+    ord: 2,
+  },
+  {
+    id: 'h3',
+    clause_uid: 'uid-h3',
+    clause_path: 'what-to-expect/sub-topic',
+    text_content: 'Body for the nested heading.',
+    heading_text: 'Sub topic',
+    ord: 3,
+  },
+]
+
+describe('ClauseOverlay — heading_text', () => {
+  it('renders heading_text as a semantic heading in flat mode', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: HEADED_CLAUSES, showStructure: false },
+    })
+    const headings = wrapper.findAll('[data-testid="clause-heading"]')
+    expect(headings).toHaveLength(2)
+    expect(headings[0]!.text()).toBe('What to expect')
+    expect(headings[1]!.text()).toBe('Sub topic')
+  })
+
+  it('renders heading_text inside the structure-mode card', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: HEADED_CLAUSES, showStructure: true },
+    })
+    const cards = wrapper.findAll('[data-testid="clause-card"]')
+    expect(cards).toHaveLength(HEADED_CLAUSES.length)
+    expect(cards[0]!.find('[data-testid="clause-heading"]').text()).toBe('What to expect')
+    expect(cards[2]!.find('[data-testid="clause-heading"]').text()).toBe('Sub topic')
+    expect(cards[1]!.find('[data-testid="clause-heading"]').exists()).toBe(false)
+  })
+
+  it('omits the body element when text_content is empty (heading-only clause)', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: HEADED_CLAUSES, showStructure: false },
+    })
+    const flats = wrapper.findAll('[data-testid="clause-flat"]')
+    // First clause is heading-only; its container should not include a <pre>.
+    expect(flats[0]!.find('pre').exists()).toBe(false)
+    expect(flats[1]!.find('pre').exists()).toBe(true)
+  })
+
+  it('picks heading level h2 at depth 0 and h3 one segment deeper', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: HEADED_CLAUSES, showStructure: false },
+    })
+    const headings = wrapper.findAll('[data-testid="clause-heading"]')
+    // depth 0 ("what-to-expect")
+    expect(headings[0]!.attributes('data-heading-level')).toBe('h2')
+    expect(headings[0]!.element.tagName.toLowerCase()).toBe('h2')
+    // depth 1 ("what-to-expect/sub-topic")
+    expect(headings[1]!.attributes('data-heading-level')).toBe('h3')
+    expect(headings[1]!.element.tagName.toLowerCase()).toBe('h3')
+  })
+
+  it('caps the heading level at h6 for very deep clauses', () => {
+    const deep: ClauseItem = {
+      id: 'deep',
+      clause_uid: 'uid-deep',
+      clause_path: 'a/b/c/d/e/f/g',
+      text_content: '',
+      heading_text: 'Very deep',
+      ord: 1,
+    }
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [deep], showStructure: false },
+    })
+    const heading = wrapper.find('[data-testid="clause-heading"]')
+    expect(heading.element.tagName.toLowerCase()).toBe('h6')
+  })
+
+  it('does not render a heading element when heading_text is null', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: CLAUSES, showStructure: false },
+    })
+    expect(wrapper.findAll('[data-testid="clause-heading"]')).toHaveLength(0)
   })
 })

@@ -27,6 +27,7 @@ class ClauseDTO(BaseModel):
     clause_uid: uuid.UUID
     clause_path: str
     text_content: str
+    heading_text: str | None
     ord: int
 
 
