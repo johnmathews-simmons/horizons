@@ -134,6 +134,51 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
   person and online" sentence contradicted the in-person-only framing
   once the livestream paragraph was removed, and was rewritten.
 
+## Coverage gaps
+
+The eight pairs above test the realistic-amendment patterns the
+synthetic mutation suite cannot — paragraph removals, content
+modifications, structural additions, MOVED on identical-text-different-
+heading, cascading paragraph renumbering, and small-text edits the
+aligner emits as `REMOVED + ADDED` instead of `MODIFIED`. They do
+**not** exercise the following patterns; if you add a new v2 pair,
+preferring one of these targets is the highest-leverage choice:
+
+- **`MOVED` across heading boundaries** — every current `MOVED` keeps
+  the clause under the same heading. A clause that moves from one
+  section to another (e.g. `["PART 2", "11."]` → `["PART 3", "1."]`)
+  would exercise pass-3's monotonic DP across a path-prefix change
+  and pressure-test whether the aligner classifies as `MOVED` or
+  `REMOVED + ADDED`.
+- **Wholesale section restructuring** — a v2 that splits one section
+  into two, merges two sections into one, or reorders top-level
+  sections. Stress-tests how the cascade-renumber failure mode scales
+  beyond single-paragraph shifts.
+- **Deeply nested edits (> 4 levels)** — current deepest is
+  `["4", "(1)", "(a)-4", "(iv)"]` in `au-2145602`. A schedule with
+  five or more levels (e.g. `["Schedule 2", "1", "(2)", "(b)", "(i)", "(A)"]`)
+  would surface any silent depth limits in the parser or path
+  encoding.
+- **Clause splits and merges** — a v1 paragraph split into two v2
+  paragraphs (or two v1 paragraphs merged into one v2 paragraph).
+  Today the aligner has no concept of split/merge; it would emit
+  `MODIFIED + ADDED` for a split or `REMOVED + MODIFIED` for a
+  merge, both of which understate the editorial intent.
+- **Footnote / cross-reference edits with no main-text change** — a
+  v2 that touches only a footnote anchor or an inline cross-reference
+  (e.g. `[s. 11]` → `[s. 11A]`) without modifying the surrounding
+  body. Tests whether the parser even captures these as alignable
+  clauses.
+- **Non-Latin-script edits** — only the original-language fixtures
+  cover non-English scripts (CZ on the synthetic-mutation side, none
+  yet in the gold suite). A v2 pair in Chinese, Arabic, or another
+  non-Latin script would expose any tokenisation / shingling
+  assumptions baked into the similarity stack.
+
+Tracked as deferred work in
+`docs/plan/improvement-plan.md` § *Open items intentionally deferred*
+(items 11–12).
+
 ## How the alignment pipeline consumes these
 
 The WU8.0 seed staging path inserts both `v1` and `v2` rows in

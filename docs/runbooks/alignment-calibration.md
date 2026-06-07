@@ -245,3 +245,14 @@ context):
 
 Neither blocks demo readiness; both are the current baseline, and
 fixing either is post-demo tuning work.
+
+**Coverage caveat — what the gold suite cannot tell you.** The 8
+hand-authored pairs in `data/samples/synthetic_v2/` don't exercise
+several patterns the aligner could plausibly mishandle: `MOVED`
+across heading boundaries, wholesale section restructuring, nesting
+beyond ~4 levels, clause splits/merges, footnote-only edits, or
+non-Latin-script edits. A green gold suite does not imply the
+aligner handles those — it implies it handles what we authored. Full
+list with rationale in `data/samples/synthetic_v2/README.md`
+§ *Coverage gaps*; tracked as deferred work in
+`docs/plan/improvement-plan.md` items 11–12.

@@ -235,3 +235,5 @@ These do NOT block the demo. Tracked here so they don't get lost.
 8. Manual override / annotation of clause alignments — post-demo.
 9. License file — needed before public exposure.
 10. ACR migration from GHCR — post-demo if managed-identity pulls become friction.
+11. Alignment gold-suite substrate gaps — no fixture exercises MOVED across heading boundaries, wholesale section restructuring, or nesting beyond ~4 levels. Authored set of 8 v1↔v2 pairs in `data/samples/synthetic_v2/` is sufficient for the demo but doesn't prove the aligner on these patterns. Coverage list in `data/samples/synthetic_v2/README.md` § Coverage gaps; rationale in `journal/260607-gold-file-audit-and-safeguards.md` § 4.
+12. Alignment gold path-string brittleness — gold entries hard-code parser-derived path strings (slugs, `#N` indices) with no parser-version pin. A slugifier or numbering change silently turns TPs into FNs. Mitigation options sketched in `journal/260607-gold-file-audit-and-safeguards.md` § 4; act on whichever the first parser change forces.
