@@ -100,7 +100,7 @@ watch(open, (next) => {
         </DialogDescription>
       </DialogHeader>
 
-      <div class="space-y-3">
+      <div class="min-w-0 space-y-3">
         <Input
           v-model="search"
           type="search"
@@ -133,18 +133,18 @@ watch(open, (next) => {
           No documents match.
         </div>
 
-        <ul v-else role="list" class="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200">
-          <li v-for="doc in filtered" :key="doc.document_id" data-testid="discovery-row" class="px-3 py-2">
-            <label class="flex cursor-pointer items-center gap-3">
+        <ul v-else role="list" class="max-h-72 min-w-0 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200">
+          <li v-for="doc in filtered" :key="doc.document_id" data-testid="discovery-row" class="min-w-0 px-3 py-2">
+            <label class="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
                 :checked="selected.has(doc.document_id)"
                 :data-testid="`discovery-checkbox-${doc.document_id}`"
-                class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-700"
+                class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-900 focus:ring-slate-700"
                 @change="toggle(doc.document_id)"
               />
               <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-medium text-slate-900">{{ doc.title }}</div>
+                <div class="break-words text-sm font-medium text-slate-900">{{ doc.title }}</div>
                 <div class="text-xs text-slate-500">{{ doc.jurisdiction }} · {{ doc.sector }}</div>
               </div>
             </label>

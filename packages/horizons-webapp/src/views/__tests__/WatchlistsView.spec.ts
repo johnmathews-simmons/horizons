@@ -75,6 +75,7 @@ function mountView(): VueWrapper {
       { path: '/', name: 'home', component: { template: '<div />' } },
       { path: '/watchlists', name: 'watchlists', component: WatchlistsView },
       { path: '/changes', name: 'changes', component: { template: '<div />' } },
+      { path: '/documents/:id', name: 'document-detail', component: { template: '<div />' } },
     ],
   })
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })

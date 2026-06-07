@@ -24,18 +24,18 @@ async function onSignOut(): Promise<void> {
       </RouterLink>
       <div class="flex items-center gap-3 text-sm">
         <RouterLink
-          to="/changes"
-          class="rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-100"
-          data-testid="nav-changes"
-        >
-          Browse recent changes
-        </RouterLink>
-        <RouterLink
           to="/documents"
           class="rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-100"
           data-testid="nav-documents"
         >
           Browse documents
+        </RouterLink>
+        <RouterLink
+          to="/changes"
+          class="rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-100"
+          data-testid="nav-changes"
+        >
+          Browse recent changes
         </RouterLink>
         <RouterLink
           to="/watchlists"

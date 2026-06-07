@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -129,7 +130,15 @@ function displayName(row: Watchlist): string {
             :data-testid="`watchlist-row-${row.id}`"
             data-row-testid="watchlist-row"
           >
-            <TableCell class="font-medium">{{ displayName(row) }}</TableCell>
+            <TableCell class="font-medium">
+              <RouterLink
+                :to="{ name: 'document-detail', params: { id: row.document_id } }"
+                :data-testid="`watchlist-row-title-${row.id}`"
+                class="text-slate-900 hover:underline"
+              >
+                {{ displayName(row) }}
+              </RouterLink>
+            </TableCell>
             <TableCell class="text-slate-700">{{ row.document_jurisdiction ?? '—' }}</TableCell>
             <TableCell class="text-slate-700">{{ row.document_sector ?? '—' }}</TableCell>
             <TableCell class="font-mono text-xs text-slate-500">{{ row.document_id }}</TableCell>
