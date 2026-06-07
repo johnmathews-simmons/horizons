@@ -39,10 +39,10 @@ const afterPath = computed<string | null>(() => {
 
 const showStructure = ref(false)
 
-function isNotFound(): boolean {
+const isNotFound = computed<boolean>(() => {
   const err = docQuery.error.value as { response?: { status?: number } } | null
   return err?.response?.status === 404
-}
+})
 
 // Single-pane case: which version do we show? Latest.
 const lonePaneVersion = computed<DocumentVersion | null>(() => {
@@ -72,7 +72,7 @@ const lonePaneHighlight = computed<string | null>(
       </div>
 
       <div
-        v-else-if="docQuery.isError.value && isNotFound()"
+        v-else-if="docQuery.isError.value && isNotFound"
         data-testid="not-found-state"
         class="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-700"
       >
