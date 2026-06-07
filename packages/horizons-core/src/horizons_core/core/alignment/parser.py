@@ -268,8 +268,17 @@ class _TreeBuilder:
         return self._root.freeze()
 
     def _absorb_bold_heading(self, text: str) -> None:
+        # A bold-only paragraph is the *title* of a structural clause:
+        # either the just-opened one above it (when that clause has no
+        # heading yet and hasn't accumulated body or children), or the
+        # next structural clause to open. Without the body/children
+        # guard the heading gets stolen by whichever leaf or open
+        # numbered clause happens to be on the stack — producing the
+        # off-by-one observed on ie-27732019-v1.md where every
+        # "Amendment of section N of Principal Act" label slid one
+        # clause too late.
         top = self._stack[-1]
-        if top is self._root or top.heading_text is not None:
+        if top is self._root or top.heading_text is not None or top.body_parts or top.children:
             self._pending_heading = text
         else:
             top.heading_text = text

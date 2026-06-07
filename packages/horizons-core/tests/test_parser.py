@@ -213,6 +213,52 @@ def test_pending_heading_attaches_to_next_numbered_clause() -> None:
     assert section.heading_text == "B"  # second bold-only became pending → section
 
 
+def test_bold_heading_after_open_clause_does_not_attach_to_stack_top() -> None:
+    # Regression for the "Amendment of section N of Principal Act"
+    # off-by-one observed on ie-27732019-v1.md (see journal entry
+    # 260607-parser-heading-off-by-one.md). When a bold-only heading
+    # arrives while the stack top has already accumulated body or
+    # children, the heading must defer via _pending_heading and bind
+    # to the *next* opened structural clause — not get absorbed by the
+    # currently-open clause.
+    md = (
+        "**PART 1**\n\n"
+        "**1\\.** first section body.\n\n"
+        "(a) bullet inside section 1.\n\n"
+        "**Heading meant for section 2**\n\n"
+        "**2\\.** second section body.\n"
+    )
+    root = parse(md)
+    # Section 1 was opened with no pending heading — stays None. (The
+    # PART-level heading behaviour is exercised by the test above.)
+    section1 = _find(root, ("PART 1", "1."))
+    assert section1 is not None
+    assert section1.heading_text is None
+    # (a) is the stack top when the bold heading arrives. (a) has body,
+    # so it must NOT absorb the heading.
+    letter_a = _find(root, ("PART 1", "1.", "(a)"))
+    assert letter_a is not None
+    assert letter_a.heading_text is None
+    # The heading must land on the next opened structural clause.
+    section2 = _find(root, ("PART 1", "2."))
+    assert section2 is not None
+    assert section2.heading_text == "Heading meant for section 2"
+
+
+def test_ie_section_11_heading_describes_what_it_actually_amends(
+    ie_tree: Clause,
+) -> None:
+    # In the source markdown the heading "Amendment of section 10 of
+    # Principal Act" precedes "**11\\.** Section 10(2A)..." — because
+    # clause 11 of the Act is what amends section 10 of the Principal
+    # Act. Before the parser fix, the heading was absorbed by a tail
+    # leaf inside clause 10's subtree and clause 11 carried the *next*
+    # heading instead. This guards the regression on real fixture text.
+    section_11 = _find(ie_tree, ("PART 2", "11."))
+    assert section_11 is not None
+    assert section_11.heading_text == "Amendment of section 10 of Principal Act"
+
+
 def test_treat_unmatched_bold_as_heading_disabled_creates_leaves() -> None:
     cfg = ParserConfig(treat_unmatched_bold_as_heading=False)
     md = "**Just a title**\n\nMore prose."

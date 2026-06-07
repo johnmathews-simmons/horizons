@@ -537,8 +537,9 @@ _INSERT_VERSION_SQL = text(
 
 _INSERT_CLAUSE_SQL = text(
     "INSERT INTO clauses "
-    "(document_version_id, clause_uid, clause_path, text_content, heading_text, ord) "
-    "VALUES (:dv, :uid, :path, :body, :head, :ord)"
+    "(document_version_id, clause_uid, clause_path, "
+    " text_content, heading_text, numbering_label, ord) "
+    "VALUES (:dv, :uid, :path, :body, :head, :label, :ord)"
 )
 
 _INSERT_CHANGE_EVENT_SQL = text(
@@ -605,6 +606,7 @@ def _insert_v1_only(
                 "path": "/".join(node.path),
                 "body": node.body_text,
                 "head": node.heading_text,
+                "label": node.numbering_label,
                 "ord": ord_i,
             },
         )
@@ -744,6 +746,7 @@ def _stage_one_pair(
                 "path": "/".join(node.path),
                 "body": node.body_text,
                 "head": node.heading_text,
+                "label": node.numbering_label,
                 "ord": ord_i,
             },
         )
@@ -776,6 +779,7 @@ def _stage_one_pair(
                 "path": "/".join(node.path),
                 "body": node.body_text,
                 "head": node.heading_text,
+                "label": node.numbering_label,
                 "ord": ord_i,
             },
         )

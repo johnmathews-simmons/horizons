@@ -194,6 +194,7 @@ the cheap outer fence; the trigger is the substantive rule.
 | `clause_path` | `text NOT NULL` | positional label, e.g. `Part 1 / Section 4 / (a) / (i)` |
 | `text_content` | `text NOT NULL` | the clause body, in plain text — may be empty for heading-only clauses |
 | `heading_text` | `text NULL` | section title for heading-anchored clauses; NULL for plain leaf paragraphs (added in 0015) |
+| `numbering_label` | `text NULL` | structural anchor token from the source markdown (e.g. `11.`, `11A.`, `(a)`); NULL for unmarked tail leaves (added in 0016) |
 | `ord` | `int NOT NULL` | sequence number within the version |
 
 Constraints: `UNIQUE(document_version_id, clause_path)` so a given

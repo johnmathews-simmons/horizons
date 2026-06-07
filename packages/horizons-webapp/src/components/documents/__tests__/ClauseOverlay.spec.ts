@@ -22,6 +22,7 @@ const CLAUSES: ClauseItem[] = [
     clause_path: 'PART_1',
     text_content: 'Part 1 preamble text.',
     heading_text: null,
+    numbering_label: null,
     ord: 1,
   },
   {
@@ -30,6 +31,7 @@ const CLAUSES: ClauseItem[] = [
     clause_path: 'PART_1/SECTION_2',
     text_content: 'Section 2 body.',
     heading_text: null,
+    numbering_label: null,
     ord: 2,
   },
   {
@@ -38,6 +40,7 @@ const CLAUSES: ClauseItem[] = [
     clause_path: 'PART_1/SECTION_2/(a)/(i)',
     text_content: 'Nested clause (a)(i).',
     heading_text: null,
+    numbering_label: null,
     ord: 3,
   },
 ]
@@ -98,6 +101,7 @@ const c1: ClauseItem = {
   clause_path: 'PART_1/SECTION_1',
   text_content: 'first clause',
   heading_text: null,
+  numbering_label: null,
   ord: 1,
 }
 
@@ -107,6 +111,7 @@ const c2: ClauseItem = {
   clause_path: 'PART_1/SECTION_2',
   text_content: 'second clause',
   heading_text: null,
+  numbering_label: null,
   ord: 2,
 }
 
@@ -181,9 +186,9 @@ describe('ClauseOverlay — scrollToPath', () => {
 
 describe('ClauseOverlay with changeMap', () => {
   const clauses: ClauseItem[] = [
-    { id: '1', clause_uid: 'a', clause_path: '/p/1', text_content: 'one', heading_text: null, ord: 0 },
-    { id: '2', clause_uid: 'b', clause_path: '/p/2', text_content: 'two', heading_text: null, ord: 1 },
-    { id: '3', clause_uid: 'c', clause_path: '/p/3', text_content: 'three', heading_text: null, ord: 2 },
+    { id: '1', clause_uid: 'a', clause_path: '/p/1', text_content: 'one', heading_text: null, numbering_label: null, ord: 0 },
+    { id: '2', clause_uid: 'b', clause_path: '/p/2', text_content: 'two', heading_text: null, numbering_label: null, ord: 1 },
+    { id: '3', clause_uid: 'c', clause_path: '/p/3', text_content: 'three', heading_text: null, numbering_label: null, ord: 2 },
   ]
 
   it('applies the ADDED box class to clauses whose path matches', () => {
@@ -242,6 +247,7 @@ const HEADED_CLAUSES: ClauseItem[] = [
     clause_path: 'what-to-expect',
     text_content: '',
     heading_text: 'What to expect',
+    numbering_label: null,
     ord: 1,
   },
   {
@@ -250,6 +256,7 @@ const HEADED_CLAUSES: ClauseItem[] = [
     clause_path: 'what-to-expect/#1',
     text_content: 'The Chair will present the assessment.',
     heading_text: null,
+    numbering_label: null,
     ord: 2,
   },
   {
@@ -258,6 +265,7 @@ const HEADED_CLAUSES: ClauseItem[] = [
     clause_path: 'what-to-expect/sub-topic',
     text_content: 'Body for the nested heading.',
     heading_text: 'Sub topic',
+    numbering_label: null,
     ord: 3,
   },
 ]
@@ -314,6 +322,7 @@ describe('ClauseOverlay — heading_text', () => {
       clause_path: 'a/b/c/d/e/f/g',
       text_content: '',
       heading_text: 'Very deep',
+      numbering_label: null,
       ord: 1,
     }
     const wrapper = mount(ClauseOverlay, {
@@ -332,6 +341,65 @@ describe('ClauseOverlay — heading_text', () => {
 })
 
 // ---------------------------------------------------------------------------
+// numbering_label rendering
+// ---------------------------------------------------------------------------
+
+const LABELED_CLAUSES: ClauseItem[] = [
+  {
+    id: 'L1',
+    clause_uid: 'uid-L1',
+    clause_path: 'PART_2/11A.',
+    text_content: 'Section 10(2A) of the Principal Act is amended.',
+    heading_text: 'Amendment of section 10 of Principal Act',
+    numbering_label: '11A.',
+    ord: 1,
+  },
+  {
+    id: 'L2',
+    clause_uid: 'uid-L2',
+    clause_path: 'PART_2/12./(5A)',
+    text_content: 'The Minister may order amendments.',
+    heading_text: null,
+    numbering_label: '(5A)',
+    ord: 2,
+  },
+  {
+    id: 'L3',
+    clause_uid: 'uid-L3',
+    clause_path: 'PART_2/13./tail',
+    text_content: 'Tail leaf with no marker.',
+    heading_text: null,
+    numbering_label: null,
+    ord: 3,
+  },
+]
+
+describe('ClauseOverlay — numbering_label', () => {
+  // Regression for the "renamed clause looks identical" demo bug
+  // (journal/260607-parser-heading-off-by-one.md). When two versions
+  // of a clause differ only in their structural anchor (e.g. 11. →
+  // 11A.), the flat-mode renderer must surface that anchor so a reader
+  // can see *why* the alignment pipeline flagged the clause as MOVED.
+  it('renders numbering_label as a visible prefix on the body in flat mode', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: LABELED_CLAUSES, showStructure: false },
+    })
+    const labels = wrapper.findAll('[data-testid="clause-numbering"]')
+    // Two clauses carry a numbering_label; the third has no marker.
+    expect(labels).toHaveLength(2)
+    expect(labels[0]!.text()).toBe('11A.')
+    expect(labels[1]!.text()).toBe('(5A)')
+  })
+
+  it('does not render numbering_label when it is null', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [LABELED_CLAUSES[2]!], showStructure: false },
+    })
+    expect(wrapper.findAll('[data-testid="clause-numbering"]')).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // HTML body rendering & sanitization
 // ---------------------------------------------------------------------------
 
@@ -342,6 +410,7 @@ function htmlClause(id: string, text: string): ClauseItem {
     clause_path: id,
     text_content: text,
     heading_text: null,
+    numbering_label: null,
     ord: 1,
   }
 }

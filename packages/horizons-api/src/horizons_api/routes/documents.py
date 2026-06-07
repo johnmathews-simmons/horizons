@@ -119,6 +119,7 @@ class ClauseItem(BaseModel):
     clause_path: str
     text_content: str
     heading_text: str | None = None
+    numbering_label: str | None = None
     ord: int
 
 
@@ -260,6 +261,7 @@ async def get_clauses(
                 clause_path=c.clause_path,
                 text_content=c.text_content,
                 heading_text=c.heading_text,
+                numbering_label=c.numbering_label,
                 ord=c.ord,
             )
             for c in clauses

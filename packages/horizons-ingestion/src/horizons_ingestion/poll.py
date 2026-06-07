@@ -51,7 +51,7 @@ SELECT id, content_sha256, version_no
 """
 
 PREV_CLAUSES_SQL: Final = """
-SELECT clause_uid, clause_path, text_content, heading_text, ord
+SELECT clause_uid, clause_path, text_content, heading_text, numbering_label, ord
   FROM clauses
  WHERE document_version_id = $1
  ORDER BY ord
@@ -86,8 +86,9 @@ UPDATE document_versions
 
 INSERT_CLAUSE_SQL: Final = """
 INSERT INTO clauses
-       (document_version_id, clause_uid, clause_path, text_content, heading_text, ord)
-VALUES ($1, $2, $3, $4, $5, $6)
+       (document_version_id, clause_uid, clause_path,
+        text_content, heading_text, numbering_label, ord)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 """
 
 INSERT_CHANGE_EVENT_SQL: Final = """
@@ -263,7 +264,7 @@ async def _load_previous_tree(
                 path=path,
                 heading_text=cast("str | None", row["heading_text"]),
                 body_text=cast("str", row["text_content"]),
-                numbering_label=None,
+                numbering_label=cast("str | None", row["numbering_label"]),
             )
         )
     root = Clause(
@@ -345,9 +346,9 @@ def _clause_insert_rows(
     new_tree: Clause,
     uid_map: dict[tuple[str, ...], _uuid.UUID],
     document_version_id: _uuid.UUID,
-) -> list[tuple[_uuid.UUID, _uuid.UUID, str, str, str | None, int]]:
-    """Yield ``(document_version_id, clause_uid, clause_path, text_content, heading_text, ord)``."""
-    rows: list[tuple[_uuid.UUID, _uuid.UUID, str, str, str | None, int]] = []
+) -> list[tuple[_uuid.UUID, _uuid.UUID, str, str, str | None, str | None, int]]:
+    """Yield clause-insert tuples matching :data:`INSERT_CLAUSE_SQL`'s column order."""
+    rows: list[tuple[_uuid.UUID, _uuid.UUID, str, str, str | None, str | None, int]] = []
     ord_counter = 0
     for node in new_tree.walk():
         if not _persistable(node):
@@ -360,6 +361,7 @@ def _clause_insert_rows(
                 "/".join(node.path),
                 node.body_text,
                 node.heading_text,
+                node.numbering_label,
                 ord_counter,
             )
         )

@@ -88,6 +88,14 @@ function hasBody(c: ClauseItem): boolean {
   return c.text_content.trim().length > 0
 }
 
+function hasNumbering(c: ClauseItem): boolean {
+  return (
+    c.numbering_label !== null &&
+    c.numbering_label !== undefined &&
+    c.numbering_label.trim().length > 0
+  )
+}
+
 function isHtmlBody(c: ClauseItem): boolean {
   return looksLikeHtml(c.text_content)
 }
@@ -145,6 +153,11 @@ function headingClass(tag: string): string {
           >
             {{ dc.clause.heading_text }}
           </component>
+          <span
+            v-if="hasNumbering(dc.clause)"
+            data-testid="clause-numbering"
+            class="mr-2 inline-block font-bold text-slate-900"
+          >{{ dc.clause.numbering_label }}</span>
           <template v-if="hasBody(dc.clause)">
             <div
               v-if="isHtmlBody(dc.clause)"

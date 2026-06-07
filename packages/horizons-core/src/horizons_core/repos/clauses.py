@@ -28,6 +28,7 @@ class ClauseDTO(BaseModel):
     clause_path: str
     text_content: str
     heading_text: str | None
+    numbering_label: str | None
     ord: int
 
 
