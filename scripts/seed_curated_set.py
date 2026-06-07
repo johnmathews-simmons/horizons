@@ -143,11 +143,25 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     now = datetime.now(UTC)
+
+    # Build the skip set from the synthetic_v2 inventory so run_seed doesn't
+    # stage a v1 for any doc that --stage-synthetic-v2 would later pair.
+    # Without this exclusion stage_synthetic_v2's idempotency would skip
+    # every paired doc and the synthetic v2 set would never land.
+    skip_v1_for: set[str] = set()
+    if args.synthetic_v2_dir.is_dir():
+        for v2_path in args.synthetic_v2_dir.glob("*.md"):
+            match = _V2_FILENAME_RE.match(v2_path.name)
+            if match is not None:
+                skip_v1_for.add(match.group("docid"))
+
     result = run_seed(
         dsn=dsn or "",
         curated=curated,
         fixtures=fixtures,
         now=now,
+        samples_dir=args.samples_dir,
+        skip_v1_for=skip_v1_for,
         warn=_print_warning,
         dry_run=args.dry_run,
     )
@@ -157,6 +171,21 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{label}: {result.schedules_inserted} schedule row(s)")
     if result.documents_skipped_conflict:
         print(f"skipped (already present): {result.documents_skipped_conflict} document(s)")
+    v1_label = "would stage" if args.dry_run else "staged"
+    print(f"{v1_label}: {result.v1_documents_staged} v1 document version(s)")
+    print(f"{v1_label}: {result.v1_clauses_inserted} v1 clause row(s)")
+    if result.v1_skipped_synthetic_v2:
+        print(
+            f"v1 staging skipped (reserved for synthetic v2): "
+            f"{result.v1_skipped_synthetic_v2}"
+        )
+    if result.v1_parse_failures:
+        print(f"v1 staging parse failures: {result.v1_parse_failures}")
+    if result.v1_skipped_missing_fixture:
+        print(
+            f"v1 staging skipped (no markdown/iso): "
+            f"{result.v1_skipped_missing_fixture}"
+        )
 
     if args.stage_synthetic_v2:
         pairs = _discover_v2_pairs(args.synthetic_v2_dir, args.samples_dir)
