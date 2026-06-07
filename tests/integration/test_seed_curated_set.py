@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from horizons_core.core.alignment import Clause  # noqa: TC002
 from horizons_ingestion.seed import CuratedSet, DocOverride, run_seed
 from sqlalchemy import text
 
@@ -332,7 +333,7 @@ def test_run_seed_parser_failure_does_not_abort(
     original = seed_mod.parse  # pyright: ignore[reportPrivateImportUsage]
     call_count = {"n": 0}
 
-    def _selective_raise(text_arg: str) -> Any:
+    def _selective_raise(text_arg: str) -> Clause:
         call_count["n"] += 1
         if call_count["n"] == 1:
             raise RuntimeError("synthetic parser failure on first doc")
