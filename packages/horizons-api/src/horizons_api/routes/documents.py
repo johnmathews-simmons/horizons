@@ -38,6 +38,22 @@ def _no_store(response: Response) -> None:
 # ----- response models ----------------------------------------------------
 
 
+class ChangeCounts(BaseModel):
+    """Per-type clause-change counts between the latest two versions of a document.
+
+    All zero when the document has 0 or 1 versions. Sums change events whose
+    ``document_version_id`` equals the latest version's id, grouped by
+    ``change_type`` (one of ADDED / REMOVED / MODIFIED / MOVED).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    added: int = 0
+    removed: int = 0
+    modified: int = 0
+    moved: int = 0
+
+
 class DocumentItem(BaseModel):
     """List-row shape: a document without its versions."""
 
@@ -49,6 +65,10 @@ class DocumentItem(BaseModel):
     lawstronaut_document_id: str
     title: str
     created_at: datetime
+    clause_count: int = 0
+    change_counts: ChangeCounts = ChangeCounts()
+    previous_version_at: datetime | None = None
+    current_version_at: datetime | None = None
 
 
 class DocumentPage(BaseModel):
@@ -84,6 +104,10 @@ class DocumentDetail(BaseModel):
     lawstronaut_document_id: str
     title: str
     created_at: datetime
+    clause_count: int = 0
+    change_counts: ChangeCounts = ChangeCounts()
+    previous_version_at: datetime | None = None
+    current_version_at: datetime | None = None
     versions: list[DocumentVersionItem]
 
 
