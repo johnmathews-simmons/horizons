@@ -1,5 +1,12 @@
 import { apiClient } from './client'
 
+export interface ChangeCounts {
+  added: number
+  removed: number
+  modified: number
+  moved: number
+}
+
 export interface DocumentItem {
   id: string
   jurisdiction: string
@@ -7,6 +14,10 @@ export interface DocumentItem {
   lawstronaut_document_id: string
   title: string
   created_at: string
+  clause_count: number
+  change_counts: ChangeCounts
+  previous_version_at: string | null
+  current_version_at: string | null
 }
 
 export interface DocumentPage {
