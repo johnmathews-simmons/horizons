@@ -1,10 +1,12 @@
 # Synthetic v2 documents (WU8.0)
 
-Five demo fixtures with hand-authored "v2" revisions of documents already
-held in `data/samples/`. Each pair (`v1`, `v2`) carries small, realistic
-clause-level edits — one **add**, one **modify**, one **remove** — so the
-alignment pipeline emits `ADDED`, `MODIFIED`, and `REMOVED` change events
-when both versions are staged.
+Eight demo fixtures with hand-authored "v2" revisions of documents already
+held in `data/samples/`. The original five pairs (WU8.0) each carry one
+**add**, one **modify**, and one **remove**. The three WU8.6 additions
+(`ie-27732019`, `au-2145602`, `eu-31366184`) carry varied two-edit
+combinations that, taken together with the original five, exercise all
+four change kinds — `ADDED`, `REMOVED`, `MODIFIED`, and `MOVED` — across
+the demo corpus when both versions are staged.
 
 Synthetic, not collected from Lawstronaut. The v1 markdown is identical to
 the file at `data/samples/<slug>-v1.md`; the v2 file is the v1 contents
@@ -30,6 +32,9 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
 | `fr-31702142` | FR | **(EU, BANKING)** — demo relabel | `data/samples/fr-31702142-v1.md` | see below |
 | `de-20951816` | DE | (DE, employment) | `data/samples/de-20951816-v1.md` | see below |
 | `it-26863` | IT | (IT, BANKING) | `data/samples/it-26863-v1.md` | see below |
+| `ie-27732019` | IE | **(UK, BANKING)** — demo relabel | `data/samples/ie-27732019-v1.md` | MOVED + MODIFIED |
+| `au-2145602` | AU | **(UK, BANKING)** — demo relabel | `data/samples/au-2145602-v1.md` | ADDED + REMOVED |
+| `eu-31366184` | EU | (EU, BANKING) | `data/samples/eu-31366184-v1.md` | MODIFIED + REMOVED |
 
 ## Diff intent per document
 
@@ -79,6 +84,35 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
 - **ADDED** — a new "Revision note" subsection at the top of the
   Introduction, explaining that this is a Cabinet-revised update of the
   original update.
+
+### `ie-27732019` — Protection of Employees (Employers' Insolvency) (Amendment) Act 2026
+
+- **MOVED** — section 11 renumbered to section 11A; clause body
+  byte-identical, parser path moves from `PART 2 / section 11` to
+  `PART 2 / section 11A`. Framing: Law Reform Commission Revised Acts
+  edition restores engrossed-bill numbering after a gazette misprint.
+- **MODIFIED** — section 12(5A)(a) (Minister's order-making power to vary
+  the section 4B notice period): upper bound widened from "not more than
+  12 weeks" to "not more than 16 weeks".
+
+### `au-2145602` — Social Security (AGDRP—Ex-Tropical Cyclone Alfred—NSW) Determination (No. 3) 2025
+
+- **REMOVED** — sub-paragraph (iv) of the `major damage` (residence)
+  definition: "sewage contamination of the interior of the residence;
+  or". The remaining (i)–(iii) limbs cover most interior-damage cases.
+- **ADDED** — new closing sentence in Schedule 1 fixing the LGA boundary
+  reference date: "The areas listed in the table are determined by
+  reference to the local government area boundaries in force in New
+  South Wales on 4 March 2025."
+
+### `eu-31366184` — BEREC: Digital Networks Act assessment public debriefing
+
+- **MODIFIED** — debriefing date: "10 June 2026" → "17 June 2026" (event
+  postponed by one week).
+- **REMOVED** — closing paragraph of the "Registration and engagement"
+  section: "The event will be livestreamed on the BEREC website. Online
+  participants will have the opportunity to submit questions via a Q&A
+  chat function." Framing: format reverted to in-person-only.
 
 ## How the alignment pipeline consumes these
 
