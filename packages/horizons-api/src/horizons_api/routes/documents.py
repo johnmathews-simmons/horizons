@@ -151,7 +151,7 @@ async def list_documents(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> DocumentPage:
     _no_store(response)
-    rows, total = await DocumentsRepository(session).list_filtered(
+    rows, total = await DocumentsRepository(session).list_filtered_with_stats(
         jurisdiction=jurisdiction,
         sector=sector,
         search=search,
@@ -167,6 +167,15 @@ async def list_documents(
                 lawstronaut_document_id=r.lawstronaut_document_id,
                 title=r.title,
                 created_at=r.created_at,
+                clause_count=r.clause_count,
+                change_counts=ChangeCounts(
+                    added=r.change_counts.added,
+                    removed=r.change_counts.removed,
+                    modified=r.change_counts.modified,
+                    moved=r.change_counts.moved,
+                ),
+                previous_version_at=r.previous_version_at,
+                current_version_at=r.current_version_at,
             )
             for r in rows
         ],
@@ -184,7 +193,7 @@ async def get_document(
     session: Annotated[AsyncSession, Depends(session_for_request_or_admin)],
 ) -> DocumentDetail:
     _no_store(response)
-    document = await DocumentsRepository(session).get_by_id(document_id)
+    document = await DocumentsRepository(session).get_by_id_with_stats(document_id)
     if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -198,6 +207,15 @@ async def get_document(
         lawstronaut_document_id=document.lawstronaut_document_id,
         title=document.title,
         created_at=document.created_at,
+        clause_count=document.clause_count,
+        change_counts=ChangeCounts(
+            added=document.change_counts.added,
+            removed=document.change_counts.removed,
+            modified=document.change_counts.modified,
+            moved=document.change_counts.moved,
+        ),
+        previous_version_at=document.previous_version_at,
+        current_version_at=document.current_version_at,
         versions=[
             DocumentVersionItem(
                 id=v.id,
