@@ -92,7 +92,7 @@ describe('ClauseOverlay', () => {
 const c1: ClauseItem = {
   id: '00000000-0000-4000-8000-000000000001',
   clause_uid: '00000000-0000-4000-8000-000000000a01',
-  clause_path: 'PART 1 / Section 1',
+  clause_path: 'PART_1/SECTION_1',
   text_content: 'first clause',
   ord: 1,
 }
@@ -100,7 +100,7 @@ const c1: ClauseItem = {
 const c2: ClauseItem = {
   id: '00000000-0000-4000-8000-000000000002',
   clause_uid: '00000000-0000-4000-8000-000000000a02',
-  clause_path: 'PART 1 / Section 2',
+  clause_path: 'PART_1/SECTION_2',
   text_content: 'second clause',
   ord: 2,
 }
@@ -112,13 +112,13 @@ describe('ClauseOverlay', () => {
     })
     const flats = wrapper.findAll('[data-testid="clause-flat"]')
     expect(flats).toHaveLength(2)
-    expect(flats[0]!.attributes('data-clause-path')).toBe('PART 1 / Section 1')
-    expect(flats[1]!.attributes('data-clause-path')).toBe('PART 1 / Section 2')
+    expect(flats[0]!.attributes('data-clause-path')).toBe('PART_1/SECTION_1')
+    expect(flats[1]!.attributes('data-clause-path')).toBe('PART_1/SECTION_2')
   })
 
   it('marks the matched clause with data-highlight="true" in structure mode', async () => {
     const wrapper = mount(ClauseOverlay, {
-      props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART 1 / Section 2' },
+      props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART_1/SECTION_2' },
     })
     await nextTick()
     const cards = wrapper.findAll('[data-testid="clause-card"]')
@@ -128,7 +128,7 @@ describe('ClauseOverlay', () => {
 
   it('marks the matched clause with data-highlight="true" in flat mode', async () => {
     const wrapper = mount(ClauseOverlay, {
-      props: { clauses: [c1, c2], showStructure: false, highlightPath: 'PART 1 / Section 1' },
+      props: { clauses: [c1, c2], showStructure: false, highlightPath: 'PART_1/SECTION_1' },
     })
     await nextTick()
     const flats = wrapper.findAll('[data-testid="clause-flat"]')
@@ -143,7 +143,7 @@ describe('ClauseOverlay', () => {
     ;(Element.prototype as unknown as { scrollIntoView: typeof scrollSpy }).scrollIntoView = scrollSpy
     try {
       mount(ClauseOverlay, {
-        props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART 1 / Section 2' },
+        props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART_1/SECTION_2' },
         attachTo: document.body,
       })
       await nextTick()
