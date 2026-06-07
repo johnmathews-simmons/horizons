@@ -47,7 +47,11 @@ test('UK client browses documents, opens one, toggles the clause structure', asy
 
   // Reader mode by default: clauses run together, no anchor cards.
   await expect(page.getByTestId('clause-card')).toHaveCount(0)
-  await expect(page.getByTestId('document-body')).toContainText('Capital requirements')
+  // The e2e seed creates two versions, so DocumentDetailView renders
+  // side-by-side panes — both have their own `document-body` and own
+  // `clause-anchor` chips. `.first()` keeps strict mode happy; v1 and v2
+  // share the structural-clause set, so either pane satisfies the assertion.
+  await expect(page.getByTestId('document-body').first()).toContainText('Capital requirements')
 
   // -------- Toggle structure on --------
   await page.getByTestId('toggle-structure').click()
@@ -57,7 +61,9 @@ test('UK client browses documents, opens one, toggles the clause structure', asy
   // text — Playwright's `hasText` is a substring matcher, so the leaf path
   // `PART_2/SECTION_12` would also match the deeper sibling
   // `PART_2/SECTION_12/(a)` and trip strict mode.
-  await expect(page.getByTestId('clause-anchor').getByText(UK_CLAUSE_PATH, { exact: true })).toBeVisible()
+  await expect(
+    page.getByTestId('clause-anchor').getByText(UK_CLAUSE_PATH, { exact: true }).first(),
+  ).toBeVisible()
 
   // -------- Toggle off --------
   await page.getByTestId('toggle-structure').click()

@@ -240,13 +240,19 @@ def _subscribe(
     )
 
 
-def _make_doc_with_version(
+def _make_doc_with_versions(
     conn: Connection,
     lid: str,
     jurisdiction: str,
     sector: str,
     title: str,
-) -> tuple[uuid.UUID, uuid.UUID]:
+) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    """Create a document with v1 + v2.
+
+    v1 is published 30 days ago, v2 today; the side-by-side viewer sorts
+    panes by ``effective_date`` so v1 lands left and v2 right. Returns
+    ``(document_id, v1_id, v2_id)``.
+    """
     doc_id = conn.execute(
         sqlalchemy.text(
             "INSERT INTO documents "
@@ -256,24 +262,31 @@ def _make_doc_with_version(
         {"j": jurisdiction, "s": sector, "lid": lid, "t": title},
     ).scalar_one()
     now = datetime.now(UTC)
-    ver_id = conn.execute(
-        sqlalchemy.text(
-            "INSERT INTO document_versions "
-            "(document_id, version_label, publication_date, effective_date, "
-            "content_blob_container, content_blob_key, content_sha256, "
-            "content_bytes) "
-            "VALUES (:d, 'v2', :p, :e, 'e2e', :k, :h, :b) RETURNING id"
-        ),
-        {
-            "d": doc_id,
-            "p": now,
-            "e": now,
-            "k": f"{lid}/v2.md",
-            "h": hashlib.sha256(lid.encode()).digest(),
-            "b": 1024,
-        },
-    ).scalar_one()
-    return doc_id, ver_id
+    earlier = now - timedelta(days=30)
+
+    def _insert_version(label: str, when: datetime) -> uuid.UUID:
+        return conn.execute(
+            sqlalchemy.text(
+                "INSERT INTO document_versions "
+                "(document_id, version_label, publication_date, effective_date, "
+                "content_blob_container, content_blob_key, content_sha256, "
+                "content_bytes) "
+                "VALUES (:d, :lbl, :p, :e, 'e2e', :k, :h, :b) RETURNING id"
+            ),
+            {
+                "d": doc_id,
+                "lbl": label,
+                "p": when,
+                "e": when,
+                "k": f"{lid}/{label}.md",
+                "h": hashlib.sha256(f"{lid}/{label}".encode()).digest(),
+                "b": 1024,
+            },
+        ).scalar_one()
+
+    v1_id = _insert_version("v1", earlier)
+    v2_id = _insert_version("v2", now)
+    return doc_id, v1_id, v2_id
 
 
 def _insert_clauses(
@@ -351,44 +364,58 @@ def _seed(conn: Connection) -> None:
     _subscribe(conn, uk_user, "UK", "BANKING")
     _subscribe(conn, eu_user, "EU", "BANKING")
 
-    uk_doc, uk_ver = _make_doc_with_version(
+    uk_doc, uk_v1, uk_v2 = _make_doc_with_versions(
         conn, UK_DOC_LID, "UK", "BANKING", "UK Banking Act (sample, e2e)"
     )
-    eu_doc, eu_ver = _make_doc_with_version(
+    eu_doc, eu_v1, eu_v2 = _make_doc_with_versions(
         conn, EU_DOC_LID, "EU", "BANKING", "EU Banking Directive (sample, e2e)"
     )
 
-    # WU8.5 documents-viewer e2e: a handful of clauses on each version so
-    # the structure-overlay toggle has something to render. Clause paths
-    # follow the parser's anchor convention (PART_/SECTION_/(letter)).
+    # Both versions carry the same structural clauses; the v1/v2 difference
+    # is on the changed leaf (PART_2/SECTION_12/(a) for UK,
+    # ARTICLE_4/CLAUSE_4.2 for EU). The side-by-side viewer renders both
+    # panes from these clause rows. Clause paths follow the parser's anchor
+    # convention (PART_/SECTION_/(letter)) so the same string matches the
+    # corresponding change_event path verbatim — that's what drives
+    # ClauseOverlay's auto-scroll/highlight.
+    uk_structure_head = [
+        ("PART_1", "Part 1 of the UK Banking Act sample."),
+        ("PART_1/SECTION_1", "Section 1: Preliminary provisions."),
+        ("PART_2/SECTION_12", "Section 12: Capital requirements."),
+    ]
     _insert_clauses(
         conn,
-        uk_ver,
-        [
-            ("PART_1", "Part 1 of the UK Banking Act sample."),
-            ("PART_1/SECTION_1", "Section 1: Preliminary provisions."),
-            ("PART_2/SECTION_12", "Section 12: Capital requirements."),
-            (
-                "PART_2/SECTION_12/(a)",
-                "(a) Capital ratio targets stated in this subsection.",
-            ),
-        ],
+        uk_v1,
+        uk_structure_head + [("PART_2/SECTION_12/(a)", UK_MODIFIED_BEFORE)],
     )
     _insert_clauses(
         conn,
-        eu_ver,
-        [
-            ("ARTICLE_1", "Article 1 of the EU Banking Directive sample."),
-            ("ARTICLE_4", "Article 4: Liquidity coverage."),
-            ("ARTICLE_4/CLAUSE_4.2", "Clause 4.2: Net cash outflow thresholds."),
-        ],
+        uk_v2,
+        uk_structure_head + [("PART_2/SECTION_12/(a)", UK_MODIFIED_AFTER)],
+    )
+
+    eu_structure_head = [
+        ("ARTICLE_1", "Article 1 of the EU Banking Directive sample."),
+        ("ARTICLE_4", "Article 4: Liquidity coverage."),
+    ]
+    _insert_clauses(
+        conn,
+        eu_v1,
+        eu_structure_head + [("ARTICLE_4/CLAUSE_4.2", EU_MODIFIED_BEFORE)],
+    )
+    _insert_clauses(
+        conn,
+        eu_v2,
+        eu_structure_head + [("ARTICLE_4/CLAUSE_4.2", EU_MODIFIED_AFTER)],
     )
 
     # 1. UK MODIFIED — primary assertion (green badge, "0.92"). Visible
-    # to UK client only.
+    # to UK client only. before_path == after_path == the leaf clause's
+    # canonical anchor so the ?before=&after= URL params trigger the
+    # ClauseOverlay highlight in both panes.
     _emit_change_event(
-        conn, uk_doc, uk_ver, "UK", "BANKING", "MODIFIED",
-        "Part 2 / Section 12", "Part 2 / Section 12",
+        conn, uk_doc, uk_v2, "UK", "BANKING", "MODIFIED",
+        "PART_2/SECTION_12/(a)", "PART_2/SECTION_12/(a)",
         UK_MODIFIED_BEFORE, UK_MODIFIED_AFTER, 0.92,
     )
 
@@ -396,8 +423,8 @@ def _seed(conn: Connection) -> None:
     # The asymmetric visibility is what proves subscription RLS at the
     # browser layer.
     _emit_change_event(
-        conn, eu_doc, eu_ver, "EU", "BANKING", "MODIFIED",
-        "Article 4 / Clause 4.2", "Article 4 / Clause 4.2",
+        conn, eu_doc, eu_v2, "EU", "BANKING", "MODIFIED",
+        "ARTICLE_4/CLAUSE_4.2", "ARTICLE_4/CLAUSE_4.2",
         EU_MODIFIED_BEFORE, EU_MODIFIED_AFTER, 0.78,
     )
 
@@ -405,8 +432,8 @@ def _seed(conn: Connection) -> None:
     # ``Show MOVED`` toggle. The test asserts it is NOT visible to UK
     # without flipping the toggle.
     _emit_change_event(
-        conn, uk_doc, uk_ver, "UK", "BANKING", "MOVED",
-        "Part 3 / Section 14", "Part 4 / Section 14",
+        conn, uk_doc, uk_v2, "UK", "BANKING", "MOVED",
+        "PART_3/SECTION_14", "PART_4/SECTION_14",
         UK_MOVED_TEXT, UK_MOVED_TEXT, 0.95,
     )
 

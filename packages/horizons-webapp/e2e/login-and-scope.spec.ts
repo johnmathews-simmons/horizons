@@ -48,9 +48,13 @@ const DEMO_ADMIN_EMAIL = 'admin-demo@demo.example.com'
 const DEMO_ADMIN_PASSWORD =
   process.env['HORIZONS_DEMO_ADMIN_PASSWORD'] ?? 'admin-demo-pass-not-secret'
 
-const UK_PATH = 'Part 2 / Section 12'
-const EU_PATH = 'Article 4 / Clause 4.2'
-const UK_MOVED_PATH_FRAGMENT = 'Part 3 / Section 14'
+// Substrings of the change_event before_path/after_path values seeded
+// by seed_e2e.py. UK_PATH matches the leaf clause `PART_2/SECTION_12/(a)`;
+// EU_PATH matches `ARTICLE_4/CLAUSE_4.2`; UK_MOVED_PATH_FRAGMENT uniquely
+// matches the MOVED row's `PART_3/SECTION_14 → PART_4/SECTION_14` display.
+const UK_PATH = 'PART_2/SECTION_12'
+const EU_PATH = 'ARTICLE_4/CLAUSE_4.2'
+const UK_MOVED_PATH_FRAGMENT = 'PART_3/SECTION_14'
 
 const UK_BEFORE_FRAGMENT = '8 percent of risk-weighted assets'
 const UK_AFTER_FRAGMENT = '10.5 percent of risk-weighted assets'
