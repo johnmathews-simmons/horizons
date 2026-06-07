@@ -9,8 +9,9 @@
  *                         This is what makes the parser's atomic unit
  *                         visible to the demo audience.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import ClauseOverlay from '../ClauseOverlay.vue'
 import type { ClauseItem } from '@/api/documents'
 
@@ -81,5 +82,107 @@ describe('ClauseOverlay', () => {
       props: { clauses: [], showStructure: true },
     })
     expect(wrapper.findAll('[data-testid="clause-card"]')).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// highlightPath prop tests
+// ---------------------------------------------------------------------------
+
+const c1: ClauseItem = {
+  id: '00000000-0000-4000-8000-000000000001',
+  clause_uid: '00000000-0000-4000-8000-000000000a01',
+  clause_path: 'PART 1 / Section 1',
+  text_content: 'first clause',
+  ord: 1,
+}
+
+const c2: ClauseItem = {
+  id: '00000000-0000-4000-8000-000000000002',
+  clause_uid: '00000000-0000-4000-8000-000000000a02',
+  clause_path: 'PART 1 / Section 2',
+  text_content: 'second clause',
+  ord: 2,
+}
+
+describe('ClauseOverlay', () => {
+  it('emits data-clause-path on every flat-mode pre so a parent can find clauses', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [c1, c2], showStructure: false, highlightPath: null },
+    })
+    const flats = wrapper.findAll('[data-testid="clause-flat"]')
+    expect(flats).toHaveLength(2)
+    expect(flats[0]!.attributes('data-clause-path')).toBe('PART 1 / Section 1')
+    expect(flats[1]!.attributes('data-clause-path')).toBe('PART 1 / Section 2')
+  })
+
+  it('marks the matched clause with data-highlight="true" in structure mode', async () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART 1 / Section 2' },
+    })
+    await nextTick()
+    const cards = wrapper.findAll('[data-testid="clause-card"]')
+    expect(cards[0]!.attributes('data-highlight')).toBeUndefined()
+    expect(cards[1]!.attributes('data-highlight')).toBe('true')
+  })
+
+  it('marks the matched clause with data-highlight="true" in flat mode', async () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [c1, c2], showStructure: false, highlightPath: 'PART 1 / Section 1' },
+    })
+    await nextTick()
+    const flats = wrapper.findAll('[data-testid="clause-flat"]')
+    expect(flats[0]!.attributes('data-highlight')).toBe('true')
+    expect(flats[1]!.attributes('data-highlight')).toBeUndefined()
+  })
+
+  it('calls scrollIntoView on the highlighted clause once it mounts', async () => {
+    const scrollSpy = vi.fn()
+    // jsdom does not implement scrollIntoView; patch the prototype.
+    const original = (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView
+    ;(Element.prototype as unknown as { scrollIntoView: typeof scrollSpy }).scrollIntoView = scrollSpy
+    try {
+      mount(ClauseOverlay, {
+        props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART 1 / Section 2' },
+        attachTo: document.body,
+      })
+      await nextTick()
+      expect(scrollSpy).toHaveBeenCalledTimes(1)
+      expect(scrollSpy).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' })
+    } finally {
+      ;(Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView = original
+    }
+  })
+
+  it('does not call scrollIntoView when highlightPath is null', async () => {
+    const scrollSpy = vi.fn()
+    const original = (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView
+    ;(Element.prototype as unknown as { scrollIntoView: typeof scrollSpy }).scrollIntoView = scrollSpy
+    try {
+      mount(ClauseOverlay, {
+        props: { clauses: [c1, c2], showStructure: true, highlightPath: null },
+        attachTo: document.body,
+      })
+      await nextTick()
+      expect(scrollSpy).not.toHaveBeenCalled()
+    } finally {
+      ;(Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView = original
+    }
+  })
+
+  it('warns to console and renders without highlight when highlightPath does not match', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const wrapper = mount(ClauseOverlay, {
+        props: { clauses: [c1, c2], showStructure: true, highlightPath: 'NOPE' },
+      })
+      await nextTick()
+      expect(wrapper.findAll('[data-highlight="true"]')).toHaveLength(0)
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('ClauseOverlay: highlightPath "NOPE" not found'),
+      )
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
