@@ -75,13 +75,14 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
 
 - **REMOVED** — the closing line linking out to the
   "Statistikseite" monthly report.
-- **MODIFIED** — opening statistics block: "3.070.000" → "3.105.000".
+- **MODIFIED** — opening narrative under "Arbeitslosigkeit, Unter­beschäftigung
+  und Erwerbslosigkeit": "3.070.000" → "3.105.000". This was finished
+  by c95911f — the original WU8.0 v2 updated the headline summary
+  block at the top of the document but left this paragraph stale; the
+  consistency fix completed it.
 - **ADDED** — a new "Saisonbereinigung" section between "Kurzarbeit" and
   "Erwerbstätigkeit und Beschäftigung" explaining the seasonal-adjustment
   methodology.
-- **Consistency fix (c95911f):** the opening narrative restated the
-  old 3.070.000 total in a second paragraph and was updated to
-  3.105.000.
 
 ### `it-26863` — MEF Update of the Economic and Financial Document 2016
 

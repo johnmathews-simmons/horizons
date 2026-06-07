@@ -37,8 +37,10 @@ from horizons_core.core.alignment.portal_config import load_portal_config
 
 from tests.alignment.conftest import (
     SAMPLES_DIR,
+    aggregate_synthetic_v2_f1,
     portal_slug_for,
     record_synthetic_v2,
+    synthetic_v2_score_count,
 )
 
 if TYPE_CHECKING:
@@ -58,6 +60,16 @@ text enough to fall out of pass-2 heading equality. A 50% floor is
 deliberately permissive at the per-fixture level so a single weak
 fixture does not gate; the demo-period quality table is the calibration
 surface, not the floor."""
+
+AGGREGATE_F1_FLOOR = 0.65
+"""Macro-F1 across the gold suite must not slide below this.
+
+Current baseline (2026-06-07) is ~0.78; the 0.13-point cushion absorbs
+per-fixture noise (small-text-edit miss patterns sometimes flip
+emission categories) but a real algorithmic regression would push
+several fixtures' precision down at once and clear the floor. Raise
+this whenever a tuning change demonstrably lifts the baseline by more
+than the cushion."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,4 +183,27 @@ def test_synthetic_v2_alignment(slug: str) -> None:
         f"(floor {floor}); P={precision:.2f}, R={recall:.2f}; "
         f"expected {len(expected)} events, got {len(actual)}; "
         f"notes: {notes}"
+    )
+
+
+def test_zz_aggregate_f1_above_floor() -> None:
+    """Aggregate macro-F1 across the gold suite must clear the floor.
+
+    Named ``test_zz_…`` so it sorts last alphabetically and runs after
+    the parametrized per-fixture tests have populated the score store.
+    If the suite was run with ``-k`` filtering and only a subset of
+    fixtures populated their scores, the assertion is skipped — the
+    aggregate is only meaningful with the full set.
+    """
+    if synthetic_v2_score_count() < len(SYNTHETIC_V2_SLUGS):
+        pytest.skip(
+            f"only {synthetic_v2_score_count()}/{len(SYNTHETIC_V2_SLUGS)} "
+            "fixtures scored — aggregate F1 is only meaningful "
+            "with the full suite"
+        )
+    f1 = aggregate_synthetic_v2_f1()
+    assert f1 is not None and f1 >= AGGREGATE_F1_FLOOR, (
+        f"aggregate macro-F1 = {f1:.3f} below floor "
+        f"{AGGREGATE_F1_FLOOR}; investigate per-fixture rows in the "
+        "terminal-summary table"
     )

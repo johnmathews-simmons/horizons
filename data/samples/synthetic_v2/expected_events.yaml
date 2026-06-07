@@ -1,8 +1,24 @@
 # Gold-file expected events for the synthetic v1↔v2 pairs in this
 # directory. One entry per fixture; each entry lists the editorial
-# changes documented in README.md as (change_type, before_path,
-# after_path) tuples. Paths are tuples of strings as produced by
+# changes (primary edits from README.md plus the c95911f consistency
+# fixes) as (change_type, before_path, after_path) tuples. Paths are
+# tuples of strings as produced by
 # horizons_core.core.alignment.parser.parse.
+#
+# Authoring rule (intent vs. emission):
+#
+#   * change_type encodes EDITORIAL INTENT. If the editor's intent
+#     was to modify a paragraph (e.g. change "2%" to "5%"), encode
+#     MODIFIED here even if the aligner currently emits REMOVED+ADDED
+#     instead. The detection failure then surfaces as a recall miss
+#     in the score table — that is informative, not a problem.
+#   * paths encode PARSER OUTPUT. Paths are derived from the markdown
+#     structure (heading slugs, numbering labels, synthesised #N
+#     indices), not from intent. When an upstream removal pushes a
+#     paragraph's path from #2 to #1, encode the v1 path as
+#     before_path and the v2 path as after_path — that's what the
+#     aligner naturally produces and matching the emission is the
+#     only way the path-shift case can score as a TP.
 #
 # Scoring (see tests/alignment/test_synthetic_v2.py):
 #
@@ -14,8 +30,8 @@
 # Path notes:
 #
 #   * Heading-anchored clauses use the slugified heading text; the
-#     parser's slugifier strips diacritics and lowercases. Long slugs
-#     are truncated to 64 chars (see parser._slug).
+#     parser's slugifier preserves diacritics (see ä in the de
+#     fixture below) and truncates long slugs to 64 chars.
 #   * Numbering-labelled clauses (PART 2, section 12., (a), (iv))
 #     keep their label verbatim in the path.
 #   * Unnumbered body paragraphs under a heading get synthesised
@@ -85,11 +101,11 @@ fixtures:
 
   # BA Arbeitsmarkt — REMOVE Statistikseite link, MODIFY headline
   # statistics (3.070.000 → 3.105.000), ADD Saisonbereinigung section.
-  # One consistency fix (c95911f): the opening narrative restated
-  # the old 3.070.000 total and was updated to 3.105.000. The aligner
-  # emits this short-body edit as REMOVED + ADDED at ['#2'] rather
-  # than MODIFIED — encoded here as the editorial intent so the
-  # detection failure surfaces as a recall miss in the score table.
+  # The MODIFIED entry below for ['arbeitslosigkeit-…','#1'] is what
+  # c95911f's fix to the opening narrative made the aligner detect;
+  # before c95911f that paragraph was identical between v1 and v2.
+  # No new gold entry from c95911f — the existing MODIFIED already
+  # anticipated it.
   de-20951816:
     events:
       - change_type: REMOVED
@@ -99,9 +115,6 @@ fixtures:
         after_path: [arbeitslosigkeit-unterbeschäftigung-und-erwerbslosigkeit, "#1"]
       - change_type: ADDED
         after_path: [saisonbereinigung, "#1"]
-      - change_type: MODIFIED
-        before_path: ["#2"]             # consistency fix: opening-narrative restatement
-        after_path: ["#2"]
 
   # MEF Update DEF 2016 — REMOVE opening paragraph of "Public
   # finance to support growth", MODIFY net-borrowing target 2.0%→1.8%
@@ -140,9 +153,13 @@ fixtures:
       - change_type: MODIFIED
         before_path: [table-i-1-public-finance-indicators-of-gdp-1, "(5)", "#4"]
         after_path: [table-i-1-public-finance-indicators-of-gdp-1, "(5)", "#4"]
-      # "Public finance to support growth" sibling that was both
-      # cascade-shifted (#2 → #1 after the opening paragraph was
-      # REMOVED) and content-modified to drop the 2.0% restatement.
+      # "Public finance to support growth" sibling — WU8.0 edit (not
+      # c95911f): the original v1→v2 hand-authoring changed "the
+      # reduction to 2.0 percent is confirmed for 2017" to "the
+      # reduction to 1.8 percent…" in this paragraph at the top of
+      # the document. It also cascade-shifted from #2 → #1 because
+      # the opening paragraph was REMOVED. The aligner correctly
+      # emits this as a single MODIFIED event with the shifted paths.
       - change_type: MODIFIED
         before_path: [public-finance-to-support-growth-in-the-balances-and-the-composi, "#2"]
         after_path: [public-finance-to-support-growth-in-the-balances-and-the-composi, "#1"]

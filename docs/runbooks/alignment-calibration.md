@@ -38,7 +38,7 @@ past recall, F2 becomes the more honest single-number report.
 | Suite | File | Substrate | Size | Headline number |
 |---|---|---|---|---|
 | Synthetic-mutation regression | `tests/alignment/test_fixtures.py` | every `*.md` in `data/samples/` mutated with one ADDED + one REMOVED + one MODIFIED + one MOVED (deterministic per slug) | 27 fixtures × 2 cases | macro-F1 ≈ 0.97 |
-| Gold-file calibration | `tests/alignment/test_synthetic_v2.py` | the 8 hand-authored v1↔v2 pairs in `data/samples/synthetic_v2/`, scored against `data/samples/synthetic_v2/expected_events.yaml` | 8 fixtures, 33 expected events | macro-F1 ≈ 0.77 |
+| Gold-file calibration | `tests/alignment/test_synthetic_v2.py` | the 8 hand-authored v1↔v2 pairs in `data/samples/synthetic_v2/`, scored against `data/samples/synthetic_v2/expected_events.yaml` | 8 fixtures, 32 expected events | macro-F1 ≈ 0.78 |
 
 They answer different questions. The mutation suite asks *"did the
 aligner break on random leaf edits across a wide corpus"* — catches
@@ -133,8 +133,9 @@ aggregate          31/31   0.96  0.97  0.97  4 skipped (fixture too small)
 ```
 fixture      N   TP   P     R     F1    notes
 au-2145602   2   2    1.00  1.00  1.00
+fr-31702142  4   4    1.00  1.00  1.00  [circularity smell]
 gb-28914588  5   4    0.36  0.80  0.50  missed MODIFIED ['#34'], 7 extra event(s)
-aggregate    33  30   0.70  0.90  0.77
+aggregate    32  30   0.70  0.93  0.78
 ```
 
 - `N` — expected event count for this fixture (from
@@ -143,7 +144,13 @@ aggregate    33  30   0.70  0.90  0.77
 - Extras (`7 extra event(s)`) are typically cascading paragraph
   renumbers triggered by one insert/remove — legitimate from the
   aligner's POV, noise from the customer's.
-- The aggregate `N` and `TP` columns are *totals* (33 events across
+- `[circularity smell]` — `N ≥ 4`, no FPs, no FNs. Heuristic flag
+  meaning "the gold matches aligner output suspiciously exactly,
+  likely because it was authored by copying `align()` rather than
+  reading the markdown independently." A true smell is not a failure
+  — investigate the fixture; if the aligner is genuinely correct on
+  it, leave the entry alone.
+- The aggregate `N` and `TP` columns are *totals* (32 events across
   8 fixtures, 30 matched). `P / R / F1` aggregate columns are
   *macro-averages* across the per-fixture rows.
 
@@ -198,16 +205,18 @@ precision. The test auto-discovers from the gold file, not from disk
 | `align(v1, v1) == []` (identity case) | `test_fixtures.py::test_identity_emits_no_events` | **Hard assertion** per fixture; fails the build. |
 | Mutation case `TP >= 2` (out of 4) | `test_fixtures.py::test_four_mutations_align_correctly` | Hard assertion per fixture; catastrophe floor only. |
 | Gold case `TP >= max(1, ⌈N/2⌉)` | `test_synthetic_v2.py::test_synthetic_v2_alignment` | Hard assertion per fixture; catastrophe floor only. |
-| Aggregate P/R/F1 on either suite | terminal-summary table | **Not gated.** Calibration diagnostic; read with your eyes. |
+| Gold aggregate macro-F1 ≥ `AGGREGATE_F1_FLOOR` (currently 0.65) | `test_synthetic_v2.py::test_zz_aggregate_f1_above_floor` | **Hard assertion** on the full-suite run; skipped if `-k`-filtered to a subset. |
+| Mutation suite aggregate P/R/F1 | terminal-summary table | **Not gated.** Calibration diagnostic; read with your eyes. |
 
 Both suites run inside the routine `uv run pytest` sweep — you don't
-need to invoke them separately before pushing main. A precision slide
-of 0.70 → 0.55 on the gold suite **will not fail the build**; that's
-intentional during the demo period.
+need to invoke them separately before pushing main. The aggregate-F1
+floor (`AGGREGATE_F1_FLOOR = 0.65`) catches a real algorithmic
+regression that pushes several fixtures' precision down at once; a
+single-fixture wobble inside the 0.13-point cushion won't fire it.
 
-If you want a CI gate later — raise `TP_FLOOR_RATIO` in
-`test_synthetic_v2.py` (currently `0.5`), and/or add an aggregate-F1
-assertion to `pytest_terminal_summary` in `tests/alignment/conftest.py`.
+To tighten the gate after a tuning win, raise `AGGREGATE_F1_FLOOR` in
+`test_synthetic_v2.py` to ~0.05 below the new baseline. To tighten
+per-fixture, raise `TP_FLOOR_RATIO` (currently `0.5`).
 
 ## 8. Known issues surfaced by the gold suite
 

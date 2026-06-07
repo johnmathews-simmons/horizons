@@ -132,8 +132,32 @@ class SyntheticV2Score:
             return None
         return 2 * p * r / (p + r)
 
+    @property
+    def circularity_smell(self) -> bool:
+        """True when the gold matches aligner output suspiciously exactly.
+
+        Triggers when every gold entry is a TP, no aligner emission is
+        an FP, AND there are enough entries that exact alignment is
+        improbable (``expected_count >= 4``). The likely explanation
+        is that the gold was authored by copying ``align()`` output
+        rather than by reading the v2 markdown independently — a
+        circularity that lets the test pass forever even if the
+        aligner is wrong at one of those paths. Investigate by
+        independently re-authoring the gold for the affected fixture.
+        """
+        return (
+            self.expected_count >= 4
+            and self.true_positives == self.expected_count
+            and self.true_positives == self.actual_count
+        )
+
 
 _SYNTHETIC_V2_SCORES: dict[str, SyntheticV2Score] = {}
+_SMELL_THRESHOLD = 4
+"""Minimum gold-entry count at which a perfect TP/N/actual triple
+counts as a circularity smell. Trivially small fixtures (2–3 entries)
+can legitimately score 1.0 across the board without it being
+suspicious — the threshold filters those out."""
 
 
 def record_identity(slug: str, *, events: int) -> None:
@@ -183,6 +207,23 @@ def record_synthetic_v2(
     score.true_positives = true_positives
     if notes:
         score.notes.extend(notes)
+
+
+def synthetic_v2_score_count() -> int:
+    """Return the number of fixtures with a recorded synthetic_v2 score."""
+    return len(_SYNTHETIC_V2_SCORES)
+
+
+def aggregate_synthetic_v2_f1() -> float | None:
+    """Return the macro-averaged F1 across all recorded synthetic_v2 scores.
+
+    Returns ``None`` if no fixture has produced a valid F1 yet (e.g.
+    every fixture's actual or expected count was zero).
+    """
+    f_vals = [s.f1 for s in _SYNTHETIC_V2_SCORES.values() if s.f1 is not None]
+    if not f_vals:
+        return None
+    return sum(f_vals) / len(f_vals)
 
 
 def _fmt(v: float | None) -> str:
@@ -268,6 +309,7 @@ def _render_synthetic_v2_report() -> str:
     r_vals: list[float] = []
     f_vals: list[float] = []
 
+    smell_flags: list[str] = []
     for slug in slugs:
         score = _SYNTHETIC_V2_SCORES[slug]
         if score.precision is not None:
@@ -276,6 +318,10 @@ def _render_synthetic_v2_report() -> str:
             r_vals.append(score.recall)
         if score.f1 is not None:
             f_vals.append(score.f1)
+        row_notes = list(score.notes)
+        if score.circularity_smell:
+            row_notes.append("[circularity smell]")
+            smell_flags.append(slug)
         lines.append(
             f"{slug:<{width}}  "
             f"{score.expected_count:<3}  "
@@ -283,7 +329,7 @@ def _render_synthetic_v2_report() -> str:
             f"{_fmt(score.precision)}  "
             f"{_fmt(score.recall)}  "
             f"{_fmt(score.f1)}  "
-            f"{', '.join(score.notes)}"
+            f"{', '.join(row_notes)}"
         )
 
     lines.append(sep)
@@ -300,6 +346,15 @@ def _render_synthetic_v2_report() -> str:
         f"{_fmt(r_avg)}  "
         f"{_fmt(f_avg)}  "
     )
+    if smell_flags:
+        lines.append("")
+        lines.append(
+            f"circularity smell on: {', '.join(smell_flags)} — "
+            "gold matches aligner output exactly (N >= "
+            f"{_SMELL_THRESHOLD}, no FPs, no FNs). "
+            "Likely authored by copying align() output; re-author "
+            "independently from the v2 markdown to verify."
+        )
     return "\n".join(lines)
 
 
