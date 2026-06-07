@@ -174,14 +174,14 @@ function fmtCount(n: number): string {
       >
         <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
-            <th class="px-4 py-2 font-semibold">Name</th>
-            <th class="px-4 py-2 text-right font-semibold">Length</th>
-            <th class="px-4 py-2 text-right font-semibold">Added</th>
-            <th class="px-4 py-2 text-right font-semibold">Removed</th>
-            <th class="px-4 py-2 text-right font-semibold">Modified</th>
-            <th class="px-4 py-2 text-right font-semibold">Moved</th>
-            <th class="px-4 py-2 font-semibold">Previous version</th>
-            <th class="px-4 py-2 font-semibold">Current version</th>
+            <th scope="col" class="px-4 py-2 font-semibold">Name</th>
+            <th scope="col" class="px-4 py-2 text-right font-semibold">Length</th>
+            <th scope="col" class="px-4 py-2 text-right font-semibold">Added</th>
+            <th scope="col" class="px-4 py-2 text-right font-semibold">Removed</th>
+            <th scope="col" class="px-4 py-2 text-right font-semibold">Modified</th>
+            <th scope="col" class="px-4 py-2 text-right font-semibold">Moved</th>
+            <th scope="col" class="px-4 py-2 font-semibold">Previous version</th>
+            <th scope="col" class="px-4 py-2 font-semibold">Current version</th>
           </tr>
         </thead>
         <tbody>
