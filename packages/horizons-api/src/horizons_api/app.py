@@ -30,7 +30,10 @@ from horizons_api.admin import clients as admin_clients  # noqa: E402
 from horizons_api.admin import health as admin_health  # noqa: E402
 from horizons_api.admin import impersonate as admin_impersonate  # noqa: E402
 from horizons_api.config import load_settings  # noqa: E402
-from horizons_api.middleware import RequestContextMiddleware  # noqa: E402
+from horizons_api.middleware import (  # noqa: E402
+    CorsFriendlyErrorMiddleware,
+    RequestContextMiddleware,
+)
 from horizons_api.routes import (  # noqa: E402
     admin_subscriptions,
     auth,
@@ -61,6 +64,16 @@ def create_app() -> FastAPI:
 
     setup_otel(app)
 
+    # Middleware order: Starlette's ``add_middleware`` inserts at
+    # position 0, so the *last* call ends up the outermost wrapper.
+    # We want — from outside to inside —
+    # ``RequestContext → CORS → CorsFriendlyError → router``.
+    # CORS must wrap ``CorsFriendlyErrorMiddleware`` so the 500 response
+    # the latter emits travels back through CORS and arrives at the
+    # browser with ``Access-Control-Allow-Origin`` set; otherwise a
+    # server-side bug masquerades as a CORS error and the real
+    # exception is invisible in the network panel.
+    app.add_middleware(CorsFriendlyErrorMiddleware)
     if settings.cors_origins:
         app.add_middleware(
             CORSMiddleware,
@@ -70,7 +83,6 @@ def create_app() -> FastAPI:
             # X-Client-Type is the webapp's opt-in on /v1/auth/login for the cookie-shaped response.
             allow_headers=["Authorization", "Content-Type", "X-Client-Type"],
         )
-
     app.add_middleware(RequestContextMiddleware)
 
     app.include_router(health.router)
