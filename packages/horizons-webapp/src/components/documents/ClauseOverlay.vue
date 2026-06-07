@@ -192,7 +192,7 @@ function headingClass(tag: string): string {
               ? CHANGE_COLORS[changeTypeFor(dc.clause.clause_path)!].box
               : 'bg-slate-50'
           "
-          :style="{ marginLeft: `${dc.depth * 1.25}rem` }"
+          :style="{ marginLeft: `${Math.min(dc.depth, 3) * 1.25}rem` }"
         >
           <span
             v-if="changeTypeFor(dc.clause.clause_path)"

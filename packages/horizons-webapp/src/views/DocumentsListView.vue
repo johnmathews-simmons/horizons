@@ -84,7 +84,13 @@ function prevPage(): void {
   offset.value = Math.max(0, offset.value - PAGE_SIZE)
 }
 
-async function openDocument(id: string): Promise<void> {
+async function openDocument(id: string, event: MouseEvent): Promise<void> {
+  // Skip if the click landed on the RouterLink in the title cell; the link
+  // will handle its own navigation. Without this guard the row's @click
+  // fires after the link's, pushing the same route twice (two history
+  // entries, two back-button presses to escape).
+  const target = event.target as HTMLElement | null
+  if (target?.closest('a')) return
   await router.push({ name: 'document-detail', params: { id } })
 }
 
@@ -194,7 +200,7 @@ function fmtCount(n: number): string {
             :key="item.id"
             data-testid="document-row"
             class="cursor-pointer border-t border-slate-200 hover:bg-slate-50"
-            @click="openDocument(item.id)"
+            @click="openDocument(item.id, $event)"
           >
             <td class="px-4 py-2">
               <RouterLink

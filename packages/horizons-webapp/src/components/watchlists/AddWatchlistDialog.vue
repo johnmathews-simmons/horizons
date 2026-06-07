@@ -32,6 +32,7 @@ const open = computed({
 
 const search = ref('')
 const selected = ref<Set<string>>(new Set())
+const submitting = ref(false)
 
 const { documents, isPending, isError } = useScopedDocuments()
 const addMutation = useAddWatchlistMutation()
@@ -64,12 +65,22 @@ function toggle(documentId: string): void {
 
 async function onSubmit(): Promise<void> {
   const ids = Array.from(selected.value)
-  if (ids.length === 0) return
-  const results = await Promise.allSettled(
-    ids.map((document_id) => addMutation.mutateAsync({ document_id })),
-  )
-  const failed = results.filter((r) => r.status === 'rejected').length
-  const added = results.length - failed
+  if (ids.length === 0 || submitting.value) return
+  submitting.value = true
+  let added = 0
+  let failed = 0
+  try {
+    for (const document_id of ids) {
+      try {
+        await addMutation.mutateAsync({ document_id })
+        added += 1
+      } catch {
+        failed += 1
+      }
+    }
+  } finally {
+    submitting.value = false
+  }
   if (added > 0) {
     toast.success(`Added ${added} watchlist${added === 1 ? '' : 's'}`)
   }
@@ -156,10 +167,10 @@ watch(open, (next) => {
         <Button variant="outline" data-testid="cancel-add" @click="open = false">Cancel</Button>
         <Button
           data-testid="confirm-add"
-          :disabled="selected.size === 0 || addMutation.isPending.value"
+          :disabled="selected.size === 0 || submitting"
           @click="onSubmit"
         >
-          {{ addMutation.isPending.value ? 'Adding…' : `Add ${selected.size || ''}`.trim() }}
+          {{ submitting ? 'Adding…' : `Add ${selected.size || ''}`.trim() }}
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -7,6 +7,9 @@
 .engineering-team/
 .claude/
 
+# Local-only SPA rollback bundles downloaded from Azure $web before demo
+.demo-rollback/
+
 # Python
 __pycache__/
 *.py[cod]
