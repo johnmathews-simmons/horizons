@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
@@ -6,6 +6,7 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import DocumentDetailView from '../DocumentDetailView.vue'
+import VersionPane from '@/components/documents/VersionPane.vue'
 
 const API = 'http://localhost:8000'
 const DOC_ID = '11111111-1111-4111-8111-111111111111'
@@ -88,6 +89,44 @@ function mockClauses(versionLabel: string, clauses: typeof c1[]): void {
   )
 }
 
+interface DiscoveryItemShape {
+  id: number
+  document_id: string
+  document_version_id: string
+  jurisdiction: string
+  sector: string
+  change_type: 'ADDED' | 'REMOVED' | 'MODIFIED' | 'MOVED'
+  before_clause_uid: string | null
+  after_clause_uid: string | null
+  before_path: string | null
+  after_path: string | null
+  alignment_confidence: number
+  detected_at: string
+  effective_date: string | null
+}
+
+type DiscoverySpy = ReturnType<
+  typeof vi.fn<(call: { scope: string | null; document_id: string | null; limit: string | null }) => void>
+>
+
+function mockDiscovery(items: DiscoveryItemShape[]): DiscoverySpy {
+  const spy: DiscoverySpy = vi.fn<
+    (call: { scope: string | null; document_id: string | null; limit: string | null }) => void
+  >()
+  server.use(
+    http.get(`${API}/v1/discovery`, ({ request }) => {
+      const url = new URL(request.url)
+      spy({
+        scope: url.searchParams.get('scope'),
+        document_id: url.searchParams.get('document_id'),
+        limit: url.searchParams.get('limit'),
+      })
+      return HttpResponse.json({ items, next_cursor: null, has_more: false })
+    }),
+  )
+  return spy
+}
+
 describe('DocumentDetailView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -114,6 +153,7 @@ describe('DocumentDetailView', () => {
     mockDocument([v2Version, v1Version]) // API may return any order
     mockClauses('v1', [c1])
     mockClauses('v2', [c1])
+    mockDiscovery([])
 
     const router = makeRouter()
     await router.push(`/documents/${DOC_ID}`)
@@ -129,58 +169,129 @@ describe('DocumentDetailView', () => {
     expect(headers[1]!.text()).toContain('seen 2026-06-04')
   })
 
-  it('forwards ?before and ?after query params as highlightPath to the correct panes', async () => {
+  it('passes ADDED/MODIFIED/MOVED to right pane and REMOVED/MODIFIED/MOVED to left pane', async () => {
     mockDocument([v1Version, v2Version])
     mockClauses('v1', [c1])
-    mockClauses('v2', [
-      { ...c1, clause_path: 'PART_1/SECTION_1A', text_content: 'v2 first' },
+    mockClauses('v2', [c1])
+    mockDiscovery([
+      {
+        id: 1,
+        document_id: DOC_ID,
+        document_version_id: v2Version.id,
+        jurisdiction: 'UK',
+        sector: 'BANKING',
+        change_type: 'ADDED',
+        before_clause_uid: null,
+        after_clause_uid: 'X',
+        before_path: null,
+        after_path: '/added/1',
+        alignment_confidence: 0.9,
+        detected_at: '2026-01-02T00:00:00Z',
+        effective_date: null,
+      },
+      {
+        id: 2,
+        document_id: DOC_ID,
+        document_version_id: v2Version.id,
+        jurisdiction: 'UK',
+        sector: 'BANKING',
+        change_type: 'REMOVED',
+        before_clause_uid: 'Y',
+        after_clause_uid: null,
+        before_path: '/removed/2',
+        after_path: null,
+        alignment_confidence: 0.9,
+        detected_at: '2026-01-02T00:00:00Z',
+        effective_date: null,
+      },
+      {
+        id: 3,
+        document_id: DOC_ID,
+        document_version_id: v2Version.id,
+        jurisdiction: 'UK',
+        sector: 'BANKING',
+        change_type: 'MODIFIED',
+        before_clause_uid: 'Z',
+        after_clause_uid: 'Z',
+        before_path: '/mod/3',
+        after_path: '/mod/3',
+        alignment_confidence: 0.9,
+        detected_at: '2026-01-02T00:00:00Z',
+        effective_date: null,
+      },
+      {
+        id: 4,
+        document_id: DOC_ID,
+        document_version_id: v2Version.id,
+        jurisdiction: 'UK',
+        sector: 'BANKING',
+        change_type: 'MOVED',
+        before_clause_uid: 'W',
+        after_clause_uid: 'W',
+        before_path: '/moved/4',
+        after_path: '/moved/4b',
+        alignment_confidence: 0.9,
+        detected_at: '2026-01-02T00:00:00Z',
+        effective_date: null,
+      },
     ])
 
     const router = makeRouter()
-    await router.push({
-      name: 'document-detail',
-      params: { id: DOC_ID },
-      query: { before: 'PART_1/SECTION_1', after: 'PART_1/SECTION_1A' },
-    })
+    await router.push(`/documents/${DOC_ID}`)
     await router.isReady()
     const wrapper = mountView(router)
     await flushPromises()
 
-    // Toggle into structure mode so highlight attributes land on clause-cards.
-    await wrapper.get('[data-testid="toggle-structure"]').trigger('click')
-    await flushPromises()
-
-    const cards = wrapper.findAll('[data-testid="clause-card"]')
-    // Two panes × 1 card each = 2 cards. Both are the highlighted clause.
-    const highlighted = cards.filter((c) => c.attributes('data-highlight') === 'true')
-    expect(highlighted).toHaveLength(2)
+    const panes = wrapper.findAllComponents(VersionPane)
+    expect(panes).toHaveLength(2)
+    expect(panes[0]!.props('changeMap')).toEqual({
+      '/removed/2': 'REMOVED',
+      '/mod/3': 'MODIFIED',
+      '/moved/4': 'MOVED',
+    })
+    expect(panes[1]!.props('changeMap')).toEqual({
+      '/added/1': 'ADDED',
+      '/mod/3': 'MODIFIED',
+      '/moved/4b': 'MOVED',
+    })
+    expect(wrapper.find('[data-testid="diff-legend"]').exists()).toBe(true)
   })
 
-  it('with only ?after (ADDED-shape) highlights only the right pane', async () => {
+  it('does not fetch changes or render legend when only one version exists', async () => {
+    mockDocument([v1Version])
+    mockClauses('v1', [c1])
+    const discoverySpy = mockDiscovery([])
+
+    const router = makeRouter()
+    await router.push(`/documents/${DOC_ID}`)
+    await router.isReady()
+    const wrapper = mountView(router)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="diff-legend"]').exists()).toBe(false)
+    expect(discoverySpy).not.toHaveBeenCalled()
+  })
+
+  it('forwards ?before query param as scrollToPath to the left pane and ?after to the right pane', async () => {
     mockDocument([v1Version, v2Version])
     mockClauses('v1', [c1])
-    mockClauses('v2', [
-      c1,
-      { ...c1, id: 'added', clause_path: 'PART_1/SECTION_2', text_content: 'added' },
-    ])
+    mockClauses('v2', [c1])
+    mockDiscovery([])
 
     const router = makeRouter()
     await router.push({
       name: 'document-detail',
       params: { id: DOC_ID },
-      query: { after: 'PART_1/SECTION_2' },
+      query: { before: 'PART_1', after: 'PART_2' },
     })
     await router.isReady()
     const wrapper = mountView(router)
     await flushPromises()
 
-    await wrapper.get('[data-testid="toggle-structure"]').trigger('click')
-    await flushPromises()
-
-    const cards = wrapper.findAll('[data-testid="clause-card"]')
-    const highlighted = cards.filter((c) => c.attributes('data-highlight') === 'true')
-    expect(highlighted).toHaveLength(1)
-    expect(highlighted[0]!.attributes('data-clause-path')).toBe('PART_1/SECTION_2')
+    const panes = wrapper.findAllComponents(VersionPane)
+    expect(panes).toHaveLength(2)
+    expect(panes[0]!.props('scrollToPath')).toBe('PART_1')
+    expect(panes[1]!.props('scrollToPath')).toBe('PART_2')
   })
 
   it('renders the no-versions state when the document has no versions', async () => {

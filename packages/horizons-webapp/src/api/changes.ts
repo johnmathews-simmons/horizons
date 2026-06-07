@@ -28,14 +28,17 @@ export interface DiscoveryParams {
   limit?: number
   jurisdiction?: string | null
   sector?: string | null
+  scope?: 'corpus' | 'document'
+  document_id?: string
 }
 
 export async function fetchDiscovery(params: DiscoveryParams = {}): Promise<DiscoveryPage> {
-  const search: Record<string, string | number> = { scope: 'corpus' }
+  const search: Record<string, string | number> = { scope: params.scope ?? 'corpus' }
   if (params.limit !== undefined) search.limit = params.limit
   if (params.cursor) search.cursor = params.cursor
   if (params.jurisdiction) search.jurisdiction = params.jurisdiction
   if (params.sector) search.sector = params.sector
+  if (params.document_id) search.document_id = params.document_id
   const response = await apiClient.get<DiscoveryPage>('/v1/discovery', { params: search })
   return response.data
 }
