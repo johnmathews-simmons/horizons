@@ -232,9 +232,19 @@ def _wu86_curated() -> CuratedSet:
     )
 
 
+# The WU8.6 test scenario was authored against a 2-doc curated subset
+# (one GB, one AU). The on-disk inventory has since grown — WU8.7 added
+# native GB/EU captures — so loading the full fixtures.json into these
+# tests pulls in extra rows the assertions weren't designed for. Pin
+# the inventory to the two ids ``_wu86_curated`` actually cares about so
+# the scenario stays stable when ``data/samples/fixtures.json`` grows.
+_WU86_FIXTURE_IDS: frozenset[str] = frozenset({"28914588", "2145602"})
+
+
 def _wu86_load_fixtures() -> list[dict[str, Any]]:
-    """Load the on-disk fixtures inventory for v1-staging cases."""
-    return json.loads(_WU86_FIXTURES_JSON.read_text(encoding="utf-8"))["fixtures"]
+    """Load the on-disk fixtures inventory, filtered to the WU8.6 scenario set."""
+    all_fixtures = json.loads(_WU86_FIXTURES_JSON.read_text(encoding="utf-8"))["fixtures"]
+    return [f for f in all_fixtures if f["document_id"] in _WU86_FIXTURE_IDS]
 
 
 def test_run_seed_stages_v1_for_every_curated_doc(migrated_db: MigratedDb) -> None:
