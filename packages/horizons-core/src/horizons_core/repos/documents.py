@@ -277,8 +277,14 @@ class DocumentsRepository:
             )
         previous_at = stats["previous_version_at"]
         current_at = stats["current_version_at"]
-        assert previous_at is None or isinstance(previous_at, datetime)
-        assert current_at is None or isinstance(current_at, datetime)
+        if previous_at is not None and not isinstance(previous_at, datetime):
+            raise TypeError(
+                f"Expected previous_version_at to be datetime or None, got {type(previous_at)!r}"
+            )
+        if current_at is not None and not isinstance(current_at, datetime):
+            raise TypeError(
+                f"Expected current_version_at to be datetime or None, got {type(current_at)!r}"
+            )
         return DocumentStatsDTO(
             id=base.id,
             jurisdiction=base.jurisdiction,
