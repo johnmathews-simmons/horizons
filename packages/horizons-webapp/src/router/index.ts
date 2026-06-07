@@ -21,13 +21,6 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/changes/:id',
-    name: 'change-detail',
-    component: () => import('@/views/ChangeDetailView.vue'),
-    meta: { requiresAuth: true },
-    props: true,
-  },
-  {
     path: '/watchlists',
     name: 'watchlists',
     component: () => import('@/views/WatchlistsView.vue'),

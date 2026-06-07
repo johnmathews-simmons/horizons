@@ -105,7 +105,7 @@ const c2: ClauseItem = {
   ord: 2,
 }
 
-describe('ClauseOverlay', () => {
+describe('ClauseOverlay — highlightPath', () => {
   it('emits data-clause-path on every flat-mode pre so a parent can find clauses', () => {
     const wrapper = mount(ClauseOverlay, {
       props: { clauses: [c1, c2], showStructure: false, highlightPath: null },
@@ -137,7 +137,7 @@ describe('ClauseOverlay', () => {
   })
 
   it('calls scrollIntoView on the highlighted clause once it mounts', async () => {
-    const scrollSpy = vi.fn()
+    const scrollSpy = vi.fn<() => void>()
     // jsdom does not implement scrollIntoView; patch the prototype.
     const original = (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView
     ;(Element.prototype as unknown as { scrollIntoView: typeof scrollSpy }).scrollIntoView = scrollSpy
@@ -155,7 +155,7 @@ describe('ClauseOverlay', () => {
   })
 
   it('does not call scrollIntoView when highlightPath is null', async () => {
-    const scrollSpy = vi.fn()
+    const scrollSpy = vi.fn<() => void>()
     const original = (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView
     ;(Element.prototype as unknown as { scrollIntoView: typeof scrollSpy }).scrollIntoView = scrollSpy
     try {

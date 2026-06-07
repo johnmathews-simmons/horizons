@@ -10,7 +10,15 @@ const API = 'http://localhost:8000'
 const DOC_ID = '11111111-1111-4111-8111-111111111111'
 const VERSION_LABEL = 'v1'
 
-function mountPane(props: Record<string, unknown>) {
+interface PaneProps {
+  documentId: string
+  versionLabel: string
+  seenAt: string
+  showStructure: boolean
+  highlightPath: string | null
+}
+
+function mountPane(props: PaneProps) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
   })
