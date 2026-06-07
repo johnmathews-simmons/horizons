@@ -267,6 +267,44 @@ jobs:
           echo "api_fqdn=$API_FQDN" >> "$GITHUB_OUTPUT"
           echo "Reused outputs. Storage account: $STORAGE_NAME; API FQDN: $API_FQDN"
 
+      - name: Bump ACA Job images to current SHA
+        # The Bicep deploy above is what normally moves the Jobs onto the
+        # latest image (their image param is wired to apiImage /
+        # workerImage). But when the head commit doesn't touch infra/ or
+        # this workflow, that step is skipped, so the Jobs stay pinned to
+        # whichever SHA the last infra-touching deploy carried. App-only
+        # commits then update the API + worker containers (via
+        # `az containerapp update` below) but leave the Jobs stale.
+        #
+        # That is silent for everything except alembic: migrate runs
+        # `alembic upgrade head` against an old image whose migration
+        # tree predates the new revisions, reports success because the
+        # DB matches that old head, and the API revision then trips on
+        # the missing column (e.g. clauses.heading_text). See
+        # `journal/260607-deploy-job-image-pinning-fix.md`.
+        #
+        # Fix: idempotently realign every Job's image with the SHA we're
+        # about to ship before any of them are started. `az containerapp
+        # job update --image` is a no-op when the tag already matches.
+        run: |
+          set -euo pipefail
+          az containerapp job update \
+            --name "$MIGRATION_JOB_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "ghcr.io/johnmathews/horizons-api:sha-$SHORT_SHA" \
+            >/dev/null
+          az containerapp job update \
+            --name "$SEED_JOB_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "ghcr.io/johnmathews/horizons-api:sha-$SHORT_SHA" \
+            >/dev/null
+          az containerapp job update \
+            --name "horizons-dev-reseed-corpus" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "ghcr.io/johnmathews/horizons-worker:sha-$SHORT_SHA" \
+            >/dev/null
+          echo "Bumped migrate, seed-demo-accounts (API image) and reseed-corpus (worker image) to sha-$SHORT_SHA."
+
       - name: Start migration ACA Job
         # The job is `triggerType: Manual` per WU6.4; nothing else fires
         # it. Wait synchronously and fail the workflow on a non-zero exit
