@@ -15,6 +15,7 @@ from horizons_ingestion.seed import (
     CuratedSet,
     DocOverride,
     PendingRow,
+    compute_v1_staging_payload,
     parse_curated_set,
     select,
     stagger,
@@ -298,3 +299,24 @@ def test_curated_set_default_sector_is_sectors_first_element() -> None:
         overrides={},
     )
     assert cs.default_sector == "financial-services"
+
+
+# --- v1 staging helper -------------------------------------------------------
+
+
+def test_compute_v1_staging_payload_parses_clauses() -> None:
+    """The helper returns parsed clauses with paths the inserter can write."""
+    markdown = "# Part 1\n\n## Section 1\n\nAlpha clause.\n\n## Section 2\n\nBeta clause.\n"
+    payload = compute_v1_staging_payload(markdown)
+    paths = [tuple(c.path) for c in payload.clauses]
+    bodies = [c.body_text.strip() for c in payload.clauses]
+    # ``parse(...)`` slugifies heading text, so the paths the inserter will
+    # write are e.g. ``("part-1", "section-1", "#1")``. The exact tail token
+    # is an implementation detail of the parser; assert the slugified
+    # ancestry the inserter relies on.
+    assert any(p[:2] == ("part-1", "section-1") for p in paths)
+    assert any(p[:2] == ("part-1", "section-2") for p in paths)
+    assert "Alpha clause." in bodies
+    assert "Beta clause." in bodies
+    assert payload.content_bytes == len(markdown.encode("utf-8"))
+    assert len(payload.content_sha256) == 32  # SHA-256 digest length

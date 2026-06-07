@@ -494,6 +494,30 @@ def _build_uid_map_for_v2(
     return out
 
 
+@dataclass(frozen=True)
+class V1StagingPayload:
+    """Pre-computed payload for staging one v1 document version + clauses."""
+
+    clauses: list[Clause]
+    content_bytes: int
+    content_sha256: bytes
+
+
+def compute_v1_staging_payload(markdown_text: str) -> V1StagingPayload:
+    """Parse v1 markdown and return the payload an inserter needs.
+
+    Pure / no DB. Raises whatever ``parse(...)`` raises on malformed input;
+    callers that need failure tolerance must wrap.
+    """
+    encoded = markdown_text.encode("utf-8")
+    tree = parse(markdown_text)
+    return V1StagingPayload(
+        clauses=_walk_emitting_leaves(tree),
+        content_bytes=len(encoded),
+        content_sha256=hashlib.sha256(encoded).digest(),
+    )
+
+
 def _stage_one_pair(
     conn: Any,  # SQLAlchemy Connection (typed as Any to avoid Sequence overload churn)
     pair: SyntheticV2Pair,
@@ -732,6 +756,8 @@ __all__ = [
     "SeedRow",
     "StagingResult",
     "SyntheticV2Pair",
+    "V1StagingPayload",
+    "compute_v1_staging_payload",
     "parse_curated_set",
     "run_seed",
     "select",
