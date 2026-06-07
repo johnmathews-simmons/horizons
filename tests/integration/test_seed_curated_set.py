@@ -13,7 +13,9 @@ Postgres 18 with the full Alembic tree. Asserts:
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -22,6 +24,11 @@ from sqlalchemy import text
 
 if TYPE_CHECKING:
     from .conftest import MigratedDb
+
+
+_WU86_REPO_ROOT = Path(__file__).resolve().parents[2]
+_WU86_SAMPLES_DIR = _WU86_REPO_ROOT / "data" / "samples"
+_WU86_FIXTURES_JSON = _WU86_SAMPLES_DIR / "fixtures.json"
 
 
 pytestmark = pytest.mark.integration
@@ -206,3 +213,179 @@ def test_seed_handles_empty_curation(migrated_db: MigratedDb) -> None:
     assert result.documents_inserted == 0
     assert result.schedules_inserted == 0
     assert _fetch_seeded_rows(migrated_db.sync_engine) == []
+
+
+# --- WU8.6: v1 clause staging -----------------------------------------------
+
+
+def _wu86_curated() -> CuratedSet:
+    """A two-doc curated set referencing real fixtures on disk."""
+    return CuratedSet(
+        jurisdictions=frozenset({"GB", "AU"}),
+        sectors=("BANKING",),
+        default_cadence_hours=24,
+        overrides={
+            "28914588": DocOverride(jurisdiction="UK", sector="BANKING"),
+            "2145602": DocOverride(jurisdiction="UK", sector="BANKING"),
+        },
+    )
+
+
+def _wu86_load_fixtures() -> list[dict[str, Any]]:
+    """Load the on-disk fixtures inventory for v1-staging cases."""
+    return json.loads(_WU86_FIXTURES_JSON.read_text(encoding="utf-8"))["fixtures"]
+
+
+def test_run_seed_stages_v1_for_every_curated_doc(migrated_db: MigratedDb) -> None:
+    """With samples_dir set, every curated doc gets a v1 + clauses + parked schedule."""
+    dsn = migrated_db.sync_engine.url.render_as_string(hide_password=False)
+    now = datetime(2026, 6, 7, 12, 0, tzinfo=UTC)
+
+    result = run_seed(
+        dsn=dsn,
+        curated=_wu86_curated(),
+        fixtures=_wu86_load_fixtures(),
+        now=now,
+        samples_dir=_WU86_SAMPLES_DIR,
+    )
+
+    assert result.documents_inserted == 2
+    assert result.schedules_inserted == 2
+    assert result.v1_documents_staged == 2
+    assert result.v1_parse_failures == 0
+    assert result.v1_skipped_missing_fixture == 0
+    assert result.v1_skipped_synthetic_v2 == 0
+    assert result.v1_clauses_inserted > 0
+
+    with migrated_db.sync_engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT d.lawstronaut_document_id, dv.version_label, "
+                "       count(c.id) AS n_clauses, ds.next_poll_at "
+                "FROM documents d "
+                "JOIN document_versions dv ON dv.document_id = d.id "
+                "JOIN clauses c ON c.document_version_id = dv.id "
+                "JOIN document_poll_schedule ds ON ds.document_id = d.id "
+                "GROUP BY d.lawstronaut_document_id, dv.version_label, ds.next_poll_at "
+                "ORDER BY d.lawstronaut_document_id"
+            )
+        ).all()
+
+    assert len(rows) == 2
+    by_id = {row.lawstronaut_document_id: row for row in rows}
+    parked = datetime(2026, 12, 31, 0, 0, tzinfo=UTC)
+    for doc_id in ("28914588", "2145602"):
+        assert by_id[doc_id].version_label == "v1"
+        assert by_id[doc_id].n_clauses > 0
+        # The next_poll_at column carries timezone-awareness; the assertion
+        # must be tz-aware to match. _STAGED_NEXT_POLL_AT is at 2026-12-31.
+        actual = by_id[doc_id].next_poll_at
+        if actual.tzinfo is None:
+            actual = actual.replace(tzinfo=UTC)
+        assert actual == parked
+
+
+def test_run_seed_v1_idempotent(migrated_db: MigratedDb) -> None:
+    """A second run with the same inputs is a no-op across all v1 counters."""
+    dsn = migrated_db.sync_engine.url.render_as_string(hide_password=False)
+    now = datetime(2026, 6, 7, 12, 0, tzinfo=UTC)
+    curated = _wu86_curated()
+    fixtures = _wu86_load_fixtures()
+
+    first = run_seed(
+        dsn=dsn,
+        curated=curated,
+        fixtures=fixtures,
+        now=now,
+        samples_dir=_WU86_SAMPLES_DIR,
+    )
+    assert first.v1_documents_staged == 2
+
+    second = run_seed(
+        dsn=dsn,
+        curated=curated,
+        fixtures=fixtures,
+        now=now,
+        samples_dir=_WU86_SAMPLES_DIR,
+    )
+    assert second.documents_inserted == 0
+    assert second.documents_skipped_conflict == 2
+    # Re-run gates v1 staging on inserted_id != None, so all v1 counters
+    # report 0 — even ``v1_skipped_synthetic_v2``, which only increments
+    # for freshly-inserted docs in skip_v1_for.
+    assert second.v1_documents_staged == 0
+    assert second.v1_clauses_inserted == 0
+    assert second.v1_parse_failures == 0
+    assert second.v1_skipped_missing_fixture == 0
+    assert second.v1_skipped_synthetic_v2 == 0
+
+
+def test_run_seed_parser_failure_does_not_abort(
+    migrated_db: MigratedDb, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the parser raises on one doc, the rest of the seed still completes."""
+    import horizons_ingestion.seed as seed_mod
+
+    # ``parse`` is imported into ``seed_mod`` from horizons_core.core.alignment
+    # but not re-exported in ``__all__`` — pragma silences pyright's
+    # reportPrivateImportUsage on direct attribute access.
+    original = seed_mod.parse  # pyright: ignore[reportPrivateImportUsage]
+    call_count = {"n": 0}
+
+    def _selective_raise(text_arg: str) -> Any:
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            raise RuntimeError("synthetic parser failure on first doc")
+        return original(text_arg)
+
+    monkeypatch.setattr(seed_mod, "parse", _selective_raise)
+
+    warnings: list[str] = []
+    result = run_seed(
+        dsn=migrated_db.sync_engine.url.render_as_string(hide_password=False),
+        curated=_wu86_curated(),
+        fixtures=_wu86_load_fixtures(),
+        now=datetime(2026, 6, 7, 12, 0, tzinfo=UTC),
+        samples_dir=_WU86_SAMPLES_DIR,
+        warn=warnings.append,
+    )
+
+    # Both documents land in `documents`; only one gets a v1 staged.
+    assert result.documents_inserted == 2
+    assert result.v1_documents_staged == 1
+    assert result.v1_parse_failures == 1
+    assert any("parser failed" in w for w in warnings)
+
+
+def test_run_seed_skips_v1_for_synthetic_v2_paired(migrated_db: MigratedDb) -> None:
+    """Docs in skip_v1_for don't get v1 staged via run_seed."""
+    dsn = migrated_db.sync_engine.url.render_as_string(hide_password=False)
+    now = datetime(2026, 6, 7, 12, 0, tzinfo=UTC)
+
+    result = run_seed(
+        dsn=dsn,
+        curated=_wu86_curated(),
+        fixtures=_wu86_load_fixtures(),
+        now=now,
+        samples_dir=_WU86_SAMPLES_DIR,
+        skip_v1_for={"28914588"},  # GB Foat v DWP has a synthetic v2 sibling.
+    )
+
+    # 2 docs inserted, only 1 gets a v1 (AU); the GB doc is skipped.
+    assert result.documents_inserted == 2
+    assert result.v1_documents_staged == 1
+    assert result.v1_skipped_synthetic_v2 == 1
+
+    with migrated_db.sync_engine.connect() as conn:
+        ids = (
+            conn.execute(
+                text(
+                    "SELECT d.lawstronaut_document_id "
+                    "FROM documents d JOIN document_versions dv ON dv.document_id = d.id "
+                    "ORDER BY d.lawstronaut_document_id"
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert list(ids) == ["2145602"]  # GB 28914588 has no document_versions row.
