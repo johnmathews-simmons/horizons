@@ -460,6 +460,58 @@ _PARK_SCHEDULE_SQL = text(
 )
 
 
+def _insert_v1_only(  # pyright: ignore[reportUnusedFunction]
+    conn: Any,
+    document_id: UUID,
+    payload: V1StagingPayload,
+    *,
+    v1_path: Path,
+    now: datetime,
+) -> int:
+    """Insert one v1 ``document_versions`` row + its ``clauses``. Idempotent.
+
+    Returns the number of clauses inserted, or 0 if any
+    ``document_versions`` row already exists for this document.
+
+    Wired into :func:`run_seed` in a follow-up commit; until then this is
+    intentionally unreferenced (suppression below).
+    """
+    if conn.execute(_HAS_VERSIONS_SQL, {"d": document_id}).first() is not None:
+        return 0
+
+    version_id: UUID = conn.execute(
+        _INSERT_VERSION_SQL,
+        {
+            "d": document_id,
+            "lbl": "v1",
+            "vno": 1,
+            "vf": now,
+            "vt": None,
+            "pub": None,
+            "eff": None,
+            "bc": _V1_BLOB_CONTAINER,
+            "bk": v1_path.name,
+            "sha": payload.content_sha256,
+            "bytes": payload.content_bytes,
+        },
+    ).scalar_one()
+
+    inserted = 0
+    for ord_i, node in enumerate(payload.clauses, start=1):
+        conn.execute(
+            _INSERT_CLAUSE_SQL,
+            {
+                "dv": version_id,
+                "uid": _uuid.uuid4(),
+                "path": "/".join(node.path),
+                "body": node.body_text,
+                "ord": ord_i,
+            },
+        )
+        inserted += 1
+    return inserted
+
+
 def _walk_emitting_leaves(tree: Clause) -> list[Clause]:
     """Return clauses the aligner treats as units: every node with non-empty body."""
     return [node for node in tree.walk() if node.body_text.strip()]
