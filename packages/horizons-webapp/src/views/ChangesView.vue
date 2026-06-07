@@ -217,7 +217,14 @@ function measureRow(el: Element | null) {
           }"
         >
           <RouterLink
-            :to="{ name: 'change-detail', params: { id: String(row.item.id) } }"
+            :to="{
+              name: 'document-detail',
+              params: { id: row.item.document_id },
+              query: {
+                ...(row.item.before_path ? { before: row.item.before_path } : {}),
+                ...(row.item.after_path ? { after: row.item.after_path } : {}),
+              },
+            }"
             class="flex items-center gap-4 px-4 py-3 transition hover:bg-slate-50"
           >
             <ChangeTypePill :type="row.item.change_type" />
