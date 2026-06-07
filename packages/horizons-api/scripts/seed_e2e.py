@@ -81,9 +81,11 @@ E2E_DOC_LID_ESCAPE = "\\"
 UK_DOC_LID = "e2e_uk_banking_act_v1"
 EU_DOC_LID = "e2e_eu_banking_directive_v1"
 
-# Content snippets — synthetic, no real bank or firm names. The diff
-# renderer (`packages/horizons-webapp/src/components/ui/diff-view`) reads
-# these as plain text and computes the ins/del spans client-side.
+# Content snippets — synthetic, no real bank or firm names. These
+# strings are the before/after text stored in change_events; the
+# side-by-side document viewer renders the full v1 and v2 clauses
+# verbatim and the parent `DocumentDetailView` auto-scrolls + highlights
+# the matched clause based on the ?before=&after= URL query params.
 UK_MODIFIED_BEFORE = (
     "Article 12. The institution shall maintain a minimum capital adequacy ratio "
     "of 8 percent of risk-weighted assets at all times."

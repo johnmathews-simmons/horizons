@@ -78,7 +78,7 @@ never as the impersonated client.
 ## Routes
 
 `src/router/index.ts` declares public + client routes (`/login`, `/`,
-`/changes`, `/changes/:id`, `/watchlists`) and the admin subtree
+`/changes`, `/documents`, `/documents/:id`, `/watchlists`) and the admin subtree
 (`/admin/*`, see `AdminLayout`) — `/admin` and its children carry
 `meta: { requiresAuth: true, requiresAdmin: true }` and the guard
 redirects non-admin (or mid-impersonation) callers to `/`. A global

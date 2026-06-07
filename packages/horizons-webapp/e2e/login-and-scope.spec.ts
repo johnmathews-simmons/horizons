@@ -59,7 +59,7 @@ const EU_AFTER_FRAGMENT = '100 percent of net cash outflows'
 
 test.describe.configure({ mode: 'serial' })
 
-test('UK + EU clients see disjoint clause-diff views', async ({ page }) => {
+test('UK + EU clients see disjoint side-by-side document views', async ({ page }) => {
   // -------- 1. UK login --------
   await page.goto('/login')
   await page.getByTestId('email-input').fill(UK_EMAIL)
@@ -96,6 +96,15 @@ test('UK + EU clients see disjoint clause-diff views', async ({ page }) => {
   await expect(page.locator('body')).toContainText(UK_BEFORE_FRAGMENT)
   await expect(page.locator('body')).toContainText(UK_AFTER_FRAGMENT)
 
+  // URL carries the before/after params from the change row
+  const ukUrl = page.url()
+  expect(ukUrl).toContain('before=')
+  expect(ukUrl).toContain('after=')
+
+  // Toggle structure mode so the highlighted clause card is visible
+  await page.getByTestId('toggle-structure').click()
+  await expect(page.locator('[data-highlight="true"]').first()).toBeVisible()
+
   // -------- 4. Logout --------
   await page.getByTestId('nav-changes').click()
   await page.waitForURL('**/changes')
@@ -128,6 +137,15 @@ test('UK + EU clients see disjoint clause-diff views', async ({ page }) => {
   await expect(page.getByTestId('document-title')).toBeVisible()
   await expect(page.locator('body')).toContainText(EU_BEFORE_FRAGMENT)
   await expect(page.locator('body')).toContainText(EU_AFTER_FRAGMENT)
+
+  // URL carries the before/after params from the EU change row
+  const euUrl = page.url()
+  expect(euUrl).toContain('before=')
+  expect(euUrl).toContain('after=')
+
+  // Toggle structure mode so the highlighted clause card is visible
+  await page.getByTestId('toggle-structure').click()
+  await expect(page.locator('[data-highlight="true"]').first()).toBeVisible()
 })
 
 test('demo-uk home dashboard: subscribed jurisdiction card + navigation', async ({ page }) => {

@@ -5,13 +5,16 @@ The flow is the demo's headline UX:
 
 1. Login as UK client → land on `/`
 2. Navigate to `/changes` → assert UK MODIFIED row visible, EU/MOVED hidden
-3. Click row → assert clause diff view shows the before/after text and a
-   green `0.92` confidence badge
+3. Click row → land on `/documents/:id` (the side-by-side viewer); assert
+   the URL carries `before=` and `after=` query params, the document title
+   is visible, and both before and after clause text appear; toggle structure
+   mode and assert the highlighted clause card is visible
 4. Logout → redirected to `/login`
 5. Login as EU client → land on `/`
 6. Navigate to `/changes` → assert EU MODIFIED row visible (different scope
    to UK proves subscription RLS at the browser layer)
-7. Click row → assert amber `0.78` confidence badge
+7. Click row → land on `/documents/:id`; assert URL params, before/after EU
+   clause text, and highlighted clause card in structure mode
 
 The two test users live under `@e2e.example.com` so they're trivially
 distinguishable from any demo or production accounts. (`example.com` is
@@ -74,3 +77,8 @@ workflow uploads `playwright-report/` and `test-results/` as artefacts.
 | `[data-change-type="MODIFIED"]` etc. | `ChangeTypePill.vue` | Change-type filter / count |
 | `[data-confidence="high"]` / `medium` / `low` | `ConfidenceBadge.vue` | Badge tier |
 | `[data-testid="not-found-state"]` | `DocumentDetailView.vue` | Out-of-scope document landed here |
+| `[data-testid="document-title"]` | `DocumentDetailView.vue` | Document heading visible after navigation |
+| `[data-testid="version-pane-header"]` | `VersionPane.vue` | Header label for each version pane (v1 / v2) |
+| `[data-testid="side-by-side"]` | `DocumentDetailView.vue` | Wrapper for the two-pane side-by-side layout |
+| `[data-testid="toggle-structure"]` | `DocumentDetailView.vue` | Button that shows/hides the clause structure overlay |
+| `[data-testid="document-body"]` | `ClauseOverlay.vue` | Rendered clause content body |
