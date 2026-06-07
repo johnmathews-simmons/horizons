@@ -321,3 +321,22 @@ def test_compute_v1_staging_payload_parses_clauses() -> None:
     assert "Beta clause." in bodies
     assert payload.content_bytes == len(markdown.encode("utf-8"))
     assert payload.content_sha256 == hashlib.sha256(markdown.encode("utf-8")).digest()
+
+
+def test_compute_v1_staging_payload_propagates_parser_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """compute_v1_staging_payload does not swallow parser exceptions.
+
+    The boundary that decides ``skip vs abort`` lives in run_seed; the
+    helper itself stays pure.
+    """
+    import horizons_ingestion.seed as seed_mod
+
+    def _raise(_: str) -> None:
+        raise RuntimeError("synthetic parser failure")
+
+    monkeypatch.setattr(seed_mod, "parse", _raise)
+
+    with pytest.raises(RuntimeError, match="synthetic parser failure"):
+        seed_mod.compute_v1_staging_payload("anything")

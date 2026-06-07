@@ -26,6 +26,7 @@ import uuid as _uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path  # noqa: TC003 — used at runtime by run_seed's samples_dir param
 from typing import TYPE_CHECKING, Any, cast
 
 import yaml
@@ -40,7 +41,6 @@ from sqlalchemy import create_engine, text
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
-    from pathlib import Path
     from uuid import UUID
 
 
@@ -104,6 +104,11 @@ class SeedResult:
     documents_inserted: int
     schedules_inserted: int
     documents_skipped_conflict: int
+    v1_documents_staged: int
+    v1_clauses_inserted: int
+    v1_parse_failures: int
+    v1_skipped_missing_fixture: int
+    v1_skipped_synthetic_v2: int
 
 
 # --- YAML parsing ------------------------------------------------------------
@@ -319,12 +324,29 @@ _INSERT_SCHEDULE_SQL = text(
 )
 
 
+def _fixture_iso_for(document_id: str, fixtures: Iterable[dict[str, Any]]) -> str | None:
+    """Look up the capture ``iso`` for a document id from the fixtures inventory.
+
+    Streams the iterable a second time. Callers pass either a list or a
+    re-iterable container; iterating an already-consumed generator here
+    returns ``None`` silently. The CLI passes a list, so this is fine in
+    practice.
+    """
+    for fixture in fixtures:
+        if str(fixture.get("document_id")) == document_id:
+            iso_val: Any = fixture.get("iso")
+            return str(iso_val).lower() if iso_val is not None else None
+    return None
+
+
 def run_seed(
     dsn: str,
     curated: CuratedSet,
     fixtures: Iterable[dict[str, Any]],
     *,
     now: datetime,
+    samples_dir: Path | None = None,
+    skip_v1_for: set[str] | None = None,
     warn: Callable[[str], None] | None = None,
     dry_run: bool = False,
 ) -> SeedResult:
@@ -333,6 +355,21 @@ def run_seed(
     Idempotent: re-runs with identical inputs leave the DB unchanged. The
     return value reports how many documents were freshly inserted versus
     already present (``documents_skipped_conflict``).
+
+    When ``samples_dir`` is supplied, each freshly-inserted document also
+    has its v1 markdown parsed and staged as a ``document_versions`` row
+    with its clauses, and the corresponding ``document_poll_schedule.
+    next_poll_at`` is parked far past the demo window so the worker
+    cannot reclaim and overwrite the staged content. Per-document
+    failures (missing fixture entry, missing markdown file, parser
+    exception) are reported via ``warn`` and skipped — they do not abort
+    the seed transaction.
+
+    Documents in ``skip_v1_for`` bypass the v1 staging branch entirely;
+    they are reserved for :func:`stage_synthetic_v2` which inserts v1 +
+    v2 + change_events atomically. Without this carve-out
+    ``stage_synthetic_v2``'s "already has versions" idempotency check
+    would skip every synthetic-v2 pair.
     """
     pending = select(curated, fixtures, warn=warn)
     seeded = stagger(pending, now)
@@ -342,12 +379,24 @@ def run_seed(
             documents_inserted=len(seeded),
             schedules_inserted=len(seeded),
             documents_skipped_conflict=0,
+            v1_documents_staged=0,
+            v1_clauses_inserted=0,
+            v1_parse_failures=0,
+            v1_skipped_missing_fixture=0,
+            v1_skipped_synthetic_v2=0,
         )
+
+    skip_v1_set = skip_v1_for or set()
 
     engine = create_engine(dsn, future=True)
     docs_inserted = 0
     schedules_inserted = 0
     docs_skipped = 0
+    v1_docs_staged = 0
+    v1_clauses_total = 0
+    v1_parse_failures = 0
+    v1_skipped_missing = 0
+    v1_skipped_synthetic = 0
     try:
         with engine.begin() as conn:
             for row in seeded:
@@ -376,6 +425,54 @@ def run_seed(
                 ).scalar()
                 if schedule_id is not None:
                     schedules_inserted += 1
+
+                # v1 staging — best-effort per doc. Failures here must not
+                # abort the whole seed transaction; on parse failure we
+                # warn + continue with no document_versions row (the
+                # legacy "stub" outcome) for that one doc only. Docs in
+                # ``skip_v1_set`` are reserved for ``stage_synthetic_v2``
+                # which will write v1 + v2 atomically.
+                if samples_dir is None:
+                    continue
+                if row.lawstronaut_document_id in skip_v1_set:
+                    v1_skipped_synthetic += 1
+                    continue
+                iso = _fixture_iso_for(row.lawstronaut_document_id, fixtures)
+                if iso is None:
+                    v1_skipped_missing += 1
+                    if warn is not None:
+                        warn(
+                            f"v1 staging: no fixtures.json entry for id="
+                            f"{row.lawstronaut_document_id!r}; skipped"
+                        )
+                    continue
+                v1_path = samples_dir / f"{iso}-{row.lawstronaut_document_id}-v1.md"
+                if not v1_path.exists():
+                    v1_skipped_missing += 1
+                    if warn is not None:
+                        warn(f"v1 staging: no v1 markdown at {v1_path}; skipped")
+                    continue
+                try:
+                    payload = compute_v1_staging_payload(v1_path.read_text(encoding="utf-8"))
+                except Exception as exc:  # noqa: BLE001 — boundary
+                    v1_parse_failures += 1
+                    if warn is not None:
+                        warn(f"v1 staging: parser failed on {v1_path}: {exc!r}; skipped")
+                    continue
+                inserted = _insert_v1_only(
+                    conn,
+                    document_id,
+                    payload,
+                    v1_path=v1_path,
+                    now=now,
+                )
+                if inserted > 0:
+                    v1_docs_staged += 1
+                    v1_clauses_total += inserted
+                    conn.execute(
+                        _PARK_SCHEDULE_SQL,
+                        {"d": document_id, "n": _STAGED_NEXT_POLL_AT},
+                    )
     finally:
         engine.dispose()
 
@@ -383,6 +480,11 @@ def run_seed(
         documents_inserted=docs_inserted,
         schedules_inserted=schedules_inserted,
         documents_skipped_conflict=docs_skipped,
+        v1_documents_staged=v1_docs_staged,
+        v1_clauses_inserted=v1_clauses_total,
+        v1_parse_failures=v1_parse_failures,
+        v1_skipped_missing_fixture=v1_skipped_missing,
+        v1_skipped_synthetic_v2=v1_skipped_synthetic,
     )
 
 
@@ -460,7 +562,7 @@ _PARK_SCHEDULE_SQL = text(
 )
 
 
-def _insert_v1_only(  # pyright: ignore[reportUnusedFunction]
+def _insert_v1_only(
     conn: Any,
     document_id: UUID,
     payload: V1StagingPayload,
@@ -472,9 +574,6 @@ def _insert_v1_only(  # pyright: ignore[reportUnusedFunction]
 
     Returns the number of clauses inserted, or 0 if any
     ``document_versions`` row already exists for this document.
-
-    Wired into :func:`run_seed` in a follow-up commit; until then this is
-    intentionally unreferenced (suppression below).
     """
     if conn.execute(_HAS_VERSIONS_SQL, {"d": document_id}).first() is not None:
         return 0
