@@ -1,6 +1,6 @@
 # Horizons & Lawstronaut API references
 
-*Last revised: 2026-06-05.*
+*Last revised: 2026-06-07.*
 *Path: docs/api/README.md.*
 
 Two distinct surfaces live in this directory:
@@ -10,7 +10,7 @@ Two distinct surfaces live in this directory:
 2. **Lawstronaut API** — the third-party upstream we consume during
    ingestion. We watch it; we do not proxy it.
 
-## Files
+## 1. Files
 
 **Horizons surface:**
 
@@ -34,7 +34,7 @@ Two distinct surfaces live in this directory:
 - `operational-notes.md` — refresh cadence, deployment, pricing, MCP,
   and other facts that shape tool design.
 
-## Quick facts
+## 2. Quick facts
 
 - **API base URL:** `https://api.lawstronaut.com/v2`
 - **Auth base URL:** `https://filerskeepersapi.co` (login + refresh-token live on the filerskeepers host, not on `api.lawstronaut.com`)
@@ -44,16 +44,19 @@ Two distinct surfaces live in this directory:
 - **Content refresh target:** ~weekly per source portal, but varies (some daily, some slower). **Not real-time.**
 - **Versioning:** Each legal document has stable `document_id` + incrementing `version`. New versions are created on amendment, consolidation, or material change. This is the hook we use for change detection.
 
-## To-do once we have an API token
+## 3. OpenAPI fetch — still pending
 
-The portal returns **401** (not 404) for:
+Token access is solved: the dev portal at `https://dev-portal.filerskeepersapi.co/dashboard/lawstronaut/home` displays a 30-min JWT for ad-hoc calls, and `scripts/fetch_fixtures.py` runs the full login + refresh flow against the live API.
+
+What's still outstanding: fetching the OpenAPI spec itself. The portal returns **401** (not 404) for these paths even with a valid token attached during fixture runs — they may require a different scope or a different auth header shape:
+
 - `https://api.lawstronaut.com/v2/openapi.json`
 - `https://api.lawstronaut.com/v2/swagger.json`
 - `https://api.lawstronaut.com/v2/docs`
 
-Once we have a token, fetch the real OpenAPI spec from one of those and save it alongside this reference as `openapi.json`. That gives us a machine-readable schema for codegen and validation.
+When one of them does respond, save the result alongside this reference as `openapi.json` so we get a machine-readable schema for codegen and validation.
 
-## Tool scope (carried forward from user)
+## 4. Tool scope
 
 - Change detection operates at the **clause level**, not the document level.
 - Legal documents have structure (Part / Chapter / Article / sub-article / sub-clause); a new `version` typically modifies only a few clauses.
@@ -61,8 +64,12 @@ Once we have a token, fetch the real OpenAPI spec from one of those and save it 
 - We'll need a clause-aware parser that assigns stable identifiers (heading-anchored, not positional) so a clause survives reordering/insertion across versions.
 - We'll need to keep prior parsed versions locally (or just their clause trees) to diff against.
 
-## Discrepancies / questions
+## 5. Discrepancies / questions
 
-- The Getting Started page shows an example call against `https://filerskeepersapi.co/v3/jurisdictions`. Every other doc references `v2` on `api.lawstronaut.com`. Treat the `v3` mention as a documentation typo until confirmed; use `api.lawstronaut.com/v2`.
+[`operational-notes.md`](./operational-notes.md) is the canonical list — it covers field-name mismatches (`content_markdown` vs `markdown`), `document_id` string/number polymorphism, the `/v2/contents/markdown?document_id=X` → 400 and `/v2/content/{id}` → 403 quirks, the malformed-millis `publication_date` format, the silent `language=English` 400, and the `/v2/portals` enumeration gotcha.
+
+A few items live only here because they affect URL choice rather than response parsing:
+
+- The Getting Started page shows an example call against `https://filerskeepersapi.co/v3/jurisdictions`. Every other doc references `v2` on `api.lawstronaut.com`. Treat the `v3` mention as a documentation typo; use `api.lawstronaut.com/v2`.
 - The refresh-token endpoint URL in the docs has a double slash: `https://filerskeepersapi.co//auth/refresh-token`. Treat as a typo; use single slash.
 - `/v2/search` is in testing and **only available for `iso=IE`** (Ireland) at this time.

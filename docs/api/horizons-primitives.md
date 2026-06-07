@@ -1,14 +1,14 @@
 # Horizons public API — the three primitives
 
-*Last revised: 2026-06-06.*
+*Last revised: 2026-06-07.*
 *Path: docs/api/horizons-primitives.md.*
-
-*WU4.4. Doc-first; the OpenAPI-generated reference lands with WU4.6.*
 
 The Horizons public API exposes the three primitives from
 [`docs/RFC-1 product-questions.md`](../1.%20product-questions.md) as three
 HTTP endpoints under `/v1/`. Each accepts the same **scope discriminator**;
-the response shape differs by primitive.
+the response shape differs by primitive. The auto-generated wire reference
+is [`endpoints.md`](./endpoints.md); this doc is the design-of-record for
+the cross-cutting behaviour (discriminator, pagination, `include_content`).
 
 | Primitive | Path | Returns |
 |---|---|---|
@@ -22,7 +22,7 @@ and carry `Cache-Control: private, no-store`. RLS narrows visible
 caller's subscription scope — out-of-scope rows are silently invisible,
 not 403.
 
-## Scope discriminator
+## 1. Scope discriminator
 
 Every endpoint takes a `scope` query parameter, with scope-specific
 filter parameters validated as a discriminated union:
@@ -52,7 +52,7 @@ filter parameters validated as a discriminated union:
 Invalid combinations (e.g. `scope=document` without `document_id`)
 return `422` with the Pydantic discriminated-union error body.
 
-## Pagination — opaque keyset cursor
+## 2. Pagination — opaque keyset cursor
 
 Corpus-scope responses are paginated by an opaque `cursor` field.
 Document-scope and clause-scope responses are not paginated — the
@@ -91,7 +91,7 @@ capped at 200.
 When the page is the last one, `next_cursor` is omitted and
 `has_more` is `false`.
 
-## `include_content` — body text guard
+## 3. `include_content` — body text guard
 
 Differential responses include `before_text` and `after_text` only when
 `include_content=true`. The default depends on scope, because the
@@ -106,9 +106,9 @@ asymmetry of cost is large:
 Discovery and Temporal never return body text — the parameter is
 ignored if passed.
 
-## Response shapes
+## 4. Response shapes
 
-### Discovery
+### 4.1 Discovery
 
 ```json
 {
@@ -130,7 +130,7 @@ ignored if passed.
 
 No `*_text` fields — discovery is the cheap polling primitive.
 
-### Temporal
+### 4.2 Temporal
 
 ```json
 {
@@ -148,7 +148,7 @@ No `*_text` fields — discovery is the cheap polling primitive.
 *before* uid for `REMOVED`. The document scope returns all events for
 the document; the clause scope returns the event history for one uid.
 
-### Differential
+### 4.3 Differential
 
 Same shape as Discovery plus `before_text` and `after_text` when
 `include_content` resolves to `true`. The `*_text` null rules follow
@@ -161,7 +161,7 @@ the `change_type`:
 | `MODIFIED` | non-null, different from `after_text` | non-null |
 | `MOVED` | non-null, same as `after_text` | non-null |
 
-## Single-event lookup — `GET /v1/differential/{event_id}`
+## 5. Single-event lookup — `GET /v1/differential/{event_id}`
 
 A bounded, single-row variant of differential for the webapp's
 clause-diff detail view (WU5.3). Same response shape as a
@@ -173,7 +173,7 @@ Out-of-scope rows are invisible via RLS; the route returns `404` for
 both truly-absent ids and out-of-scope ids — the caller cannot tell
 the difference. `Cache-Control: private, no-store`.
 
-## Errors
+## 6. Errors
 
 Standard FastAPI shape — `{"detail": "..."}`:
 
@@ -185,7 +185,7 @@ Standard FastAPI shape — `{"detail": "..."}`:
   never return 404: out-of-scope rows are silently absent from the
   page.
 
-## Performance budget
+## 7. Performance budget
 
 Doc 3 §"Performance target" sets 3 s p95 for corpus-scope queries
 against the seeded curated set. The composite index
@@ -194,18 +194,22 @@ is the hot path; the keyset cursor preserves index order without an
 ORDER BY sort. WU4.4 ships an inline integration test that asserts
 this budget against the WU3.5 seed.
 
-## `GET /v1/me/overview` — home dashboard summary
+## 8. `GET /v1/me/overview` — home dashboard summary
 
 The home dashboard's data source. Returns the full corpus matrix
 (every `(jurisdiction, sector)` pair present in `documents`, with
 counts) plus a `subscribed` flag per jurisdiction and per sector
-indicating whether the caller's subscription covers it.
+indicating whether the caller's subscription covers it. Each
+jurisdiction and sector also carries a `change_count` — the rolled-up
+number of change events on that axis — so the dashboard can render
+both inventory and activity in one round trip.
 
 Admin callers see every pair flagged `subscribed=true`; the body
 also sets `is_admin=true`. The route reads corpus shape through the
-unscoped `app_public.corpus_shape()` function (see migration 0013
-and `db/roles.md`); per-row corpus content remains RLS-scoped on
-every other route.
+unscoped `app_public.corpus_shape()` function (migration 0013) and
+change-event shape through `app_public.change_event_shape()`
+(migration 0014); see `db/roles.md`. Per-row corpus content remains
+RLS-scoped on every other route.
 
 Response:
 
@@ -220,12 +224,12 @@ Response:
     "subscribed_sectors": 1
   },
   "jurisdictions": [
-    { "code": "IE", "document_count": 1, "subscribed": false },
-    { "code": "UK", "document_count": 1, "subscribed": true }
+    { "code": "IE", "document_count": 1, "change_count": 12, "subscribed": false },
+    { "code": "UK", "document_count": 1, "change_count": 4,  "subscribed": true }
   ],
   "sectors": [
-    { "code": "BANKING", "document_count": 5, "subscribed": true },
-    { "code": "employment", "document_count": 2, "subscribed": false }
+    { "code": "BANKING",    "document_count": 5, "change_count": 31, "subscribed": true },
+    { "code": "employment", "document_count": 2, "change_count": 7,  "subscribed": false }
   ]
 }
 ```
