@@ -84,6 +84,10 @@ function prevPage(): void {
   offset.value = Math.max(0, offset.value - PAGE_SIZE)
 }
 
+async function openDocument(id: string): Promise<void> {
+  await router.push({ name: 'document-detail', params: { id } })
+}
+
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
   return new Date(iso).toISOString().slice(0, 10)
@@ -189,7 +193,8 @@ function fmtCount(n: number): string {
             v-for="item in items"
             :key="item.id"
             data-testid="document-row"
-            class="border-t border-slate-200 hover:bg-slate-50"
+            class="cursor-pointer border-t border-slate-200 hover:bg-slate-50"
+            @click="openDocument(item.id)"
           >
             <td class="px-4 py-2">
               <RouterLink
