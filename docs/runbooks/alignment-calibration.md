@@ -8,12 +8,17 @@ runbook is the day-to-day operating manual.
 ## 1. Metrics
 
 Both suites print **precision**, **recall**, and **F1** per fixture
-plus a macro-averaged aggregate row. With **TP** = aligner emitted an
-event matching a gold entry, **FP** = aligner emitted a spurious
-event, **FN** = aligner missed a gold entry:
+plus a macro-averaged aggregate row. With:
+
+- **TP** (true positive) — aligner emitted an event matching a gold entry on `change_type` and paths.
+- **FP** (false positive) — aligner emitted an event with no matching gold entry (e.g. a cascading paragraph renumber).
+- **FN** (false negative) — gold entry the aligner did not emit a matching event for.
+- **N** (column in the gold-suite table) — expected event count for that fixture, i.e. how many entries the gold YAML lists. `TP / N` is recall written as a fraction with its denominator visible.
+
+The scores derive from those:
 
 - **Precision** = TP / (TP + FP) — of what the aligner emitted, what fraction were real edits.
-- **Recall** = TP / (TP + FN) — of the real edits, what fraction did the aligner catch.
+- **Recall** = TP / (TP + FN) = TP / N — of the real edits, what fraction did the aligner catch.
 - **F1** = 2 · P · R / (P + R) — harmonic mean of P and R; weights them equally.
 
 **Why not F2?** F2 (and any F-beta with β > 1) weights recall above
