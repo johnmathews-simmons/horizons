@@ -170,6 +170,37 @@ describe('ChangesView', () => {
     expect(href).toContain('after=Part')
   })
 
+  it('on REMOVED events (no after_path), the link omits the after query param', async () => {
+    server.use(
+      http.get(`${API}/v1/discovery`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...baseItem,
+              id: 3,
+              change_type: 'REMOVED',
+              alignment_confidence: 0.7,
+              before_path: 'Part 2 / Section 4 / (a)',
+              after_path: null,
+            },
+          ],
+          next_cursor: null,
+          has_more: false,
+        }),
+      ),
+    )
+
+    const router = makeRouter()
+    await router.push('/changes')
+    await router.isReady()
+    const wrapper = mountChanges(router)
+    await flushPromises()
+
+    const href = wrapper.get('[data-testid="change-row"] a').attributes('href')!
+    expect(href).toContain('before=Part')
+    expect(href).not.toContain('after=')
+  })
+
   it('hides MOVED events by default and shows them when the toggle is on', async () => {
     server.use(
       http.get(`${API}/v1/discovery`, () =>
