@@ -51,7 +51,7 @@ test('add-documents modal: long-title rows stay within the modal width and wrap'
   // documents happen to be seeded.
   await row.evaluate((node, title) => {
     const titleDiv = node.querySelector('label > div.flex-1 > div:first-child')
-    if (titleDiv) (titleDiv as HTMLElement).textContent = title
+    if (titleDiv) titleDiv.textContent = title
   }, LONG_TITLE)
 
   const dialogBox = await dialog.boundingBox()
