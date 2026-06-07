@@ -110,10 +110,10 @@ const c2: ClauseItem = {
   ord: 2,
 }
 
-describe('ClauseOverlay — highlightPath', () => {
+describe('ClauseOverlay — scrollToPath', () => {
   it('emits data-clause-path on every flat-mode pre so a parent can find clauses', () => {
     const wrapper = mount(ClauseOverlay, {
-      props: { clauses: [c1, c2], showStructure: false, highlightPath: null },
+      props: { clauses: [c1, c2], showStructure: false, scrollToPath: null },
     })
     const flats = wrapper.findAll('[data-testid="clause-flat"]')
     expect(flats).toHaveLength(2)
@@ -121,34 +121,22 @@ describe('ClauseOverlay — highlightPath', () => {
     expect(flats[1]!.attributes('data-clause-path')).toBe('PART_1/SECTION_2')
   })
 
-  it('marks the matched clause with data-highlight="true" in structure mode', async () => {
+  it('does nothing when scrollToPath is null', async () => {
     const wrapper = mount(ClauseOverlay, {
-      props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART_1/SECTION_2' },
+      props: { clauses: CLAUSES, showStructure: false, scrollToPath: null },
     })
     await nextTick()
-    const cards = wrapper.findAll('[data-testid="clause-card"]')
-    expect(cards[0]!.attributes('data-highlight')).toBeUndefined()
-    expect(cards[1]!.attributes('data-highlight')).toBe('true')
+    expect(wrapper.findAll('[data-clause-path]').length).toBeGreaterThan(0)
   })
 
-  it('marks the matched clause with data-highlight="true" in flat mode', async () => {
-    const wrapper = mount(ClauseOverlay, {
-      props: { clauses: [c1, c2], showStructure: false, highlightPath: 'PART_1/SECTION_1' },
-    })
-    await nextTick()
-    const flats = wrapper.findAll('[data-testid="clause-flat"]')
-    expect(flats[0]!.attributes('data-highlight')).toBe('true')
-    expect(flats[1]!.attributes('data-highlight')).toBeUndefined()
-  })
-
-  it('calls scrollIntoView on the highlighted clause once it mounts', async () => {
+  it('calls scrollIntoView on the targeted clause once it mounts', async () => {
     const scrollSpy = vi.fn<() => void>()
     // jsdom does not implement scrollIntoView; patch the prototype.
     const original = (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView
     ;(Element.prototype as unknown as { scrollIntoView: typeof scrollSpy }).scrollIntoView = scrollSpy
     try {
       mount(ClauseOverlay, {
-        props: { clauses: [c1, c2], showStructure: true, highlightPath: 'PART_1/SECTION_2' },
+        props: { clauses: [c1, c2], showStructure: true, scrollToPath: 'PART_1/SECTION_2' },
         attachTo: document.body,
       })
       await nextTick()
@@ -159,13 +147,13 @@ describe('ClauseOverlay — highlightPath', () => {
     }
   })
 
-  it('does not call scrollIntoView when highlightPath is null', async () => {
+  it('does not call scrollIntoView when scrollToPath is null', async () => {
     const scrollSpy = vi.fn<() => void>()
     const original = (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView
     ;(Element.prototype as unknown as { scrollIntoView: typeof scrollSpy }).scrollIntoView = scrollSpy
     try {
       mount(ClauseOverlay, {
-        props: { clauses: [c1, c2], showStructure: true, highlightPath: null },
+        props: { clauses: [c1, c2], showStructure: true, scrollToPath: null },
         attachTo: document.body,
       })
       await nextTick()
@@ -175,20 +163,71 @@ describe('ClauseOverlay — highlightPath', () => {
     }
   })
 
-  it('warns to console and renders without highlight when highlightPath does not match', async () => {
+  it('warns to console when scrollToPath does not match', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      const wrapper = mount(ClauseOverlay, {
-        props: { clauses: [c1, c2], showStructure: true, highlightPath: 'NOPE' },
+      mount(ClauseOverlay, {
+        props: { clauses: [c1, c2], showStructure: true, scrollToPath: 'NOPE' },
       })
       await nextTick()
-      expect(wrapper.findAll('[data-highlight="true"]')).toHaveLength(0)
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('ClauseOverlay: highlightPath "NOPE" not found'),
+        expect.stringContaining('ClauseOverlay: scrollToPath "NOPE" not found'),
       )
     } finally {
       warnSpy.mockRestore()
     }
+  })
+})
+
+describe('ClauseOverlay with changeMap', () => {
+  const clauses: ClauseItem[] = [
+    { id: '1', clause_uid: 'a', clause_path: '/p/1', text_content: 'one', heading_text: null, ord: 0 },
+    { id: '2', clause_uid: 'b', clause_path: '/p/2', text_content: 'two', heading_text: null, ord: 1 },
+    { id: '3', clause_uid: 'c', clause_path: '/p/3', text_content: 'three', heading_text: null, ord: 2 },
+  ]
+
+  it('applies the ADDED box class to clauses whose path matches', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses, showStructure: false, changeMap: { '/p/2': 'ADDED' } },
+    })
+    const row = wrapper.find('[data-clause-path="/p/2"]')
+    expect(row.classes().join(' ')).toContain('ring-green-400')
+    const pill = row.find('[data-testid="clause-change-pill"]')
+    expect(pill.exists()).toBe(true)
+    expect(pill.text()).toBe('ADDED')
+    expect(pill.classes().join(' ')).toContain('text-green-800')
+  })
+
+  it('leaves unmatched clauses without a colour box', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses, showStructure: false, changeMap: { '/p/2': 'MODIFIED' } },
+    })
+    const row1 = wrapper.find('[data-clause-path="/p/1"]')
+    expect(row1.find('[data-testid="clause-change-pill"]').exists()).toBe(false)
+    expect(row1.classes().join(' ')).not.toContain('ring-amber-400')
+  })
+
+  it('uses the right colour for each non-ADDED ChangeType', () => {
+    const cases = [
+      { type: 'REMOVED' as const, ring: 'ring-red-400' },
+      { type: 'MODIFIED' as const, ring: 'ring-amber-400' },
+      { type: 'MOVED' as const, ring: 'ring-blue-400' },
+    ]
+    for (const { type, ring } of cases) {
+      const wrapper = mount(ClauseOverlay, {
+        props: { clauses, showStructure: false, changeMap: { '/p/1': type } },
+      })
+      const row = wrapper.find('[data-clause-path="/p/1"]')
+      expect(row.classes().join(' ')).toContain(ring)
+    }
+  })
+
+  it('works in structure mode as well as flat mode', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses, showStructure: true, changeMap: { '/p/2': 'ADDED' } },
+    })
+    const card = wrapper.find('[data-clause-path="/p/2"]')
+    expect(card.classes().join(' ')).toContain('ring-green-400')
   })
 })
 

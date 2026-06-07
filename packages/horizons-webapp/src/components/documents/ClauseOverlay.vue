@@ -2,14 +2,19 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { ClauseItem } from '@/api/documents'
 import { looksLikeHtml, sanitizeClauseHtml } from '@/lib/sanitizeClauseHtml'
+import { CHANGE_COLORS, type ChangeType } from '@/constants/change-colors'
 
 interface Props {
   clauses: ClauseItem[]
   showStructure: boolean
-  highlightPath?: string | null
+  changeMap?: Record<string, ChangeType> | null
+  scrollToPath?: string | null
 }
 
-const props = withDefaults(defineProps<Props>(), { highlightPath: null })
+const props = withDefaults(defineProps<Props>(), {
+  changeMap: null,
+  scrollToPath: null,
+})
 
 interface DepthClause {
   clause: ClauseItem
@@ -37,13 +42,13 @@ const decorated = computed<DepthClause[]>(() =>
 
 const root = ref<HTMLElement | null>(null)
 
-function scrollToHighlight(): void {
-  const target = props.highlightPath
+function scrollToTarget(): void {
+  const target = props.scrollToPath
   if (!target) return
   if (!root.value) return
   const match = props.clauses.find((c) => c.clause_path === target)
   if (!match) {
-    console.warn(`ClauseOverlay: highlightPath "${target}" not found in clauses`)
+    console.warn(`ClauseOverlay: scrollToPath "${target}" not found in clauses`)
     return
   }
   // Look up the rendered element by its data attribute. Works for both
@@ -60,18 +65,19 @@ function scrollToHighlight(): void {
 }
 
 onMounted(() => {
-  void nextTick().then(() => scrollToHighlight())
+  void nextTick().then(() => scrollToTarget())
 })
 
 watch(
-  () => [props.highlightPath, props.clauses.length] as const,
+  () => [props.scrollToPath, props.clauses.length] as const,
   () => {
-    void nextTick().then(() => scrollToHighlight())
+    void nextTick().then(() => scrollToTarget())
   },
 )
 
-function isHighlighted(path: string): boolean {
-  return props.highlightPath !== null && props.highlightPath === path
+function changeTypeFor(path: string): ChangeType | null {
+  if (!props.changeMap) return null
+  return props.changeMap[path] ?? null
 }
 
 function hasHeading(c: ClauseItem): boolean {
@@ -114,14 +120,22 @@ function headingClass(tag: string): string {
           :key="dc.clause.id"
           data-testid="clause-flat"
           :data-clause-path="dc.clause.clause_path"
-          :data-highlight="isHighlighted(dc.clause.clause_path) ? 'true' : undefined"
-          class="mb-4"
+          :data-change-type="changeTypeFor(dc.clause.clause_path) ?? undefined"
+          class="relative mb-4"
           :class="
-            isHighlighted(dc.clause.clause_path)
-              ? 'rounded-md bg-amber-100 ring-2 ring-amber-400 p-3'
+            changeTypeFor(dc.clause.clause_path)
+              ? CHANGE_COLORS[changeTypeFor(dc.clause.clause_path)!].box
               : ''
           "
         >
+          <span
+            v-if="changeTypeFor(dc.clause.clause_path)"
+            data-testid="clause-change-pill"
+            class="absolute right-2 top-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset"
+            :class="CHANGE_COLORS[changeTypeFor(dc.clause.clause_path)!].pill"
+          >
+            {{ CHANGE_COLORS[changeTypeFor(dc.clause.clause_path)!].label }}
+          </span>
           <component
             :is="dc.headingTag"
             v-if="hasHeading(dc.clause)"
@@ -158,15 +172,23 @@ function headingClass(tag: string): string {
           data-testid="clause-card"
           :data-clause-path="dc.clause.clause_path"
           :data-depth="dc.depth"
-          :data-highlight="isHighlighted(dc.clause.clause_path) ? 'true' : undefined"
-          class="rounded-md border border-slate-200 bg-slate-50"
+          :data-change-type="changeTypeFor(dc.clause.clause_path) ?? undefined"
+          class="relative rounded-md border border-slate-200"
           :class="
-            isHighlighted(dc.clause.clause_path)
-              ? 'ring-2 ring-amber-400 bg-amber-50'
-              : ''
+            changeTypeFor(dc.clause.clause_path)
+              ? CHANGE_COLORS[changeTypeFor(dc.clause.clause_path)!].box
+              : 'bg-slate-50'
           "
           :style="{ marginLeft: `${dc.depth * 1.25}rem` }"
         >
+          <span
+            v-if="changeTypeFor(dc.clause.clause_path)"
+            data-testid="clause-change-pill"
+            class="absolute right-2 top-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset"
+            :class="CHANGE_COLORS[changeTypeFor(dc.clause.clause_path)!].pill"
+          >
+            {{ CHANGE_COLORS[changeTypeFor(dc.clause.clause_path)!].label }}
+          </span>
           <div
             class="flex items-center justify-between border-b border-slate-200 px-3 py-1.5"
           >
