@@ -5,7 +5,30 @@ score `horizons_core.core.alignment.align`. Background and design
 choices live in `docs/RFC-2 clause-alignment.md` — *Calibration*; this
 runbook is the day-to-day operating manual.
 
-## 1. The two suites
+## 1. Metrics
+
+Both suites print **precision**, **recall**, and **F1** per fixture
+plus a macro-averaged aggregate row. With **TP** = aligner emitted an
+event matching a gold entry, **FP** = aligner emitted a spurious
+event, **FN** = aligner missed a gold entry:
+
+- **Precision** = TP / (TP + FP) — of what the aligner emitted, what fraction were real edits.
+- **Recall** = TP / (TP + FN) — of the real edits, what fraction did the aligner catch.
+- **F1** = 2 · P · R / (P + R) — harmonic mean of P and R; weights them equally.
+
+**Why not F2?** F2 (and any F-beta with β > 1) weights recall above
+precision — the right metric when missing a real event is more costly
+than emitting a spurious one (cancer screening is the canonical
+example). For regulatory-change tracking that framing is arguable
+(missing a law change *is* operationally worse than a false alert),
+but it doesn't change the current calibration story: recall is
+already saturated on both suites (~0.96) while precision is the
+bottleneck (0.59 on the gold suite). Switching to F2 would print a
+flattering higher number without changing which knob to tune next.
+If precision ever rises past recall, F2 becomes the more honest
+single-number report.
+
+## 2. The two suites
 
 | Suite | File | Substrate | Size | Headline number |
 |---|---|---|---|---|
@@ -21,11 +44,11 @@ five unchanged siblings get emitted as MOVED events) that random
 leaf mutations cannot trigger by construction.
 
 Same `align()` call, same default `TuningConfig` — the two numbers
-diverging is the whole point. Report both whenever you change tuning.
+diverging is the signal. Report both whenever you change tuning.
 
-## 2. Commands
+## 3. Commands
 
-### 2.1 Gold suite only (fast)
+### 3.1 Gold suite only (fast)
 
 ```bash
 uv run pytest tests/alignment/test_synthetic_v2.py --no-cov
@@ -35,7 +58,7 @@ uv run pytest tests/alignment/test_synthetic_v2.py --no-cov
 parser, or one of the alignment passes and want a quick "did I move
 the realistic-amendment number". Prints one table.
 
-### 2.2 Both suites (~45 s)
+### 3.2 Both suites (~45 s)
 
 ```bash
 uv run pytest tests/alignment/ --no-cov
@@ -46,17 +69,17 @@ table first, then the 8-fixture gold table. This is what you want
 before declaring a tuning change a win; a change that lifts one
 number and tanks the other is a sideways move, not progress.
 
-### 2.3 One fixture, with full notes
+### 3.3 One fixture, with full notes
 
 ```bash
 uv run pytest tests/alignment/test_synthetic_v2.py -k <slug> --no-cov
 ```
 
-(e.g. `-k gb-28914588`.) Single-fixture run; assertion message lists
-every miss and extra-event count with paths quoted, so you can grep
-the aligner's emitted events against the gold.
+(e.g. `-k gb-28914588`.) Single-fixture run; the assertion message
+lists every miss and extra-event count with paths quoted, so you can
+grep the aligner's emitted events against the gold.
 
-## 3. Before/after baseline workflow
+## 4. Before/after baseline workflow
 
 The right way to measure a tuning change. Capture, change, recapture,
 diff:
@@ -75,13 +98,13 @@ uv run pytest tests/alignment/ --no-cov 2>&1 \
 diff /tmp/align-before.txt /tmp/align-after.txt
 ```
 
-The aggregate rows in each table give you the headline number; the
-per-fixture rows tell you whether the change helped uniformly or
-robbed Peter to pay Paul.
+The aggregate rows give the headline number; the per-fixture rows
+tell you whether the change helped uniformly or robbed Peter to pay
+Paul.
 
-## 4. Reading the tables
+## 5. Reading the tables
 
-### 4.1 Mutation suite (`test_fixtures`)
+### 5.1 Mutation suite (`test_fixtures`)
 
 ```
 fixture            ident   P     R     F1    notes
@@ -100,7 +123,7 @@ aggregate          31/31   0.96  0.97  0.97  4 skipped (fixture too small)
   they only skip the mutation case because there isn't enough body to
   synthesise four distinct mutations.
 
-### 4.2 Gold suite (`test_synthetic_v2`)
+### 5.2 Gold suite (`test_synthetic_v2`)
 
 ```
 fixture      N   TP   P     R     F1    notes
@@ -112,14 +135,14 @@ aggregate    22  21   0.59  0.96  0.69
 - `N` — expected event count for this fixture (from
   `expected_events.yaml`).
 - `TP` — matched gold entries.
-- Extras (`9 extra event(s)`) are the precision killer. Most are
-  cascading paragraph renumbers triggered by an insert/remove —
-  legitimate from the aligner's POV, noise from the customer's.
+- Extras (`9 extra event(s)`) are typically cascading paragraph
+  renumbers triggered by one insert/remove — legitimate from the
+  aligner's POV, noise from the customer's.
 - The aggregate `N` and `TP` columns are *totals* (22 events across
   8 fixtures, 21 matched). `P / R / F1` aggregate columns are
   *macro-averages* across the per-fixture rows.
 
-## 5. Extending the gold
+## 6. Extending the gold
 
 Drop a new pair into `data/samples/synthetic_v2/`:
 
@@ -128,7 +151,7 @@ Drop a new pair into `data/samples/synthetic_v2/`:
 2. Add a `<slug>:` block to `data/samples/synthetic_v2/expected_events.yaml`
    listing the expected `(change_type, before_path, after_path)`
    tuples. ADDED and REMOVED entries omit the path they don't carry.
-3. Run command 2.1 to verify.
+3. Run command 3.1 to verify.
 
 To discover the path strings the parser produces for your new fixture
 without reading them off the markdown by eye:
@@ -163,7 +186,7 @@ extras the aligner emitted but you don't list will (correctly) lower
 precision. The test auto-discovers from the gold file, not from disk
 — fixtures without a gold entry aren't tested.
 
-## 6. Floors and gates — what is and isn't enforced
+## 7. Floors and gates — what is and isn't enforced
 
 | Check | Where | Enforcement |
 |---|---|---|
@@ -181,7 +204,7 @@ If you want a CI gate later — raise `TP_FLOOR_RATIO` in
 `test_synthetic_v2.py` (currently `0.5`), and/or add an aggregate-F1
 assertion to `pytest_terminal_summary` in `tests/alignment/conftest.py`.
 
-## 7. Known issues surfaced by the gold suite
+## 8. Known issues surfaced by the gold suite
 
 As of 2026-06-07 (see `journal/260607-alignment-gold-suite.md` for
 context):
@@ -199,5 +222,5 @@ context):
   jaccard estimator noise on short bodies, or greedy sort in
   `_pass_heading_match` consuming a near-duplicate first.
 
-Neither is regressed against — they're already the current baseline,
-and fixing them is post-demo tuning work.
+Neither blocks demo readiness; both are the current baseline, and
+fixing either is post-demo tuning work.
