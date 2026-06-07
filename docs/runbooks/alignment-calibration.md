@@ -40,7 +40,7 @@ past recall, F2 becomes the more honest single-number report.
 
 | Suite | File | Substrate | Size | Headline number |
 |---|---|---|---|---|
-| Synthetic-mutation regression | `tests/alignment/test_fixtures.py` | every `*.md` in `data/samples/` mutated with one ADDED + one REMOVED + one MODIFIED + one MOVED (deterministic per slug) | 27 fixtures × 2 cases | macro-F1 ≈ 0.97 |
+| Synthetic-mutation regression | `tests/alignment/test_fixtures.py` | every `*.md` in `data/samples/` mutated with one ADDED + one REMOVED + one MODIFIED + one MOVED (deterministic per slug) | 44 fixtures × 2 cases (grows automatically with the directory) | macro-F1 ≈ 0.97 |
 | Gold-file calibration | `tests/alignment/test_synthetic_v2.py` | the 8 hand-authored v1↔v2 pairs in `data/samples/synthetic_v2/`, scored against `data/samples/synthetic_v2/expected_events.yaml` | 8 fixtures, 32 expected events | macro-F1 ≈ 0.78 |
 
 They answer different questions. The mutation suite asks *"did the
@@ -118,8 +118,13 @@ Paul.
 fixture            ident   P     R     F1    notes
 ie-27732019-v1     ok      1.00  1.00  1.00
 at-32061749-v1     ok      0.60  0.75  0.67  missed MODIFIED, 2 extra event(s)
-aggregate          31/31   0.96  0.97  0.97  4 skipped (fixture too small)
+aggregate          44/44   0.96  0.97  0.97  N skipped (fixture too small)
 ```
+
+(Aggregate counts above are illustrative — they shift as fixtures are
+added under `data/samples/`. The identity-column denominator equals
+the total fixture count; the skip count is whatever the current run
+prints.)
 
 - `ident` — `ok` if `align(v1, v1) == []`. A `FAIL (N)` here means
   re-ingesting an unchanged version would emit `N` spurious diffs to

@@ -119,7 +119,7 @@ ownership shape).
 
 The work spans **three deploys**:
 
-### Deploy N — expansion (migration `0011_add_watchlists_priority_nullable.py`)
+### Deploy N — expansion (migration `00NN_add_watchlists_priority_nullable.py`)
 
 Add the column nullable, no default change to existing rows. Add the
 new RLS policy. The existing API code (which doesn't know about
@@ -163,10 +163,10 @@ unchanged.
 
 Two migrations and one code change ship together:
 
-- `0012_backfill_watchlists_priority.py` — set `priority = 0` for
+- `00NN+1_backfill_watchlists_priority.py` — set `priority = 0` for
   every row where it's currently NULL. Idempotent (`WHERE priority
   IS NULL`).
-- `0013_watchlists_priority_not_null.py` — add a `NOT VALID` CHECK,
+- `00NN+2_watchlists_priority_not_null.py` — add a `NOT VALID` CHECK,
   validate, set NOT NULL, drop the CHECK. Three small steps in one
   migration; each is safe to retry.
 - API code in `packages/horizons-api/` learns to read and accept the

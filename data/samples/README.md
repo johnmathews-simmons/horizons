@@ -14,9 +14,9 @@ Run `uv run scripts/fetch_fixtures.py` from the repo root. The script logs in to
 
 Re-running adds new fixtures (existing slugs are skipped).
 
-## Current capture (2026-06-04)
+## Current capture (last extended 2026-06-07)
 
-31 documents — the original Irish Statute Book Act plus 30 round-robin captures across 30 jurisdictions and ~30 different portals. Languages span Catalan, Arabic, English, German, French, Czech, Spanish, Greek, Croatian, Hungarian, Italian, Japanese, Korean, Latvian, Chinese, and others. Authority types include Acts, Regulations, Caselaw, Decrees, Practice Notes, and Notices.
+46 documents — the original Irish Statute Book Act plus 30 round-robin captures (2026-06-04) and 15 native UK/EU captures (WU8.7, 2026-06-07; see `journal/260607-wu87-uk-eu-cluster-rework.md`). Languages span Catalan, Arabic, English, German, French, Czech, Spanish, Greek, Croatian, Hungarian, Italian, Japanese, Korean, Latvian, Chinese, and others. Authority types include Acts, Regulations, Caselaw, Decrees, Practice Notes, and Notices.
 
 Size spread (markdown bytes): minimum 0.7 KB (HR), p50 ~12 KB, p90 ~160 KB, maximum 3.8 MB (AL). This range is deliberate — the large outliers stress-test the parser and the blob-vs-row threshold question raised in `docs/RFC-3 database-design.md`.
 

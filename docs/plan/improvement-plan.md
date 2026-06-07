@@ -3,6 +3,8 @@
 *Last revised: 2026-06-07.*
 *Path: docs/plan/improvement-plan.md.*
 
+> **Status (2026-06-07): all 59 work units shipped.** This document is the retrospective record of the plan, not the active backlog. The unchecked WUs below describe completed work in their original "to do" framing. For the build summary and post-demo punch list see `journal/260606-wu84-pre-demo-wrap.md`.
+
 *Plan date: 2026-06-04. Baseline: docs 0–4 (post-fix) + the [evaluation report](evaluation-report.md) alongside this file.*
 *Lead: engineering-team skill. Originally produced under `.engineering-team/runs/manual-20260604T151127Z/`; relocated here on 2026-06-06.*
 *Posture: John (shipping owner) implements alongside subagents; lead-by-example. Each work unit is small enough to pick up in a single sitting.*
@@ -17,7 +19,7 @@ Captured from the evaluation + planning interview. Anything not pinned here is a
 2. **API framework: FastAPI** (uvicorn). Repository pattern over SQLAlchemy 2.0 async + psycopg3. Migrations: Alembic with `alembic_utils.PGPolicy` for RLS policies.
 3. **SPA framework: Vue 3** + Vite + Pinia + Vue Router + @tanstack/vue-query + shadcn-vue (Reka UI) + Tailwind v4 + diff-match-patch.
 4. **Auth: self-rolled JWT** with a pluggable `TokenProvider` Protocol (`LocalJwtProvider` now → `EntraIdProvider` later). PyJWT + argon2-cffi. Webapp uses access-token-in-memory + refresh-in-httpOnly-cookie; programmatic clients get JSON tokens.
-5. **Database: Azure Database for PostgreSQL Flexible Server (PG 17).** No PgBouncer for the demo. Passwordless connection via managed identity in production.
+5. **Database: Azure Database for PostgreSQL Flexible Server (PG 18).** No PgBouncer for the demo. Passwordless connection via managed identity in production.
 6. **Blob storage: Azure Blob Storage.** Content-addressed keys (`originals/<sha256>.md`).
 7. **Multi-tenant isolation: defence-in-depth (RLS + repository layer + lint-banned raw SQL + multi-user integration tests).** `SET LOCAL app.user_id` inside an explicit transaction bracket per request. Four Postgres roles: `schema_owner`, `api_app`, `ingestion_worker`, `admin_bypass`. Admin = two paths: `BYPASSRLS` (operator) + impersonation token (support). UUIDv7 PKs on private-state tables; serial PKs on corpus.
 8. **Subscription model: normalised** — `subscriptions(id, user_id, valid_from, valid_to)` + `subscription_scopes(subscription_id, jurisdiction, sector)`. Watchlist ⊂ subscription enforced by service layer + INSERT/UPDATE trigger + RLS `WITH CHECK`. Reduction = soft-hide, append-only.
@@ -61,7 +63,7 @@ Each work unit has: **WU number · title · depends-on · acceptance criterion**
 
 **WU0.2 · Linter + typechecker + pre-commit.** Depends on: WU0.1. Acceptance: `ruff check .` passes (with sensible defaults + the `flake8-tidy-imports` banned-api on `sqlalchemy.text` outside `core/db/session.py`). `mypy` or `pyright` strict on all `src/` modules. `pre-commit` runs ruff, mypy, end-of-file fixer, trailing whitespace. `pre-commit install` complete. Eslint + Prettier configured in `webapp/`.
 
-**WU0.3 · pytest scaffolding + testcontainers.** Depends on: WU0.1. Acceptance: `pytest` runs and discovers tests; coverage configured; a `conftest.py` at root provides an `engine` fixture wrapping a `testcontainers` PG 17 instance; a smoke test that creates a temporary DB, runs an empty migration, asserts a `SELECT 1` returns. `uv run pytest -q` passes.
+**WU0.3 · pytest scaffolding + testcontainers.** Depends on: WU0.1. Acceptance: `pytest` runs and discovers tests; coverage configured; a `conftest.py` at root provides an `engine` fixture wrapping a `testcontainers` PG 18 instance; a smoke test that creates a temporary DB, runs an empty migration, asserts a `SELECT 1` returns. `uv run pytest -q` passes.
 
 **WU0.4 · CI skeleton (`ci.yml`).** Depends on: WU0.2, WU0.3. Acceptance: `.github/workflows/ci.yml` triggers on PR + push to main + `workflow_dispatch`. Steps: setup uv, sync, ruff, mypy, pytest with coverage. Required check on branch protection. CI passes on an empty PR.
 
@@ -91,7 +93,7 @@ Each work unit has: **WU number · title · depends-on · acceptance criterion**
 
 ### Track 2 — Parser + alignment pipeline
 
-Pure functions over `(markdown_v1, markdown_v2) → events`. No DB access. Tested against the 31 fixtures.
+Pure functions over `(markdown_v1, markdown_v2) → events`. No DB access. Tested against the 46 fixtures.
 
 **WU2.0 · Clause-tree parser.** Depends on: WU0.3. Acceptance: `core/alignment/parser.py` parses a markdown document into a `Clause` tree using `markdown-it-py`. Each `Clause` has `path: list[str]`, `heading_text: str | None`, `body_text: str`, `numbering_label: str | None`. Heading-anchored markdown (Irish `PART N`, `**N.**`, `(N)`, `(a)`, `(i)`) produces nested nodes. Plain prose with inline numbering (Czech `Čl. I`, `N.`) is recognised by a configurable inline-pattern matcher. Tested against `ie-27732019-v1.md` (heading-anchored) and `cz-29662776-v1.md` (inline-numbered).
 
@@ -101,7 +103,7 @@ Pure functions over `(markdown_v1, markdown_v2) → events`. No DB access. Teste
 
 **WU2.3 · Alignment pipeline.** Depends on: WU2.0, WU2.2. Acceptance: `core/alignment/align.py` takes two clause trees and returns a list of `ChangeEvent(change_type, before_clause_uid, after_clause_uid, before_path, after_path, before_text, after_text, alignment_confidence)`. Passes 1 (source IDs — stub for now), 2 (heading-title + content), and 3 (content-similarity + monotonic DP). Tested with synthetic insert / delete / modify / move cases against the IE fixture (synthesised v2).
 
-**WU2.4 · Alignment regression suite against the 31 fixtures.** Depends on: WU2.3. Acceptance: `tests/alignment/test_fixtures.py` aligns each fixture against a synthesised "no-change" duplicate (should produce only MOVED-or-empty events at confidence 1.0) and against synthesised mutations (one clause inserted, one deleted, one modified, one moved). Reports an aggregate "alignment-quality" score per fixture in CI output.
+**WU2.4 · Alignment regression suite against the 46 fixtures.** Depends on: WU2.3. Acceptance: `tests/alignment/test_fixtures.py` aligns each fixture against a synthesised "no-change" duplicate (should produce only MOVED-or-empty events at confidence 1.0) and against synthesised mutations (one clause inserted, one deleted, one modified, one moved). Reports an aggregate "alignment-quality" score per fixture in CI output.
 
 ### Track 3 — Ingestion worker
 
@@ -163,7 +165,7 @@ Pure functions over `(markdown_v1, markdown_v2) → events`. No DB access. Teste
 
 **WU6.5 · Expand-contract migration policy.** Depends on: WU6.4. Acceptance: `docs/runbooks/migrations.md` documents the expand-contract rule (add column → deploy → backfill → deploy that uses it → drop in next deploy), including how RLS policy changes are handled (rolled out before the API code that depends on them). Reviewer checklist added to PR template.
 
-**WU6.6 · Drift check workflow.** Depends on: WU6.0. Acceptance: `drift-check.yml` runs nightly: `az deployment what-if` against prod; reports any drift to a Slack channel (or GH issue). No auto-correction.
+**WU6.6 · Drift check workflow.** Depends on: WU6.0. Acceptance: `infra-drift-check.yml` runs nightly: `az deployment what-if` against prod; reports any drift to a Slack channel (or GH issue). No auto-correction.
 
 ### Track 7 — Observability + admin views + audit
 

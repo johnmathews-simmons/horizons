@@ -1,6 +1,6 @@
 # Local development
 
-*Last revised: 2026-06-06.*
+*Last revised: 2026-06-07.*
 *Path: docs/runbooks/local-dev.md.*
 
 Boot the Horizons stack on your laptop: Postgres + API + webapp. The
@@ -48,7 +48,9 @@ uv run alembic upgrade head
 The migrate step uses the **sync** `+psycopg` URL because alembic +
 seed scripts are sync. The API later uses the **async** `+asyncpg` URL
 against the same database — both are correct, neither is a typo. See
-`docs/runbooks/migrations.md` for the role model and migration tree.
+`docs/runbooks/migrations.md` for the migration tree and expand-contract
+policy, and `packages/horizons-core/src/horizons_core/db/roles.md`
+for the role model.
 
 ## 2. Seed data
 
@@ -59,9 +61,10 @@ curated set:
 uv run python scripts/seed_curated_set.py
 ```
 
-Add `--stage-synthetic-v2` to also stage the five hand-authored v2
-documents (parked at `next_poll_at = 2026-12-31` so the worker can't
-claim them). Pass `--dry-run` to parse + align without writing.
+Add `--stage-synthetic-v2` to also stage every hand-authored v2
+document under `data/samples/synthetic_v2/` (currently 8 pairs;
+parked at `next_poll_at = 2026-12-31` so the worker can't claim
+them). Pass `--dry-run` to parse + align without writing.
 
 For a minimal multi-tenant fixture (UK client + EU client + admin,
 three documents, scripted change events) use `seed_e2e.py` instead —

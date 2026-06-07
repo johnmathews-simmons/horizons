@@ -144,7 +144,7 @@ Reorganised from subagent reports; numbered for reference.
 
 36. **Monorepo, uv workspace:** `core/` (shared models, repository layer, RLS plumbing) + `api/` + `worker/` as workspace members; `webapp/` outside the Python workspace. One `pyproject.toml` per service + root.
 37. **Linter + typechecker scaffolding as the first build artifact**: `ruff`, `mypy`/`pyright` configured before any service code lands. Pre-commit hooks. Per global CLAUDE.md.
-38. **Sample-fixture-driven test suite:** the 31 fixtures in `data/samples/` are the regression substrate for the parser + alignment pipeline. Reuse `data/samples/fixtures.json` as the test inventory.
+38. **Sample-fixture-driven test suite:** the 46 fixtures in `data/samples/` are the regression substrate for the parser + alignment pipeline. Reuse `data/samples/fixtures.json` as the test inventory.
 
 ### Open questions inherited from docs
 
@@ -177,7 +177,7 @@ Reorganised from subagent reports; numbered for reference.
 
 1. **Repo + tooling scaffold first** — uv workspace, ruff, mypy, pytest, pre-commit, GitHub Actions CI skeleton. The CI gate exists before any service code.
 2. **Tenancy spine second** — Postgres schema with `users`, `subscriptions`, `subscription_scopes`, one private-state table (`watchlists`), one corpus-shaped stub (`change_events`). RLS policies on both. Four Postgres roles. `SECURITY DEFINER current_scope()`. `SET LOCAL app.user_id` plumbing through FastAPI dependency. Repository layer. Lint-banned raw SQL. **Two-client integration test asserting isolation on both axes.** This is the minimum-viable safety net.
-3. **Parser + alignment third (parallel)** — pure functions over `(markdown_v1, markdown_v2) → events`, tested against the 31 fixtures. Independently buildable; can begin as soon as #2 has stub tables.
+3. **Parser + alignment third (parallel)** — pure functions over `(markdown_v1, markdown_v2) → events`, tested against the 46 fixtures. Independently buildable; can begin as soon as #2 has stub tables.
 4. **Ingestion worker fourth (parallel)** — Lawstronaut auth + token-refresh harden (critical-path; 30-min token TTL + 50 docs); schedule table; `SKIP LOCKED` claim loop or ACA Job (decide #16); upload-then-commit pattern; `ingestion_incident` wired in.
 5. **Three primitive endpoints fifth** — discovery, temporal, differential at the three scopes. Re-uses the tenancy spine and the alignment outputs.
 6. **SPA sixth** — diff render spike in parallel against static fixtures; rest after endpoints stabilise.

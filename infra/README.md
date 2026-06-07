@@ -22,7 +22,7 @@ infra/
     ├── front-door.bicep              Standard SKU, fronts storage $web
     ├── keyvault.bicep                RBAC-enabled vault
     ├── network.bicep                 VNet + delegated subnets + PG DNS zone
-    ├── postgres-flex.bicep           Flexible Server PG 17, VNet-integrated
+    ├── postgres-flex.bicep           Flexible Server PG 18, VNet-integrated
     └── storage.bicep                 Originals container + $web
 ```
 

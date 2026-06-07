@@ -1,6 +1,6 @@
 # Demo runbook (WU8.3)
 
-*Last revised: 2026-06-06.*
+*Last revised: 2026-06-07.*
 *Path: docs/runbooks/demo.md.*
 
 *Audience: operator running or supervising the public demo on
@@ -42,8 +42,13 @@ localhost.
       az deployment group what-if \
         --resource-group horizons-nonprod \
         --template-file infra/main.bicep \
-        --parameters @infra/main.parameters.staging.json
+        --parameters @infra/main.parameters.example.json
       ```
+      (No `main.parameters.staging.json` exists in tree — `deploy.yml`
+      drives the staging deploy from `main.parameters.example.json`
+      with `environmentName: "dev"` → the `horizons-dev-*` resource
+      names. See `deploy.md` → "Production cutover follow-up" for the
+      `main.parameters.prod.json` plan.)
       Expected: `no changes` or only the image-tag deltas for the SHA
       that built the current deploy.
 - [ ] **First end-to-end deploy via `deploy.yml` succeeded.**
@@ -240,11 +245,18 @@ section open in a side window during the show.
 
 ### API cold-start
 
-- **Symptom:** First request after a quiet period returns 504, or the
-  login button spins for ~10–30 s before responding.
-- **Why:** ACA scales to zero when idle. The first request after the
-  scale-to-zero window pays the cold-start cost while a replica is
-  created and the FastAPI app boots.
+- **Symptom:** First request after a fresh deploy or a long idle gap
+  returns 504, or the login button spins for ~10–30 s before
+  responding.
+- **Why:** The API container app is configured with `minReplicas = 1`
+  (see `infra/modules/container-app-api.bicep`), so the steady-state
+  cold-start cause — scale-to-zero — does not apply here. The two
+  remaining triggers are: (a) a fresh deploy whose new revision is
+  still going through its `/healthz` readiness probe when you hit it
+  via Front Door (ACA's Single-mode shift only flips traffic after
+  readiness passes, but the first request after a shift can still
+  pay JIT / connection-pool warmup), and (b) the Postgres connection
+  pool churning if the worker is hammering it concurrently.
 - **Quick check:**
   ```bash
   curl -fsS -w '%{http_code} %{time_total}s\n' \
@@ -253,16 +265,15 @@ section open in a side window during the show.
   If it returns `200 0.x` immediately, the replica is warm.
 - **Recovery:**
   1. **Prevention:** hit `/healthz` once during the Setup phase
-     (script step a.3) so the replica is warm before the audience
-     sees anything.
+     (script step a.3) so the active replica has its JIT + pool
+     warm before the audience sees anything.
   2. **Mid-demo bite:** quietly open `$DEMO_URL/login` in a second
      tab and let it bootstrap; the SPA's auth-store init hits the
      refresh endpoint, which warms the API. By the time you click
-     back to the demo tab the replica is up.
-  3. **Persistent:** if the cold-start cost is hurting repeatedly,
-     scale-from-zero is the wrong default for a demo window. Apply
-     the manual scale-up under [DB / API saturation](#db--api-saturation)
-     for the same effect.
+     back to the demo tab the replica is responsive.
+  3. **Persistent:** raise `minReplicas` to 2 for the duration of
+     the showcase per the [DB / API saturation](#db--api-saturation)
+     recovery below; revert to 1 (the default) after the demo.
 
 ### Front Door cache stale after a redeploy
 
@@ -347,8 +358,9 @@ section open in a side window during the show.
     --resource-group horizons-nonprod \
     --min-replicas 2
   ```
-  Revert after the demo with `--min-replicas 0` so the staging cost
-  drops back to scale-to-zero.
+  Revert after the demo with `--min-replicas 1` (the Bicep default
+  in `infra/modules/container-app-api.bicep`) so the staging cost
+  drops back to one always-on replica.
 
 ### Browser cache shows a stale SPA bundle
 

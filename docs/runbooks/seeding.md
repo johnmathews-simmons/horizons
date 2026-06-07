@@ -1,13 +1,16 @@
 # Curated-set bootstrap
 
-*Last revised: 2026-06-06.*
+*Last revised: 2026-06-07.*
 *Path: docs/runbooks/seeding.md.*
 
 How `documents` and `document_poll_schedule` get their initial rows so the
 ingestion worker has something to poll. Implementation lives at
 `scripts/seed_curated_set.py` (CLI shim) plus
 `packages/horizons-ingestion/src/horizons_ingestion/seed.py` (library).
-WU3.5 ships the starter set; WU8.0 grows it for the demo.
+WU3.5 ships the starter set; WU8.0 adds the synthetic-v2 staging path;
+WU8.5 expands the seed to the full 31-fixture inventory; WU8.7 pivots
+the demo relabel cluster to native GB / EU sources so the UK and EU
+demo subscriptions are visibly populated.
 
 ## What it does
 
@@ -81,8 +84,8 @@ with `cadence_hours=1` get a separate 1h stagger.
 
 This matches the production-shape goal: the first claim-loop tick after a
 fresh seed claims at most one document per cadence bucket, not the entire
-curated set. WU8.0's expansion to ~50 documents would otherwise produce a
-50-doc burst on the first tick.
+curated set. WU8.5's expansion to the full 31-fixture inventory would
+otherwise produce a 31-doc burst on the first tick.
 
 ## Running
 
@@ -103,24 +106,29 @@ It exits zero on:
 - A successful run (newly inserted rows reported, with counts).
 - A re-run where nothing is new (zero inserts reported).
 
-## WU8.0 — demo corpus expansion + synthetic v2 staging
+## WU8.0 / WU8.5 / WU8.7 — demo corpus + synthetic v2 staging
 
-WU8.0 grew the curated set to **10 jurisdictions × 5 sectors** and added a
-synthetic v2 staging path. The ~50-document acceptance target is gapped by
-the current fixture inventory: `data/samples/fixtures.json` (captured
-2026-06-04) holds one capture per jurisdiction, so the in-scope seed tops
-out at ~10. Growing to ~50 requires re-running
-`scripts/fetch_fixtures.py` with a higher target so each jurisdiction
-contributes multiple documents — the seed picks up the extras
-idempotently on the next run.
+WU8.0 added the synthetic v2 staging path used by the demo's headline
+clause-diff moment. WU8.5 expanded the seed to the full 31-fixture
+inventory under `data/samples/`. WU8.7 reworked the relabel cluster
+so the UK and EU demo subscriptions are visibly populated from native
+GB / EU sources (see `data/curated_set.yaml` header for the current
+list of relabel decisions). Each demo subscription (UK/BANKING and
+EU/BANKING) now sees ≥ 10 documents.
+
+The two sectors carried in `data/curated_set.yaml` are `BANKING` and
+`employment`. Honest-sector documents (no relabel) stay on their
+native sector so the admin view still surfaces the taxonomy mix.
 
 The v2 injection path lives in this same module rather than a separate
 admin tool:
 
 - `data/samples/synthetic_v2/<iso>-<docid>-v2.md` — hand-authored
-  revisions of selected v1 fixtures, each with one ADD / one MODIFY /
-  one REMOVE so the alignment pipeline emits all three event families.
-  See `data/samples/synthetic_v2/README.md` for the per-document diff
+  revisions of selected v1 fixtures, each with one or more of ADDED /
+  MODIFIED / REMOVED / MOVED so the alignment pipeline emits a
+  realistic editorial-intent mix. Currently 8 pairs (au, de, eu, fr,
+  gb, ie-8064194, ie-27732019, it). See
+  `data/samples/synthetic_v2/README.md` for the per-document diff
   intent.
 - `horizons_ingestion.seed.stage_synthetic_v2(pairs, …)` — for each
   `(lawstronaut_document_id, v1_path, v2_path)` pair, inserts the v1
@@ -134,13 +142,15 @@ admin tool:
 - `scripts/seed_curated_set.py --stage-synthetic-v2` runs the WU3.5
   seed and then the v2 staging in a single invocation.
 
-**Operational rule:** the worker must not be run against documents that
-have staged synthetic v2s. The worker uses Lawstronaut HTTP, which
-returns the real v1 — sha mismatch with the staged v2 would push a
-spurious v3. The demo runbook (`docs/runbooks/demo-accounts.md`)
-documents the operator guidance; a future tightening could bump
-`next_poll_at` to a far-future date on staged documents to enforce this
-in code.
+**Operational rule:** the worker must not poll documents that have
+staged synthetic v2s. The worker uses Lawstronaut HTTP, which returns
+the real v1 — a sha mismatch with the staged v2 would push a spurious
+v3. **This is enforced in code:** `stage_synthetic_v2` parks the staged
+documents' `document_poll_schedule.next_poll_at` at `2026-12-31` so the
+claim loop's `next_poll_at <= now()` predicate never selects them. See
+`journal/260605-fix-worker-staged-guard-and-env-validation.md` and the
+`docs/runbooks/demo.md` pre-demo checklist for the operator-side
+confirmation.
 
 **Demo accounts** are a separate concern handled by
 `packages/horizons-api/scripts/create_demo_accounts.py`. See
