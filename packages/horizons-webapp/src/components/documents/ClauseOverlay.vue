@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { ClauseItem } from '@/api/documents'
+import { looksLikeHtml, sanitizeClauseHtml } from '@/lib/sanitizeClauseHtml'
 
 interface Props {
   clauses: ClauseItem[]
@@ -81,6 +82,14 @@ function hasBody(c: ClauseItem): boolean {
   return c.text_content.trim().length > 0
 }
 
+function isHtmlBody(c: ClauseItem): boolean {
+  return looksLikeHtml(c.text_content)
+}
+
+function htmlBody(c: ClauseItem): string {
+  return sanitizeClauseHtml(c.text_content)
+}
+
 const HEADING_BASE = 'mb-2 mt-4 font-semibold text-slate-900'
 const HEADING_BY_TAG: Record<string, string> = {
   h2: 'text-xl border-b border-slate-200 pb-1',
@@ -122,10 +131,19 @@ function headingClass(tag: string): string {
           >
             {{ dc.clause.heading_text }}
           </component>
-          <pre
-            v-if="hasBody(dc.clause)"
-            class="whitespace-pre-wrap font-serif text-base text-slate-800"
-          >{{ dc.clause.text_content }}</pre>
+          <template v-if="hasBody(dc.clause)">
+            <div
+              v-if="isHtmlBody(dc.clause)"
+              data-testid="clause-body-html"
+              class="clause-html font-serif text-base text-slate-800"
+              v-html="htmlBody(dc.clause)"
+            />
+            <pre
+              v-else
+              data-testid="clause-body-text"
+              class="whitespace-pre-wrap font-serif text-base text-slate-800"
+            >{{ dc.clause.text_content }}</pre>
+          </template>
         </div>
       </article>
     </template>
@@ -170,13 +188,70 @@ function headingClass(tag: string): string {
             >
               {{ dc.clause.heading_text }}
             </component>
-            <pre
-              v-if="hasBody(dc.clause)"
-              class="whitespace-pre-wrap font-serif text-sm text-slate-800"
-            >{{ dc.clause.text_content }}</pre>
+            <template v-if="hasBody(dc.clause)">
+              <div
+                v-if="isHtmlBody(dc.clause)"
+                data-testid="clause-body-html"
+                class="clause-html font-serif text-sm text-slate-800"
+                v-html="htmlBody(dc.clause)"
+              />
+              <pre
+                v-else
+                data-testid="clause-body-text"
+                class="whitespace-pre-wrap font-serif text-sm text-slate-800"
+              >{{ dc.clause.text_content }}</pre>
+            </template>
           </div>
         </li>
       </ol>
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Light-touch styling for sanitized upstream HTML — tables, lists,
+   anchors, images. Keeps the rendered output readable without
+   overpowering the prose blocks that surround it. */
+.clause-html :deep(ol),
+.clause-html :deep(ul) {
+  margin: 0.25rem 0 0.5rem 1.25rem;
+  list-style-position: outside;
+}
+.clause-html :deep(ol) {
+  list-style-type: decimal;
+}
+.clause-html :deep(ul) {
+  list-style-type: disc;
+}
+.clause-html :deep(a) {
+  color: rgb(30 64 175); /* blue-800 */
+  text-decoration: underline;
+}
+.clause-html :deep(table) {
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.85em;
+  width: 100%;
+}
+.clause-html :deep(td),
+.clause-html :deep(th) {
+  border: 1px solid rgb(203 213 225); /* slate-300 */
+  padding: 0.25rem 0.5rem;
+  vertical-align: top;
+}
+.clause-html :deep(th) {
+  background-color: rgb(241 245 249); /* slate-100 */
+  font-weight: 600;
+}
+.clause-html :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+}
+.clause-html :deep(blockquote) {
+  border-left: 3px solid rgb(203 213 225);
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  color: rgb(71 85 105); /* slate-600 */
+}
+</style>

@@ -291,3 +291,86 @@ describe('ClauseOverlay — heading_text', () => {
     expect(wrapper.findAll('[data-testid="clause-heading"]')).toHaveLength(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// HTML body rendering & sanitization
+// ---------------------------------------------------------------------------
+
+function htmlClause(id: string, text: string): ClauseItem {
+  return {
+    id,
+    clause_uid: `${id}-uid`,
+    clause_path: id,
+    text_content: text,
+    heading_text: null,
+    ord: 1,
+  }
+}
+
+describe('ClauseOverlay — HTML body rendering', () => {
+  it('routes plain-text bodies through the <pre> path', () => {
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: CLAUSES, showStructure: false },
+    })
+    // CLAUSES contain no `<` so every body renders as plain text.
+    expect(wrapper.findAll('[data-testid="clause-body-text"]')).toHaveLength(CLAUSES.length)
+    expect(wrapper.findAll('[data-testid="clause-body-html"]')).toHaveLength(0)
+  })
+
+  it('routes HTML-looking bodies through the sanitized v-html path', () => {
+    const c = htmlClause(
+      'breadcrumb',
+      '<ol><li><a href="https://example.com">Home</a></li><li>Doc</li></ol>',
+    )
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [c], showStructure: false },
+    })
+    const html = wrapper.find('[data-testid="clause-body-html"]')
+    expect(html.exists()).toBe(true)
+    // The structural tags survived sanitization.
+    expect(html.find('ol').exists()).toBe(true)
+    expect(html.find('li').exists()).toBe(true)
+    expect(html.find('a').exists()).toBe(true)
+  })
+
+  it('strips <script> and event-handler attributes', () => {
+    const c = htmlClause(
+      'evil',
+      '<p>before</p><script>alert(1)</script><img src=x onerror="alert(1)"><p>after</p>',
+    )
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [c], showStructure: false },
+    })
+    const html = wrapper.find('[data-testid="clause-body-html"]')
+    expect(html.html()).not.toContain('<script')
+    expect(html.html()).not.toContain('onerror')
+    // Benign content survives.
+    expect(html.text()).toContain('before')
+    expect(html.text()).toContain('after')
+  })
+
+  it('rewrites <a href> to open in a new tab with safe rel', () => {
+    const c = htmlClause('link', '<a href="https://example.com">go</a>')
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [c], showStructure: false },
+    })
+    const anchor = wrapper.find('[data-testid="clause-body-html"] a')
+    expect(anchor.attributes('target')).toBe('_blank')
+    expect(anchor.attributes('rel')).toBe('noopener noreferrer')
+    expect(anchor.attributes('href')).toBe('https://example.com')
+  })
+
+  it('preserves table structure for fixtures that embed tables', () => {
+    const c = htmlClause(
+      'table',
+      '<table><tr><td>cell-a</td><td>cell-b</td></tr></table>',
+    )
+    const wrapper = mount(ClauseOverlay, {
+      props: { clauses: [c], showStructure: false },
+    })
+    const html = wrapper.find('[data-testid="clause-body-html"]')
+    expect(html.findAll('td')).toHaveLength(2)
+    expect(html.text()).toContain('cell-a')
+    expect(html.text()).toContain('cell-b')
+  })
+})
