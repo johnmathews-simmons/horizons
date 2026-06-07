@@ -82,11 +82,11 @@ describe('HomeView', () => {
     expect(uk.attributes('data-subscribed')).toBe('true')
   })
 
-  it('clicking a subscribed jurisdiction with changes navigates to /changes', async () => {
+  it('clicking a subscribed jurisdiction with changes navigates to /documents', async () => {
     const { wrapper, router } = await mountHome()
     const push = vi.spyOn(router, 'push')
     await wrapper.find('[data-testid="jurisdiction-card"][data-code="UK"]').trigger('click')
-    expect(push).toHaveBeenCalledWith({ name: 'changes', query: { jurisdiction: 'UK' } })
+    expect(push).toHaveBeenCalledWith({ name: 'documents', query: { jurisdiction: 'UK' } })
   })
 
   it('clicking a subscribed jurisdiction with 0 changes navigates to /documents', async () => {
@@ -103,11 +103,11 @@ describe('HomeView', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
-  it('clicking a subscribed sector with changes navigates to /changes', async () => {
+  it('clicking a subscribed sector with changes navigates to /documents', async () => {
     const { wrapper, router } = await mountHome()
     const push = vi.spyOn(router, 'push')
     await wrapper.find('[data-testid="sector-card"][data-code="BANKING"]').trigger('click')
-    expect(push).toHaveBeenCalledWith({ name: 'changes', query: { sector: 'BANKING' } })
+    expect(push).toHaveBeenCalledWith({ name: 'documents', query: { sector: 'BANKING' } })
   })
 
   it('shows the change count on each jurisdiction card', async () => {

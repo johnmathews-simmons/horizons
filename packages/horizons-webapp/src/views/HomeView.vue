@@ -8,23 +8,12 @@ import SectorCard from '@/components/overview/SectorCard.vue'
 const router = useRouter()
 const overview = useMeOverview()
 
-// When there are no recent changes for a code, the /changes page would
-// be empty; route to /documents instead so the click still produces a
-// useful drill-down (browse documents in that scope).
-function goToJurisdiction(code: string, changeCount: number): void {
-  if (changeCount > 0) {
-    router.push({ name: 'changes', query: { jurisdiction: code } })
-  } else {
-    router.push({ name: 'documents', query: { jurisdiction: code } })
-  }
+function goToJurisdiction(code: string, _changeCount: number): void {
+  router.push({ name: 'documents', query: { jurisdiction: code } })
 }
 
-function goToSector(code: string, changeCount: number): void {
-  if (changeCount > 0) {
-    router.push({ name: 'changes', query: { sector: code } })
-  } else {
-    router.push({ name: 'documents', query: { sector: code } })
-  }
+function goToSector(code: string, _changeCount: number): void {
+  router.push({ name: 'documents', query: { sector: code } })
 }
 </script>
 
