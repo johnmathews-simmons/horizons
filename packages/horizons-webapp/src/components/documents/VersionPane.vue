@@ -3,16 +3,18 @@ import { computed } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { getClauses, type ClauseBundle } from '@/api/documents'
 import ClauseOverlay from './ClauseOverlay.vue'
+import type { ChangeType } from '@/constants/change-colors'
 
 interface Props {
   documentId: string
   versionLabel: string
   seenAt: string
   showStructure: boolean
-  highlightPath: string | null
+  changeMap?: Record<string, ChangeType> | null
+  scrollToPath?: string | null
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { changeMap: null, scrollToPath: null })
 
 const query = useQuery<ClauseBundle>({
   queryKey: computed(() => ['document-clauses', props.documentId, props.versionLabel]),
@@ -54,7 +56,8 @@ const seenDate = computed<string>(() => props.seenAt.slice(0, 10))
       v-else-if="query.data.value"
       :clauses="query.data.value.clauses"
       :show-structure="showStructure"
-      :highlight-path="highlightPath"
+      :change-map="changeMap"
+      :scroll-to-path="scrollToPath"
     />
   </section>
 </template>

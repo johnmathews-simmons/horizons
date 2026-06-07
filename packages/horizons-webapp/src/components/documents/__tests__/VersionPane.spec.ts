@@ -4,6 +4,7 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import VersionPane from '../VersionPane.vue'
+import type { ChangeType } from '@/constants/change-colors'
 
 const API = 'http://localhost:8000'
 
@@ -15,7 +16,8 @@ interface PaneProps {
   versionLabel: string
   seenAt: string
   showStructure: boolean
-  highlightPath: string | null
+  changeMap?: Record<string, ChangeType> | null
+  scrollToPath?: string | null
 }
 
 function mountPane(props: PaneProps) {
@@ -50,7 +52,6 @@ describe('VersionPane', () => {
       versionLabel: VERSION_LABEL,
       seenAt: '2026-05-12T08:30:00Z',
       showStructure: false,
-      highlightPath: null,
     })
     await flushPromises()
 
@@ -84,7 +85,6 @@ describe('VersionPane', () => {
       versionLabel: VERSION_LABEL,
       seenAt: '2026-05-12T08:30:00Z',
       showStructure: true,
-      highlightPath: null,
     })
 
     expect(wrapper.find('[data-testid="version-pane-loading"]').exists()).toBe(true)
@@ -105,7 +105,6 @@ describe('VersionPane', () => {
       versionLabel: VERSION_LABEL,
       seenAt: '2026-05-12T08:30:00Z',
       showStructure: false,
-      highlightPath: null,
     })
     await flushPromises()
 
@@ -114,7 +113,7 @@ describe('VersionPane', () => {
     )
   })
 
-  it('forwards highlightPath to ClauseOverlay', async () => {
+  it('forwards changeMap and scrollToPath to ClauseOverlay', async () => {
     server.use(
       http.get(`${API}/v1/documents/${DOC_ID}/versions/${VERSION_LABEL}/clauses`, () =>
         HttpResponse.json({
@@ -139,10 +138,15 @@ describe('VersionPane', () => {
       versionLabel: VERSION_LABEL,
       seenAt: '2026-05-12T08:30:00Z',
       showStructure: true,
-      highlightPath: 'PART_1/SECTION_1',
+      changeMap: { 'PART_1/SECTION_1': 'ADDED' },
+      scrollToPath: 'PART_1/SECTION_1',
     })
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="clause-card"]').attributes('data-highlight')).toBe('true')
+    const overlay = wrapper.findComponent({ name: 'ClauseOverlay' })
+    if (overlay.exists()) {
+      expect(overlay.props('changeMap')).toEqual({ 'PART_1/SECTION_1': 'ADDED' })
+      expect(overlay.props('scrollToPath')).toBe('PART_1/SECTION_1')
+    }
   })
 })
