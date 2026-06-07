@@ -1,0 +1,130 @@
+# Gold-file expected events for the synthetic v1↔v2 pairs in this
+# directory. One entry per fixture; each entry lists the editorial
+# changes documented in README.md as (change_type, before_path,
+# after_path) tuples. Paths are tuples of strings as produced by
+# horizons_core.core.alignment.parser.parse.
+#
+# Scoring (see tests/alignment/test_synthetic_v2.py):
+#
+#   TP = aligner emitted an event matching (change_type + paths) here
+#   FP = aligner emitted an event not listed here (e.g. cascading
+#        paragraph renumbers triggered by an insertion)
+#   FN = aligner failed to emit an event listed here
+#
+# Path notes:
+#
+#   * Heading-anchored clauses use the slugified heading text; the
+#     parser's slugifier strips diacritics and lowercases. Long slugs
+#     are truncated to 64 chars (see parser._slug).
+#   * Numbering-labelled clauses (PART 2, section 12., (a), (iv))
+#     keep their label verbatim in the path.
+#   * Unnumbered body paragraphs under a heading get synthesised
+#     ``#N`` segments, 1-indexed within the parent heading.
+#
+# When an editorial "remove this paragraph" affects both the
+# paragraph's heading line and its body content, both are listed
+# (the parser sees them as separate leaves).
+
+fixtures:
+
+  # CRO Social Media Policy — REMOVE "Following and Retweets" Twitter
+  # section, MODIFY Twitter availability hours, ADD new BlueSky
+  # section. The "Following and Retweets" removal covers both the
+  # heading line and the body paragraph below it.
+  ie-8064194:
+    events:
+      - change_type: MODIFIED
+        before_path: [availability, "#1"]
+        after_path: [availability, "#1"]
+      - change_type: REMOVED
+        before_path: [content, "#3"]   # "Following and Retweets" heading line
+      - change_type: REMOVED
+        before_path: [content, "#4"]   # body paragraph below it
+      - change_type: ADDED
+        after_path: [bluesky-cro-ie, "#1"]
+
+  # Foat v DWP — REMOVE paragraph 13 (aggravated/exemplary damages),
+  # MODIFY paragraph 9 (ACAS uplift 2%→5%), ADD paragraph 9A.
+  # All three are nested under the "210." heading (the only top-level
+  # heading the parser surfaces in this judgment).
+  gb-28914588:
+    events:
+      - change_type: REMOVED
+        before_path: ["#40"]
+      - change_type: MODIFIED
+        before_path: ["#34"]
+        after_path: ["#34"]
+      - change_type: ADDED
+        after_path: ["#35"]
+
+  # ACPR Société Générale — REMOVE paragraph 43 (2025 financials),
+  # MODIFY paragraph 44 (penalty 20→25 M€), ADD paragraph 45
+  # (aggravating factors).
+  fr-31702142:
+    events:
+      - change_type: REMOVED
+        before_path: [grief-5, "#43"]
+      - change_type: MODIFIED
+        before_path: [grief-5, "#44"]
+        after_path: [grief-5, "#43"]
+      - change_type: ADDED
+        after_path: [grief-5, "#44"]
+
+  # BA Arbeitsmarkt — REMOVE Statistikseite link, MODIFY headline
+  # statistics (3.070.000 → 3.105.000), ADD Saisonbereinigung section.
+  de-20951816:
+    events:
+      - change_type: REMOVED
+        before_path: [ausbildungsmarkt, "#2"]
+      - change_type: MODIFIED
+        before_path: [arbeitslosigkeit-unterbeschäftigung-und-erwerbslosigkeit, "#1"]
+        after_path: [arbeitslosigkeit-unterbeschäftigung-und-erwerbslosigkeit, "#1"]
+      - change_type: ADDED
+        after_path: [saisonbereinigung, "#1"]
+
+  # MEF Update DEF 2016 — REMOVE opening paragraph of "Public
+  # finance to support growth", MODIFY net-borrowing target 2.0%→1.8%
+  # under "Budget planning", ADD a Revision Note subsection at the
+  # top of the Introduction.
+  it-26863:
+    events:
+      - change_type: REMOVED
+        before_path: [public-finance-to-support-growth-in-the-balances-and-the-composi, "#1"]
+      - change_type: MODIFIED
+        before_path: [budget-planning-for-the-years-ahead, "(2)", "#1"]
+        after_path: [budget-planning-for-the-years-ahead, "(2)", "#1"]
+      - change_type: ADDED
+        after_path: [revision-note, "#1"]
+
+  # IE Employers' Insolvency Amendment Act — MOVED section 11→11A
+  # (body byte-identical), MODIFIED section 12(5A)(a) Minister's
+  # order-making power (12 weeks → 16 weeks).
+  ie-27732019:
+    events:
+      - change_type: MOVED
+        before_path: ["PART 2", "11."]
+        after_path: ["PART 2", "11A."]
+      - change_type: MODIFIED
+        before_path: ["PART 2", "12.", "(a)"]
+        after_path: ["PART 2", "12.", "(a)"]
+
+  # AU AGDRP determination — REMOVE sub-paragraph (iv) of major
+  # damage definition (sewage contamination), ADD closing sentence
+  # in Schedule 1 fixing the LGA boundary reference date.
+  au-2145602:
+    events:
+      - change_type: REMOVED
+        before_path: ["4", "(1)", "(a)-4", "(iv)"]
+      - change_type: ADDED
+        after_path: ["6", "(2)", "#8"]
+
+  # BEREC debriefing — MODIFIED date (10 June → 17 June), REMOVED
+  # livestream-and-Q&A closing paragraph of "Registration and
+  # engagement" (format reverted to in-person).
+  eu-31366184:
+    events:
+      - change_type: MODIFIED
+        before_path: [berec-to-present-digital-networks-act-assessment-at-upcoming-pub, "#2"]
+        after_path: [berec-to-present-digital-networks-act-assessment-at-upcoming-pub, "#2"]
+      - change_type: REMOVED
+        before_path: [registration-and-engagement, "#3"]

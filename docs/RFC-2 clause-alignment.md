@@ -141,6 +141,8 @@ Mechanism is settled even where values aren't. Experimental knobs are **runtime-
 
 ## Calibration
 
+Day-to-day operating manual (commands, before/after baseline workflow, extending the gold) lives at `docs/runbooks/alignment-calibration.md`. This section covers the design.
+
 The aligner is exercised against every fixture in `data/samples/` by `tests/alignment/test_fixtures.py`. Per fixture, two cases:
 
 - **Identity** — `align(v1, v1)` against the same parsed tree. Must emit zero events. Failure here means the no-change case is producing spurious diffs and the aligner is unsafe for idempotent re-ingestion of an unchanged version.
@@ -166,6 +168,12 @@ The four tuning knobs (`shingle_k`, `signature_size`, `lsh_bands`, `similarity_t
 The suite is **not** a hard gate on mutation-case precision. The identity case (`align(v1, v1) == []`) is asserted strictly for every fixture — a non-empty result is a correctness bug and fails the build. The mutation case asserts only that **at least two** of the four expected events were matched (the floor catches algorithm-broken regressions while letting boilerplate-rich corpora report degraded precision honestly). The aggregate quality numbers in the score table are the demo-period diagnostic, not a CI threshold.
 
 Fixtures whose total leaf set or body lengths are too small to support four distinct mutations (currently `ge-4446542-v1`, `hr-6339302-v1`, `jp-1771371-v1`, `kr-5412226-v1` — all under 5 KB) are skipped with a recorded reason; they still run the identity case.
+
+### Gold-file suite on synthetic_v2
+
+The synthetic-mutation suite above is broad (27 fixtures) but its edits are randomly-chosen leaf replacements — by construction it cannot trigger the failure mode where one editorial change cascades into N sibling-renumbering events. A complementary gold-file suite, `tests/alignment/test_synthetic_v2.py`, scores the aligner against the eight hand-authored v2 documents in `data/samples/synthetic_v2/`. Gold expectations live next to the fixtures at `data/samples/synthetic_v2/expected_events.yaml` as `(change_type, before_path, after_path)` tuples (22 expected events across the eight pairs); the scoring is the same shape as `_score` in `test_fixtures.py` — TP = matched gold entry, FP = any extra event emitted, FN = any gold entry missed.
+
+The two numbers tell different stories. As of 2026-06-07, the same default `TuningConfig` produces macro-F1 = 0.97 on the synthetic-mutation suite and macro-F1 = 0.69 on the gold suite — recall stays high in both (≈0.96) but precision collapses on the gold suite (0.59 vs. 0.96) because realistic insertions and removals push sibling paragraphs down and the aligner correctly-but-noisily emits each shifted paragraph as a MOVED event. Report both numbers when tuning; a drop in either is a regression worth explaining. See `journal/260607-alignment-gold-suite.md` for the per-fixture breakdown and the two collapsing-noise mitigations to consider post-demo.
 
 ## Implementation
 

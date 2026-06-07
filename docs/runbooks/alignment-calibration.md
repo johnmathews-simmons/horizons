@@ -1,0 +1,203 @@
+# Alignment calibration
+
+How to read, run, and extend the two alignment-quality suites that
+score `horizons_core.core.alignment.align`. Background and design
+choices live in `docs/RFC-2 clause-alignment.md` — *Calibration*; this
+runbook is the day-to-day operating manual.
+
+## 1. The two suites
+
+| Suite | File | Substrate | Size | Headline number |
+|---|---|---|---|---|
+| Synthetic-mutation regression | `tests/alignment/test_fixtures.py` | every `*.md` in `data/samples/` mutated with one ADDED + one REMOVED + one MODIFIED + one MOVED (deterministic per slug) | 27 fixtures × 2 cases | macro-F1 ≈ 0.97 |
+| Gold-file calibration | `tests/alignment/test_synthetic_v2.py` | the 8 hand-authored v1↔v2 pairs in `data/samples/synthetic_v2/`, scored against `data/samples/synthetic_v2/expected_events.yaml` | 8 fixtures, 22 expected events | macro-F1 ≈ 0.69 |
+
+They answer different questions. The mutation suite asks *"did the
+aligner break on random leaf edits across a wide corpus"* — catches
+catastrophic regressions. The gold suite asks *"does the aligner
+recover the editorial intent of a realistic legal amendment"* —
+catches precision-collapsing cascades (insert one paragraph, watch
+five unchanged siblings get emitted as MOVED events) that random
+leaf mutations cannot trigger by construction.
+
+Same `align()` call, same default `TuningConfig` — the two numbers
+diverging is the whole point. Report both whenever you change tuning.
+
+## 2. Commands
+
+### 2.1 Gold suite only (fast)
+
+```bash
+uv run pytest tests/alignment/test_synthetic_v2.py --no-cov
+```
+
+~3 seconds. Use this when you've tweaked `TuningConfig` defaults, the
+parser, or one of the alignment passes and want a quick "did I move
+the realistic-amendment number". Prints one table.
+
+### 2.2 Both suites (~45 s)
+
+```bash
+uv run pytest tests/alignment/ --no-cov
+```
+
+Prints both tables back-to-back — the 27-fixture synthetic-mutation
+table first, then the 8-fixture gold table. This is what you want
+before declaring a tuning change a win; a change that lifts one
+number and tanks the other is a sideways move, not progress.
+
+### 2.3 One fixture, with full notes
+
+```bash
+uv run pytest tests/alignment/test_synthetic_v2.py -k <slug> --no-cov
+```
+
+(e.g. `-k gb-28914588`.) Single-fixture run; assertion message lists
+every miss and extra-event count with paths quoted, so you can grep
+the aligner's emitted events against the gold.
+
+## 3. Before/after baseline workflow
+
+The right way to measure a tuning change. Capture, change, recapture,
+diff:
+
+```bash
+# Before
+uv run pytest tests/alignment/ --no-cov 2>&1 \
+  | grep -A 100 'quality report\|synthetic_v2 gold' > /tmp/align-before.txt
+
+# ... edit horizons_core/core/alignment/ ...
+
+# After
+uv run pytest tests/alignment/ --no-cov 2>&1 \
+  | grep -A 100 'quality report\|synthetic_v2 gold' > /tmp/align-after.txt
+
+diff /tmp/align-before.txt /tmp/align-after.txt
+```
+
+The aggregate rows in each table give you the headline number; the
+per-fixture rows tell you whether the change helped uniformly or
+robbed Peter to pay Paul.
+
+## 4. Reading the tables
+
+### 4.1 Mutation suite (`test_fixtures`)
+
+```
+fixture            ident   P     R     F1    notes
+ie-27732019-v1     ok      1.00  1.00  1.00
+at-32061749-v1     ok      0.60  0.75  0.67  missed MODIFIED, 2 extra event(s)
+aggregate          31/31   0.96  0.97  0.97  4 skipped (fixture too small)
+```
+
+- `ident` — `ok` if `align(v1, v1) == []`. A `FAIL (N)` here means
+  re-ingesting an unchanged version would emit `N` spurious diffs to
+  customers; **this is the load-bearing correctness check** and it
+  fails the build (the other columns are advisory).
+- `P / R / F1` — against the four synthesised events. `R` is `TP/4`;
+  `P` is `TP/len(emitted)`.
+- Skipped rows (fixtures under ~5 KB) still run the identity case;
+  they only skip the mutation case because there isn't enough body to
+  synthesise four distinct mutations.
+
+### 4.2 Gold suite (`test_synthetic_v2`)
+
+```
+fixture      N   TP   P     R     F1    notes
+au-2145602   2   2    1.00  1.00  1.00
+gb-28914588  3   2    0.18  0.67  0.29  missed MODIFIED ['#34'], 9 extra event(s)
+aggregate    22  21   0.59  0.96  0.69
+```
+
+- `N` — expected event count for this fixture (from
+  `expected_events.yaml`).
+- `TP` — matched gold entries.
+- Extras (`9 extra event(s)`) are the precision killer. Most are
+  cascading paragraph renumbers triggered by an insert/remove —
+  legitimate from the aligner's POV, noise from the customer's.
+- The aggregate `N` and `TP` columns are *totals* (22 events across
+  8 fixtures, 21 matched). `P / R / F1` aggregate columns are
+  *macro-averages* across the per-fixture rows.
+
+## 5. Extending the gold
+
+Drop a new pair into `data/samples/synthetic_v2/`:
+
+1. Author `<slug>-v1.md` (or use one that's already in
+   `data/samples/`) and a `<slug>-v2.md` with your editorial edits.
+2. Add a `<slug>:` block to `data/samples/synthetic_v2/expected_events.yaml`
+   listing the expected `(change_type, before_path, after_path)`
+   tuples. ADDED and REMOVED entries omit the path they don't carry.
+3. Run command 2.1 to verify.
+
+To discover the path strings the parser produces for your new fixture
+without reading them off the markdown by eye:
+
+```bash
+uv run python - <<'PY'
+from pathlib import Path
+from horizons_core.core.alignment.parser import parse
+from horizons_core.core.alignment.align import align
+from horizons_core.core.alignment.portal_config import load_portal_config
+
+slug = "xx-12345"  # your slug
+v1 = Path("data/samples") / f"{slug}-v1.md"
+v2 = Path("data/samples/synthetic_v2") / f"{slug}-v2.md"
+
+def _parse(path):
+    iso = path.stem.split("-", 1)[0]
+    text = path.read_text(encoding="utf-8")
+    try:
+        return parse(text, config=load_portal_config(iso))
+    except KeyError:
+        return parse(text)
+
+for e in align(_parse(v1), _parse(v2)):
+    print(e.change_type, list(e.before_path) if e.before_path else "—",
+          "->", list(e.after_path) if e.after_path else "—")
+PY
+```
+
+Copy the paths for the events you want to assert as editorial intent;
+extras the aligner emitted but you don't list will (correctly) lower
+precision. The test auto-discovers from the gold file, not from disk
+— fixtures without a gold entry aren't tested.
+
+## 6. Floors and gates — what is and isn't enforced
+
+| Check | Where | Enforcement |
+|---|---|---|
+| `align(v1, v1) == []` (identity case) | `test_fixtures.py::test_identity_emits_no_events` | **Hard assertion** per fixture; fails the build. |
+| Mutation case `TP >= 2` (out of 4) | `test_fixtures.py::test_four_mutations_align_correctly` | Hard assertion per fixture; catastrophe floor only. |
+| Gold case `TP >= max(1, ⌈N/2⌉)` | `test_synthetic_v2.py::test_synthetic_v2_alignment` | Hard assertion per fixture; catastrophe floor only. |
+| Aggregate P/R/F1 on either suite | terminal-summary table | **Not gated.** Calibration diagnostic; read with your eyes. |
+
+Both suites run inside the routine `uv run pytest` sweep — you don't
+need to invoke them separately before pushing main. A precision slide
+of 0.59 → 0.45 on the gold suite **will not fail the build**; that's
+intentional during the demo period.
+
+If you want a CI gate later — raise `TP_FLOOR_RATIO` in
+`test_synthetic_v2.py` (currently `0.5`), and/or add an aggregate-F1
+assertion to `pytest_terminal_summary` in `tests/alignment/conftest.py`.
+
+## 7. Known issues surfaced by the gold suite
+
+As of 2026-06-07 (see `journal/260607-alignment-gold-suite.md` for
+context):
+
+- **Cascading renumber events** — `gb-28914588`, `it-26863`, and
+  `ie-8064194` over-emit because removing/inserting one paragraph
+  pushes its siblings down and the aligner emits each as MOVED. Out
+  of scope to fix pre-demo; two mitigations sketched in the journal
+  entry (aligner-side coalescing, or UI-side filtering of
+  identical-text contiguous-shift MOVEDs).
+- **`gb-28914588` paragraph 9** — small text edit ("2% → 5%") gets
+  emitted as REMOVED + ADDED instead of MODIFIED. Both leaves have
+  `heading_text=None` and identical path `('#34',)`; pass 2 should
+  pair them on the path-equality rule but doesn't. Untested causes:
+  jaccard estimator noise on short bodies, or greedy sort in
+  `_pass_heading_match` consuming a near-duplicate first.
+
+Neither is regressed against — they're already the current baseline,
+and fixing them is post-demo tuning work.
