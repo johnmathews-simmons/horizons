@@ -21,19 +21,19 @@ precision — the right metric when missing a real event is more costly
 than emitting a spurious one (cancer screening is the canonical
 example). For regulatory-change tracking that framing is arguable
 (missing a law change *is* operationally worse than a false alert),
-but it doesn't change the current calibration story: recall is
-already saturated on both suites (~0.96) while precision is the
-bottleneck (0.59 on the gold suite). Switching to F2 would print a
-flattering higher number without changing which knob to tune next.
-If precision ever rises past recall, F2 becomes the more honest
-single-number report.
+but it doesn't change the current calibration story: recall is the
+stronger axis on both suites (~0.90 on the gold suite, ~0.97 on the
+mutation suite) while precision is the bottleneck (~0.70 on the gold
+suite). Switching to F2 would print a flattering higher number
+without changing which knob to tune next. If precision ever rises
+past recall, F2 becomes the more honest single-number report.
 
 ## 2. The two suites
 
 | Suite | File | Substrate | Size | Headline number |
 |---|---|---|---|---|
 | Synthetic-mutation regression | `tests/alignment/test_fixtures.py` | every `*.md` in `data/samples/` mutated with one ADDED + one REMOVED + one MODIFIED + one MOVED (deterministic per slug) | 27 fixtures × 2 cases | macro-F1 ≈ 0.97 |
-| Gold-file calibration | `tests/alignment/test_synthetic_v2.py` | the 8 hand-authored v1↔v2 pairs in `data/samples/synthetic_v2/`, scored against `data/samples/synthetic_v2/expected_events.yaml` | 8 fixtures, 22 expected events | macro-F1 ≈ 0.69 |
+| Gold-file calibration | `tests/alignment/test_synthetic_v2.py` | the 8 hand-authored v1↔v2 pairs in `data/samples/synthetic_v2/`, scored against `data/samples/synthetic_v2/expected_events.yaml` | 8 fixtures, 33 expected events | macro-F1 ≈ 0.77 |
 
 They answer different questions. The mutation suite asks *"did the
 aligner break on random leaf edits across a wide corpus"* — catches
@@ -128,18 +128,18 @@ aggregate          31/31   0.96  0.97  0.97  4 skipped (fixture too small)
 ```
 fixture      N   TP   P     R     F1    notes
 au-2145602   2   2    1.00  1.00  1.00
-gb-28914588  3   2    0.18  0.67  0.29  missed MODIFIED ['#34'], 9 extra event(s)
-aggregate    22  21   0.59  0.96  0.69
+gb-28914588  5   4    0.36  0.80  0.50  missed MODIFIED ['#34'], 7 extra event(s)
+aggregate    33  30   0.70  0.90  0.77
 ```
 
 - `N` — expected event count for this fixture (from
   `expected_events.yaml`).
 - `TP` — matched gold entries.
-- Extras (`9 extra event(s)`) are typically cascading paragraph
+- Extras (`7 extra event(s)`) are typically cascading paragraph
   renumbers triggered by one insert/remove — legitimate from the
   aligner's POV, noise from the customer's.
-- The aggregate `N` and `TP` columns are *totals* (22 events across
-  8 fixtures, 21 matched). `P / R / F1` aggregate columns are
+- The aggregate `N` and `TP` columns are *totals* (33 events across
+  8 fixtures, 30 matched). `P / R / F1` aggregate columns are
   *macro-averages* across the per-fixture rows.
 
 ## 6. Extending the gold
@@ -197,7 +197,7 @@ precision. The test auto-discovers from the gold file, not from disk
 
 Both suites run inside the routine `uv run pytest` sweep — you don't
 need to invoke them separately before pushing main. A precision slide
-of 0.59 → 0.45 on the gold suite **will not fail the build**; that's
+of 0.70 → 0.55 on the gold suite **will not fail the build**; that's
 intentional during the demo period.
 
 If you want a CI gate later — raise `TP_FLOOR_RATIO` in
@@ -206,7 +206,8 @@ assertion to `pytest_terminal_summary` in `tests/alignment/conftest.py`.
 
 ## 8. Known issues surfaced by the gold suite
 
-As of 2026-06-07 (see `journal/260607-alignment-gold-suite.md` for
+As of 2026-06-07 (see `journal/260607-alignment-gold-suite.md` and
+`journal/260607-gold-file-regenerated-for-stale-ref-fixes.md` for
 context):
 
 - **Cascading renumber events** — `gb-28914588`, `it-26863`, and
@@ -215,12 +216,18 @@ context):
   of scope to fix pre-demo; two mitigations sketched in the journal
   entry (aligner-side coalescing, or UI-side filtering of
   identical-text contiguous-shift MOVEDs).
-- **`gb-28914588` paragraph 9** — small text edit ("2% → 5%") gets
-  emitted as REMOVED + ADDED instead of MODIFIED. Both leaves have
-  `heading_text=None` and identical path `('#34',)`; pass 2 should
-  pair them on the path-equality rule but doesn't. Untested causes:
-  jaccard estimator noise on short bodies, or greedy sort in
-  `_pass_heading_match` consuming a near-duplicate first.
+- **Small-text edits emitted as REMOVED + ADDED** — three fixtures
+  hit the same pattern: `gb-28914588 ['#34']` ("2% → 5%" ACAS uplift),
+  `de-20951816 ['#2']` ("3.070.000 → 3.105.000" total), and
+  `eu-31366184 ['berec-…','#3']` ("hybrid format" → in-person only).
+  All are short paragraphs (~80–160 chars) where the aligner fails
+  to pair v1 and v2 leaves and emits `REMOVED + ADDED` instead of
+  `MODIFIED`. Two candidate root causes (untested): pass 2's
+  short-body fallback requires byte-equal `body_text` (single-char
+  numeric edits fail it) and the shingle path needs body length ≥
+  `shingle_k` words; or the greedy descending-confidence sort in
+  `_pass_heading_match` consumes a near-duplicate neighbour first.
+  Fix candidates also in the journal entry.
 
 Neither blocks demo readiness; both are the current baseline, and
 fixing either is post-demo tuning work.

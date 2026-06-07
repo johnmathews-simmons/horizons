@@ -53,6 +53,10 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
 - **MODIFIED** — paragraph 9: ACAS uplift "2%" → "5%".
 - **ADDED** — a new paragraph 9A clarifying that the ACAS uplift was
   applied after the deduction for past received state benefits.
+- **Consistency fixes (c95911f):** paragraph 29 restated the old 2%
+  uplift + £6,355.79 figure and was updated to 5% / the recomputed
+  amount; paragraph 34 dangled on "aggravated and exemplary damages"
+  after paragraph 13 was removed and had that phrase trimmed.
 
 ### `fr-31702142` — ACPR Société Générale decision
 
@@ -63,6 +67,9 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
 - **ADDED** — a new paragraph 45 noting the aggravating factors that
   influenced the penalty quantum (limited cooperation, persistence of
   the breaches).
+- **Consistency fix (c95911f):** ARTICLE 1ER of the dispositif still
+  read "20 millions d'euros" after paragraph 44 was modified and was
+  brought into line with the 25 M€ quantum.
 
 ### `de-20951816` — Arbeitsmarkt Februar 2026 (BA)
 
@@ -72,6 +79,9 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
 - **ADDED** — a new "Saisonbereinigung" section between "Kurzarbeit" and
   "Erwerbstätigkeit und Beschäftigung" explaining the seasonal-adjustment
   methodology.
+- **Consistency fix (c95911f):** the opening narrative restated the
+  old 3.070.000 total in a second paragraph and was updated to
+  3.105.000.
 
 ### `it-26863` — MEF Update of the Economic and Financial Document 2016
 
@@ -84,6 +94,12 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
 - **ADDED** — a new "Revision note" subsection at the top of the
   Introduction, explaining that this is a Cabinet-revised update of the
   original update.
+- **Consistency fixes (c95911f):** Tables I.1, II.2, and III.3 each
+  carried a 2017 net-borrowing cell that still showed 2.0% and were
+  updated to 1.8%; two further Chapter III narratives (the
+  policy-scenario discussion at III.2 and the Table I.1 footnote (5))
+  plus one cascade-shifted "Public finance to support growth" sibling
+  restated the old 2.0% figure and were brought into line.
 
 ### `ie-27732019` — Protection of Employees (Employers' Insolvency) (Amendment) Act 2026
 
@@ -113,6 +129,9 @@ the `jurisdiction` per-doc override in `docs/runbooks/seeding.md`.
   section: "The event will be livestreamed on the BEREC website. Online
   participants will have the opportunity to submit questions via a Q&A
   chat function." Framing: format reverted to in-person-only.
+- **Consistency fix (c95911f):** the "held in hybrid format... in
+  person and online" sentence contradicted the in-person-only framing
+  once the livestream paragraph was removed, and was rewritten.
 
 ## How the alignment pipeline consumes these
 

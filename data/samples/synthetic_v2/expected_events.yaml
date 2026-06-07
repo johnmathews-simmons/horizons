@@ -44,9 +44,11 @@ fixtures:
         after_path: [bluesky-cro-ie, "#1"]
 
   # Foat v DWP — REMOVE paragraph 13 (aggravated/exemplary damages),
-  # MODIFY paragraph 9 (ACAS uplift 2%→5%), ADD paragraph 9A.
-  # All three are nested under the "210." heading (the only top-level
-  # heading the parser surfaces in this judgment).
+  # MODIFY paragraph 9 (ACAS uplift 2%→5%), ADD paragraph 9A. Two
+  # consistency fixes (c95911f): paragraph 29 restated the 2% uplift +
+  # £6,355.79 figure and was updated to 5%; paragraph 34 still dangled
+  # on "aggravated and exemplary damages" after paragraph 13 was
+  # removed and had that phrase trimmed.
   gb-28914588:
     events:
       - change_type: REMOVED
@@ -56,10 +58,18 @@ fixtures:
         after_path: ["#34"]
       - change_type: ADDED
         after_path: ["#35"]
+      - change_type: MODIFIED
+        before_path: ["210.", "#10"]    # consistency fix: para 29 uplift restatement
+        after_path: ["210.", "#10"]
+      - change_type: MODIFIED
+        before_path: ["210.", "#21"]    # consistency fix: para 34 damages phrase
+        after_path: ["210.", "#21"]
 
   # ACPR Société Générale — REMOVE paragraph 43 (2025 financials),
   # MODIFY paragraph 44 (penalty 20→25 M€), ADD paragraph 45
-  # (aggravating factors).
+  # (aggravating factors). One consistency fix (c95911f): ARTICLE
+  # 1ER of the dispositif still cited 20 M€ after paragraph 44 was
+  # modified to 25 M€ and was brought into line.
   fr-31702142:
     events:
       - change_type: REMOVED
@@ -69,9 +79,17 @@ fixtures:
         after_path: [grief-5, "#43"]
       - change_type: ADDED
         after_path: [grief-5, "#44"]
+      - change_type: MODIFIED
+        before_path: [décide, "#1"]     # consistency fix: ARTICLE 1ER 20→25 M€
+        after_path: [décide, "#1"]
 
   # BA Arbeitsmarkt — REMOVE Statistikseite link, MODIFY headline
   # statistics (3.070.000 → 3.105.000), ADD Saisonbereinigung section.
+  # One consistency fix (c95911f): the opening narrative restated
+  # the old 3.070.000 total and was updated to 3.105.000. The aligner
+  # emits this short-body edit as REMOVED + ADDED at ['#2'] rather
+  # than MODIFIED — encoded here as the editorial intent so the
+  # detection failure surfaces as a recall miss in the score table.
   de-20951816:
     events:
       - change_type: REMOVED
@@ -81,11 +99,18 @@ fixtures:
         after_path: [arbeitslosigkeit-unterbeschäftigung-und-erwerbslosigkeit, "#1"]
       - change_type: ADDED
         after_path: [saisonbereinigung, "#1"]
+      - change_type: MODIFIED
+        before_path: ["#2"]             # consistency fix: opening-narrative restatement
+        after_path: ["#2"]
 
   # MEF Update DEF 2016 — REMOVE opening paragraph of "Public
   # finance to support growth", MODIFY net-borrowing target 2.0%→1.8%
   # under "Budget planning", ADD a Revision Note subsection at the
-  # top of the Introduction.
+  # top of the Introduction. Six consistency fixes (c95911f):
+  # Tables I.1, II.2, III.3 each carried a 2017 net-borrowing cell
+  # that still showed 2.0%; two further Chapter III narratives plus
+  # one cascaded-renumber sibling restated the old 2.0% figure and
+  # were brought into line with the confirmed 1.8%.
   it-26863:
     events:
       - change_type: REMOVED
@@ -95,6 +120,32 @@ fixtures:
         after_path: [budget-planning-for-the-years-ahead, "(2)", "#1"]
       - change_type: ADDED
         after_path: [revision-note, "#1"]
+      # Table I.1 cell — consistency fix
+      - change_type: MODIFIED
+        before_path: [table-i-1-public-finance-indicators-of-gdp-1]
+        after_path: [table-i-1-public-finance-indicators-of-gdp-1]
+      # Table II.2 cell (the one rendered as the budget-planning heading) — consistency fix
+      - change_type: MODIFIED
+        before_path: [budget-planning-for-the-years-ahead]
+        after_path: [budget-planning-for-the-years-ahead]
+      # Table III.3 cell — consistency fix
+      - change_type: MODIFIED
+        before_path: [table-iii-3-cyclically-adjusted-public-finance-of-gdp]
+        after_path: [table-iii-3-cyclically-adjusted-public-finance-of-gdp]
+      # Chapter III narrative — consistency fix
+      - change_type: MODIFIED
+        before_path: [iii-2-public-finance-policy-scenario, "#10"]
+        after_path: [iii-2-public-finance-policy-scenario, "#10"]
+      # Table I.1 footnote (5) narrative — consistency fix
+      - change_type: MODIFIED
+        before_path: [table-i-1-public-finance-indicators-of-gdp-1, "(5)", "#4"]
+        after_path: [table-i-1-public-finance-indicators-of-gdp-1, "(5)", "#4"]
+      # "Public finance to support growth" sibling that was both
+      # cascade-shifted (#2 → #1 after the opening paragraph was
+      # REMOVED) and content-modified to drop the 2.0% restatement.
+      - change_type: MODIFIED
+        before_path: [public-finance-to-support-growth-in-the-balances-and-the-composi, "#2"]
+        after_path: [public-finance-to-support-growth-in-the-balances-and-the-composi, "#1"]
 
   # IE Employers' Insolvency Amendment Act — MOVED section 11→11A
   # (body byte-identical), MODIFIED section 12(5A)(a) Minister's
@@ -120,7 +171,13 @@ fixtures:
 
   # BEREC debriefing — MODIFIED date (10 June → 17 June), REMOVED
   # livestream-and-Q&A closing paragraph of "Registration and
-  # engagement" (format reverted to in-person).
+  # engagement" (format reverted to in-person). One consistency fix
+  # (c95911f): the "held in hybrid format... in person and online"
+  # sentence contradicted the in-person-only framing once the
+  # livestream paragraph was removed, and was rewritten. The aligner
+  # emits this as REMOVED + ADDED at ['berec-...', '#3'] rather than
+  # MODIFIED — encoded here as editorial intent so the detection
+  # failure surfaces as a recall miss.
   eu-31366184:
     events:
       - change_type: MODIFIED
@@ -128,3 +185,6 @@ fixtures:
         after_path: [berec-to-present-digital-networks-act-assessment-at-upcoming-pub, "#2"]
       - change_type: REMOVED
         before_path: [registration-and-engagement, "#3"]
+      - change_type: MODIFIED
+        before_path: [berec-to-present-digital-networks-act-assessment-at-upcoming-pub, "#3"]
+        after_path: [berec-to-present-digital-networks-act-assessment-at-upcoming-pub, "#3"]
