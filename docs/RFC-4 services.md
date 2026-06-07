@@ -1,6 +1,7 @@
 # Services: what they do, what they don't, and how they fit
 
 *Last revised: 2026-06-04.*
+*Path: docs/RFC-4 services.md.*
 
 The earlier docs in this chain define *what the product answers* (`1. product-questions.md`), *how clause identity survives across versions* (`2. clause-alignment.md`), and *what the database looks like* (`3. database-design.md`). This doc names the deployable services on top of that database, what each one is responsible for, what it deliberately is not responsible for, and the high-level mechanics of how they cooperate.
 

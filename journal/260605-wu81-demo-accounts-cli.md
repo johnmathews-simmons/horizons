@@ -1,5 +1,8 @@
 # 2026-06-05 — WU8.1: demo-accounts CLI + runbook
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu81-demo-accounts-cli.md.*
+
 Closes Track 8 unit 8.1. A small admin CLI provisions the three demo
 accounts (`demo-uk@example.test`, `demo-eu@example.test`,
 `admin-demo@example.test`) for the public showcase, with a `--reset`

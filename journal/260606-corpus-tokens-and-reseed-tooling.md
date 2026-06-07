@@ -1,5 +1,8 @@
 # Corpus tokens, reseed tooling, parser disambiguation
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-corpus-tokens-and-reseed-tooling.md.*
+
 ## Reported symptom
 
 After logging into the deployed staging SPA as `demo-uk@demo.example.com`

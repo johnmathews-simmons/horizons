@@ -1,5 +1,8 @@
 # 2026-06-06 — WU5.4: admin views + support view
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-wu54-admin-views-support-view.md.*
+
 The last Track-5 work unit. Stands up the operator surface — `/admin`,
 `/admin/clients`, `/admin/clients/:id` (with a subscription editor and an
 "Enter support view" affordance), and `/admin/audit` — and the impersonation

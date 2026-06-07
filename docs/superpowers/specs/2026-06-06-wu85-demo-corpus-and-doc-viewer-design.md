@@ -1,5 +1,8 @@
 # WU8.5 — Demo corpus expansion + document viewer
 
+*Last revised: 2026-06-06.*
+*Path: docs/superpowers/specs/2026-06-06-wu85-demo-corpus-and-doc-viewer-design.md.*
+
 **Status:** approved 2026-06-06.
 **Depends on:** WU8.1 demo accounts, WU3.x clause parser + persistence, the existing `DocumentsRepository` / `DocumentVersionsRepository` / `ClausesRepository`.
 

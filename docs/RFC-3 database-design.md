@@ -1,6 +1,7 @@
 # Database design priorities, constraints, and principles
 
 *Last revised: 2026-06-04.*
+*Path: docs/RFC-3 database-design.md.*
 
 The job of the database is to answer the questions in `1. product-questions.md` quickly and consistently across a large, growing, append-only corpus of legal documents. This doc captures the constraints, the principles that follow from them, and the database-shape implications. Schema details are deferred.
 

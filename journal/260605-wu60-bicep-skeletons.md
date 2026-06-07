@@ -1,5 +1,8 @@
 # WU6.0 — Bicep module skeletons
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu60-bicep-skeletons.md.*
+
 *Session 2026-06-05. Branch `worktree-wu6.0-6.2-infra-and-build` → ff-merged to `main`.*
 
 The first chunk of Track 6 (IaC + CI/CD). No application code touched —

@@ -1,5 +1,8 @@
 # Horizons — Improvement plan
 
+*Last revised: 2026-06-07.*
+*Path: docs/plan/improvement-plan.md.*
+
 *Plan date: 2026-06-04. Baseline: docs 0–4 (post-fix) + the [evaluation report](evaluation-report.md) alongside this file.*
 *Lead: engineering-team skill. Originally produced under `.engineering-team/runs/manual-20260604T151127Z/`; relocated here on 2026-06-06.*
 *Posture: John (shipping owner) implements alongside subagents; lead-by-example. Each work unit is small enough to pick up in a single sitting.*

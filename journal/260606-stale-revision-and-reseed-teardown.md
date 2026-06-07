@@ -1,5 +1,8 @@
 # 2026-06-06 — stale API revision + reseed teardown blocker
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-stale-revision-and-reseed-teardown.md.*
+
 Post-demo-prep session. Two bugs surfaced via the SPA failing to load `/v1/me/overview` and `/v1/documents`. Both are now fixed; one of the fixes is operator-only (live state) and the other is a code commit (`6e02027`). One structural follow-up remains, captured in the punch list.
 
 ## Symptoms

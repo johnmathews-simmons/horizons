@@ -1,5 +1,8 @@
 # Demo runbook (WU8.3)
 
+*Last revised: 2026-06-06.*
+*Path: docs/runbooks/demo.md.*
+
 *Audience: operator running or supervising the public demo on
 ~2026-06-08. The showcase is public for 1–2 days, so every choice in
 this runbook is shaped by that exposure window.*

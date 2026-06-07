@@ -1,5 +1,8 @@
 # Home Overview Dashboard Implementation Plan
 
+*Last revised: 2026-06-06.*
+*Path: docs/superpowers/plans/2026-06-06-home-overview.md.*
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a post-login home dashboard that summarises the caller's accessible corpus by jurisdiction and sector, makes subscription scoping visible at a glance, and routes drill-down clicks into `/changes` filtered by the card. Admins see the entire corpus on both the dashboard and `/changes`.

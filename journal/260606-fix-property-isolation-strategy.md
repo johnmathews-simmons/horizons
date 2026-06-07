@@ -1,5 +1,8 @@
 # 2026-06-06 — Fix: property-isolation Hypothesis strategy under NOT NULL document_id
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-fix-property-isolation-strategy.md.*
+
 Surgical test-side fix. The WU1.8 property test
 (`tests/isolation/test_property_isolation.py`) pre-dated migration 0009,
 which made `watchlists.document_id` `NOT NULL REFERENCES documents(id)` with

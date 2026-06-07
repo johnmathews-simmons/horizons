@@ -1,5 +1,8 @@
 # Document side-by-side viewer + change-in-context — implementation plan
 
+*Last revised: 2026-06-07.*
+*Path: docs/superpowers/plans/2026-06-07-document-side-by-side-and-change-context.md.*
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Webapp-only restructure of the document detail view to render two panes when a doc has ≥2 versions (with first-seen date per pane), wire Recent Changes rows to navigate into that view auto-scrolled-and-highlighted on the changed clause, and retire `ChangeDetailView` + the now-unused diff stack.

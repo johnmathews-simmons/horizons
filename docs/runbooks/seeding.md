@@ -1,5 +1,8 @@
 # Curated-set bootstrap
 
+*Last revised: 2026-06-06.*
+*Path: docs/runbooks/seeding.md.*
+
 How `documents` and `document_poll_schedule` get their initial rows so the
 ingestion worker has something to poll. Implementation lives at
 `scripts/seed_curated_set.py` (CLI shim) plus

@@ -1,5 +1,8 @@
 # 2026-06-06 — Deploy pipeline goes end-to-end
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-deploy-pipeline-end-to-end.md.*
+
 Session retrospective for the multi-hour debugging push that took the deploy pipeline from "every step in the chain breaks" to "API + worker + SPA all serving 200" against the `horizons-nonprod` resource group. The companion in-flight working doc — `journal/260606-deploy-pipeline-triage.md` — has the bug-by-bug ledger; this entry records what we learned and what's still pending.
 
 ## Final state

@@ -1,5 +1,8 @@
 # Per-document poll transaction
 
+*Last revised: 2026-06-05.*
+*Path: packages/horizons-ingestion/src/horizons_ingestion/poll.md.*
+
 The body that the WU3.3 claim loop invokes for every claimed schedule
 row. Replaces `noop_poll`. Implements the design-doc-4 §"Ingestion
 service" flow: fetch markdown via the WU3.2 Lawstronaut client, hash,

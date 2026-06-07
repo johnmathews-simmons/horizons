@@ -1,5 +1,8 @@
 # 2026-06-05 — WU8.1 secfix: demo-account password handling
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu81-secfix-demo-password-handling.md.*
+
 Closes two findings from the post-push security review of WU8.1
 (`packages/horizons-api/scripts/create_demo_accounts.py`):
 

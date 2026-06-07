@@ -1,5 +1,8 @@
 # Home overview dashboard — design
 
+*Last revised: 2026-06-06.*
+*Path: docs/superpowers/specs/260606-home-overview-design.md.*
+
 **Date:** 2026-06-06
 **Status:** approved (brainstorming round); plan pending.
 **Driver:** demo needs the post-login landing page to make subscription scoping visible at a glance and to give admins a corpus-wide entry point.

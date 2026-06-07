@@ -1,5 +1,8 @@
 # WU6.1 — OIDC federation (GitHub Actions → Azure)
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu61-oidc-federation.md.*
+
 *Session 2026-06-05. No code branch — Azure portal + CLI provisioning + one-off
 verification workflow that was deleted after the gate passed.*
 

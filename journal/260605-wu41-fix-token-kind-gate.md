@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.1 follow-up: enforce token kind at the auth boundary
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu41-fix-token-kind-gate.md.*
+
 The push-time security review flagged a real defect in the WU4.1 auth
 dependency. `authenticated_user` verified the JWT signature / issuer /
 audience / expiry but never checked the `kind` claim, so a `REFRESH`

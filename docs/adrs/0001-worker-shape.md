@@ -1,5 +1,8 @@
 # ADR 0001 — Ingestion worker shape: long-running asyncio container
 
+*Last revised: 2026-06-06.*
+*Path: docs/adrs/0001-worker-shape.md.*
+
 - Status: accepted
 - Date: 2026-06-05
 - Deciders: John

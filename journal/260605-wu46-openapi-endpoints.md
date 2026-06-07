@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.6: OpenAPI + regenerated endpoints.md
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu46-openapi-endpoints.md.*
+
 Closes Track 4. The Horizons FastAPI app already exposed
 ``/openapi.json`` automatically; this WU formalises the doc surface
 by regenerating ``docs/api/endpoints.md`` from the live spec and

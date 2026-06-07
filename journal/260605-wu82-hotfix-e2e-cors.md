@@ -1,5 +1,8 @@
 # 2026-06-05 — WU8.2 hotfix: five-bug e2e stability fix
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu82-hotfix-e2e-cors.md.*
+
 Worktree `wu8.2-hotfix-e2e-stability`. Scoped hotfix on top of WU8.2:
 `.github/workflows/e2e.yml` had been red on every push to `main` since
 `173c0c1`. The follow-up `47379bf` ("idempotence + smoke-test hardening")

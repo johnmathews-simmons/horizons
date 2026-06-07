@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.2 corpus tables
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu12-corpus-tables.md.*
+
 Fourth session of the day. Shipped the corpus spine — `documents`,
 `document_versions`, `clauses` — the read substrate the public API
 and the ingestion worker will both depend on.

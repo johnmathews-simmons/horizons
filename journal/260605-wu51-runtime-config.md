@@ -1,5 +1,8 @@
 # 2026-06-05 — WU5.1: Runtime `/config.json`
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu51-runtime-config.md.*
+
 Track-5 follow-on to WU5.0. Worktree `wu5.1-5.2-runtime-config-and-watchlists`
 (landed together with WU5.2). Builds the boot step that fetches a runtime
 config from `/config.json` before Vue mounts, then displaces the

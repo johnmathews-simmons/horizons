@@ -1,5 +1,8 @@
 # WU6.4 — Migration ACA Job
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu64-migration-aca-job.md.*
+
 *Session 2026-06-05. Branch `worktree-wu6.4-6.5-6.6-migrations-docs-drift` (Session D).*
 
 The `Microsoft.App/jobs` resource that runs `alembic upgrade head`

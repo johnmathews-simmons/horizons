@@ -1,5 +1,8 @@
 # Alignment gold-suite on the synthetic_v2 corpus
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-alignment-gold-suite.md.*
+
 **Date:** 2026-06-07
 **Scope:** evaluation, not aligner tuning.
 

@@ -1,5 +1,8 @@
 # Logout 401 → SameSite=None for the refresh cookie
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-fix-logout-samesite.md.*
+
 ## Reported symptom
 
 Clicking the **Sign out** button on the deployed SPA cleared the in-memory

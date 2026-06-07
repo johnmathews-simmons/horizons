@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.5 connection layer + SET LOCAL request bracket
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu15-session-bracket.md.*
+
 Fifth unit of the day. WU1.4 left the RLS spine asserting on a GUC
 nothing was setting; this WU lands the bracket that does the setting.
 Every protected read now has a sanctioned path from the application

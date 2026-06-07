@@ -1,5 +1,8 @@
 # Getting Started — Authentication
 
+*Last revised: 2026-06-04.*
+*Path: docs/api/getting-started.md.*
+
 The Lawstronaut API uses a custom OAuth 2.0 flow. Authentication happens against the
 `filerskeepersapi.co` host; subsequent API calls hit `api.lawstronaut.com/v2`.
 

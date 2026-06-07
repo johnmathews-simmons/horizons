@@ -1,5 +1,8 @@
 # 2026-06-05 — WU3.5: bootstrap script seeds the curated set
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu35-curated-set-seed.md.*
+
 Ships the substrate the WU3.3 claim loop polls: rows in `documents` and
 matching rows in `document_poll_schedule`, seeded from
 `data/samples/fixtures.json` + a hand-curated `data/curated_set.yaml`.

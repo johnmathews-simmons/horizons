@@ -1,5 +1,8 @@
 # Local development
 
+*Last revised: 2026-06-06.*
+*Path: docs/runbooks/local-dev.md.*
+
 Boot the Horizons stack on your laptop: Postgres + API + webapp. The
 worker is documented at the end but is **not** part of the default
 local flow — it needs Azure Blob and Lawstronaut credentials and there

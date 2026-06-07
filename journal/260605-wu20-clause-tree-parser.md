@@ -1,5 +1,8 @@
 # 2026-06-05 — WU2.0: clause-tree parser
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu20-clause-tree-parser.md.*
+
 Opens Track 2 — the alignment pipeline. WU2.0 is the *bottom* of that
 stack: a pure markdown → immutable clause-tree transform. No DB, no I/O,
 no `clause_uid` assignment (that's WU2.3 once similarity lands in

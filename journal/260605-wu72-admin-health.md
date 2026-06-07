@@ -1,5 +1,8 @@
 # 2026-06-05 — WU7.2 admin health endpoints
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu72-admin-health.md.*
+
 Adds the three admin-only health endpoints required by the
 locked-in observability posture (improvement-plan §12): a per-window
 Application Insights view of the API, an ingestion-side queue +

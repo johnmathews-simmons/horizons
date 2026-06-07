@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.2: `/v1/auth/{login,refresh,logout}`
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu42-auth-endpoints.md.*
+
 Third Track-4 unit. Lays the HTTP surface for issuing, rotating, and
 revoking the JWTs from WU4.0 with one endpoint per flow serving both
 postures (programmatic JSON + browser cookie). Docs at

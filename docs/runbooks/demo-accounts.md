@@ -1,5 +1,8 @@
 # Demo accounts runbook (WU8.1)
 
+*Last revised: 2026-06-06.*
+*Path: docs/runbooks/demo-accounts.md.*
+
 The public demo (~2026-06-08) uses three pre-provisioned accounts under
 the IETF-reserved `@demo.example.com` TLD. This runbook is the source of
 truth for: how to provision them, how to log in, what each one shows,

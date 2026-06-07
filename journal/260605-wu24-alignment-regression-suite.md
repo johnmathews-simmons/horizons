@@ -1,5 +1,8 @@
 # WU2.4 — Alignment regression suite
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu24-alignment-regression-suite.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu2.4-regression` → ff-merged to `main`.*
 
 Fifth and final Track-2 unit. Exercises the WU2.3 aligner against every fixture in `data/samples/` (31 markdown documents spanning 30 jurisdictions, sizes from 721 B to 3.8 MB) and emits a per-fixture alignment-quality score the demo-period CI log will carry. The deliverable is calibration data, not a new code path — WU2.4 is where the literature defaults from WU2.2 either earn their keep or get flagged for per-portal overrides.

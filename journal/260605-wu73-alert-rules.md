@@ -1,5 +1,8 @@
 # WU7.3 — Azure Monitor alert rules + Action Group
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu73-alert-rules.md.*
+
 *Session 2026-06-05. Branch `wu7.3-alert-rules` → ff-merged to `main`.*
 
 The third Track 7 unit (after WU7.0 / WU7.1 shipped the OTel + structlog

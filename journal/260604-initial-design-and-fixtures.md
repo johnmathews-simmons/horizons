@@ -1,5 +1,8 @@
 # 2026-06-04 — Initial design and fixtures
 
+*Last revised: 2026-06-06.*
+*Path: journal/260604-initial-design-and-fixtures.md.*
+
 First substantive session on Horizons. Started from zero (only `docs/api/` existed), ended with a public GitHub repo, three numbered design docs, 30 multi-jurisdiction fixtures, and a re-runnable fetch script.
 
 ## Done

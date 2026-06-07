@@ -1,5 +1,8 @@
 # Horizons public API — the three primitives
 
+*Last revised: 2026-06-06.*
+*Path: docs/api/horizons-primitives.md.*
+
 *WU4.4. Doc-first; the OpenAPI-generated reference lands with WU4.6.*
 
 The Horizons public API exposes the three primitives from

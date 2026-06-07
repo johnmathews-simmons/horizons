@@ -1,5 +1,8 @@
 # WU5.6 — Webapp CI build + lint
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu56-webapp-ci-build-artifact.md.*
+
 **Branch:** `wu5.6-webapp-ci-job`
 **Plan ref:** WU5.6 — *Webapp CI build + lint. Acceptance: `.github/workflows/ci.yml` includes a webapp job that runs `pnpm install && pnpm lint && pnpm test && pnpm build`. Output goes to `webapp/dist/`.*
 

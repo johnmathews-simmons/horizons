@@ -1,5 +1,8 @@
 # Postgres role model
 
+*Last revised: 2026-06-06.*
+*Path: packages/horizons-core/src/horizons_core/db/roles.md.*
+
 Four roles, all `NOLOGIN`. They are permission containers — application
 services do not connect *as* them; per-environment LOGIN users are
 provisioned by ops/IaC and granted the appropriate role.

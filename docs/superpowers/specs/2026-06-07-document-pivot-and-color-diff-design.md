@@ -1,5 +1,8 @@
 # Document-pivot + colour-coded diff view
 
+*Last revised: 2026-06-07.*
+*Path: docs/superpowers/specs/2026-06-07-document-pivot-and-color-diff-design.md.*
+
 **Status:** draft (2026-06-07)
 **Scope:** webapp + API. Two related UX changes for the demo. Numbered headings per project house style.
 

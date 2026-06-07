@@ -1,5 +1,8 @@
 # 2026-06-05 — WU5.2: Watchlist management view
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu52-watchlists-view.md.*
+
 Track-5 watchlist surface. Built on the WU4.3 `/v1/me/watchlists` endpoints
 and the WU4.4 `/v1/discovery` scope-filtered identity feed. Lands together
 with WU5.1 (runtime config) in worktree

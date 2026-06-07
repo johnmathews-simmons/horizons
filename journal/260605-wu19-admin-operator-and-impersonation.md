@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.9: admin operator + impersonation paths
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu19-admin-operator-and-impersonation.md.*
+
 Closes Track 1. With WU1.6 (repos) + WU1.7 (two-client gate) + WU1.8
 (property test, nightly) already in place, this unit adds the only
 sanctioned entry points for admin code paths and the append-only audit

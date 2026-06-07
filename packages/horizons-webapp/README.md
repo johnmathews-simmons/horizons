@@ -1,5 +1,8 @@
 # horizons-webapp
 
+*Last revised: 2026-06-07.*
+*Path: packages/horizons-webapp/README.md.*
+
 The Horizons SPA. Vue 3 + TypeScript + Vite + Pinia + Vue Router + Vitest +
 TanStack Vue Query, styled with Tailwind v4 + shadcn-style primitives.
 

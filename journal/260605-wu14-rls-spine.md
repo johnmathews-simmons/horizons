@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.4 RLS spine
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu14-rls-spine.md.*
+
 Fourth unit of the day. The architecture spec at the end of WU1.3
 became live policy on four tables. Also a CI/cadence improvement that
 came out of trying to land WU1.4 against the new branch protection.

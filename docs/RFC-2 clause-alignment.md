@@ -1,6 +1,7 @@
 # Clause alignment and change detection
 
 *Last revised: 2026-06-04.*
+*Path: docs/RFC-2 clause-alignment.md.*
 
 How clauses keep their identity across versions of a legal document, so that the change events feeding the API (per `1. product-questions.md`) reflect *true* changes — added, removed, modified, or moved content — and not artefacts of renumbering or formatting drift.
 

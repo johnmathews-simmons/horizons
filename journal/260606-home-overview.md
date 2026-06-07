@@ -1,5 +1,8 @@
 # Home overview dashboard
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-home-overview.md.*
+
 Built the post-login home dashboard. Goal: make subscription scoping
 visible at a glance and give admins a corpus-wide landing page.
 

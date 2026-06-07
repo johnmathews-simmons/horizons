@@ -1,5 +1,8 @@
 # WU8.6 — corpus no-stubs + clause-diff expansion
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-corpus-no-stubs.md.*
+
 **Branch:** `worktree-wu86-corpus-no-stubs`. Direct fast-forward into `main`
 per the WU8.4 cadence.
 

@@ -1,5 +1,8 @@
 # WU3.2 — Lawstronaut client + token-refresh seam
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu32-lawstronaut-client.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu3.2-lawstronaut-client` → ff-merged to `main`.*
 
 The async HTTP client WU3.4's poll body will call. Five public methods

@@ -1,5 +1,8 @@
 # 260607 — Document side-by-side viewer + change-in-context
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-document-side-by-side.md.*
+
 **Branch:** `worktree-document-side-by-side` (fast-forward into `main` per the
 WU8.4 cadence).
 

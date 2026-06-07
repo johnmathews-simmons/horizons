@@ -1,5 +1,8 @@
 # API revisionMode: Multiple → Single — Implementation Plan
 
+*Last revised: 2026-06-07.*
+*Path: docs/superpowers/plans/2026-06-06-api-revisionmode-single.md.*
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Switch the `horizons-dev-api` Container App from `activeRevisionsMode: Multiple` to `Single`, removing the blue/green dance from `deploy.yml`. Bring the API in line with the worker (and the SPA's "overwrite in place" posture). Simplicity over the instant-rollback affordance; deliberate trade-off documented in the journal.

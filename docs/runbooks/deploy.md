@@ -1,5 +1,8 @@
 # Deploy runbook — staging pipeline (WU6.3)
 
+*Last revised: 2026-06-06.*
+*Path: docs/runbooks/deploy.md.*
+
 _Audience: operator running or watching `.github/workflows/deploy.yml`. Companion to [migrations.md](./migrations.md),
 which covers the expand-contract rule that keeps rollbacks safe._
 

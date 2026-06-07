@@ -1,5 +1,8 @@
 # WU4.4 — Three primitives at all three scopes
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu44-three-primitives.md.*
+
 *2026-06-05.*
 
 Shipped `GET /v1/discovery`, `GET /v1/temporal`, `GET /v1/differential`

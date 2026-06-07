@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.2 security hardening (three fixes)
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu42-securityfix-auth-hardening.md.*
+
 Push- and commit-time security review flagged three real
 vulnerabilities in the auth-flow routes that landed with WU4.2. None
 were exploitable as of the demo configuration today (there are no

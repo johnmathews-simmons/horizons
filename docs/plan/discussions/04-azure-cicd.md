@@ -1,5 +1,8 @@
 # Azure deployment & CI/CD plan — Horizons
 
+*Last revised: 2026-06-06.*
+*Path: docs/plan/discussions/04-azure-cicd.md.*
+
 *Senior DevOps review, 2026-06-04. Pre-code, post-design. Demo target: 2026-06-08.*
 
 Each item is tagged **[VERIFIED]** (load-bearing claim cross-checked against the cited doc) or **[SUSPECTED]** (judgement call, design preference, or extrapolation from current docs that I have not run end-to-end). Each recommendation states the **choice**, the **runner-up**, and the **why**.

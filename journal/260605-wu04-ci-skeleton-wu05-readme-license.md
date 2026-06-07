@@ -1,5 +1,8 @@
 # 2026-06-05 — WU0.4 CI skeleton + WU0.5 README pointer + LICENSE decision
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu04-ci-skeleton-wu05-readme-license.md.*
+
 Two scaffolding work units landed back-to-back via the engineering-team
 flow. One commit each, each on its own worktree, fast-forwarded into
 `main` and pushed.

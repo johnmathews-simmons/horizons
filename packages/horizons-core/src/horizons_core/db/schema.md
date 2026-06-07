@@ -1,5 +1,8 @@
 # Database schema
 
+*Last revised: 2026-06-07.*
+*Path: packages/horizons-core/src/horizons_core/db/schema.md.*
+
 This page anchors the database tables that exist today. Each section is a
 short, anchor-style description of one aggregate: what the table holds,
 what its keys mean, what writes are allowed, and which role owns / can

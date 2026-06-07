@@ -1,6 +1,7 @@
 # Pipeline overview: change events
 
 *Last revised: 2026-06-07.*
+*Path: docs/pipeline-overview.md.*
 
 A walk-through of how a document on the Lawstronaut API becomes one or more clause-level change events in our database. Each step links to the doc that owns it. This page is a map; it does not re-explain anything its sources already explain.
 

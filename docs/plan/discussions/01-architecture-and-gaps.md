@@ -1,5 +1,8 @@
 # Architecture and gaps — review of Horizons design baseline
 
+*Last revised: 2026-06-06.*
+*Path: docs/plan/discussions/01-architecture-and-gaps.md.*
+
 *Reviewer: Product Owner / architecture. Date: 2026-06-04. Baseline: docs 0–4, api/, journal 260604, memory.*
 
 Findings labelled **[VERIFIED]** (cite-backed) or **[SUSPECTED]** (inferred). Quotes are direct; line numbers anchor citations.

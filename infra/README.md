@@ -1,5 +1,8 @@
 # `infra/` — Bicep modules
 
+*Last revised: 2026-06-06.*
+*Path: infra/README.md.*
+
 Skeleton Bicep templates for the Horizons demo. Composed by `main.bicep`
 into one resource-group deployment.
 

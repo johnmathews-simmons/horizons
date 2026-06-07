@@ -1,5 +1,8 @@
 # WU6.5 — Expand-contract migration policy + PR template
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu65-migrations-runbook.md.*
+
 *Session 2026-06-05. Branch `worktree-wu6.4-6.5-6.6-migrations-docs-drift` (Session D).*
 
 Documentation-only. The runbook captures the expand-contract rule

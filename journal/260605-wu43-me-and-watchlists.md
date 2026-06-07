@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.3: `/v1/me` (real) + watchlists CRUD + scope trigger
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu43-me-and-watchlists.md.*
+
 Fourth Track-4 unit. Closes Track 4's "private state" surface and
 makes the watchlists table do real work — each row is now a (user,
 document) pair and the database backs the service-layer scope check

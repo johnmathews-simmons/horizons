@@ -1,5 +1,8 @@
 # 2026-06-06 — WU8.3: demo runbook
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-wu83-demo-runbook.md.*
+
 Worktree `wu8.3-demo-runbook`. Scope: write `docs/runbooks/demo.md`
 covering the pre-demo checklist, the live demo script, recovery
 steps, and the public-exposure caveats. Pure documentation work —

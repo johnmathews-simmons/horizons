@@ -1,5 +1,8 @@
 # WU3.1 — Ingestion tables schema
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu31-ingestion-tables-schema.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu3.1-ingestion-schema` → ff-merged to `main`.*
 
 Second unit on Track 3. WU3.0 picked the worker shape (ADR-0001 — long-running asyncio container, 50 ms SKIP LOCKED claim tick); WU3.1 lands the database surface that loop runs against. Migration `0007_ingestion_tables.py` extends `document_versions` with the validity window the per-poll transaction (WU3.4) writes, narrows that table's append-only trigger to permit `valid_to`-only updates, and adds two operator-only tables: `document_poll_schedule` (the claim-loop substrate) and `ingestion_incident` (the failure / parking log).

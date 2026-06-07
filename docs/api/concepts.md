@@ -1,5 +1,8 @@
 # Lawstronaut — Domain Concepts
 
+*Last revised: 2026-06-04.*
+*Path: docs/api/concepts.md.*
+
 These are the conceptual building blocks behind the API. Understanding them
 makes the endpoint reference much easier to read.
 

@@ -1,5 +1,8 @@
 # 2026-06-05 — WU2.1: per-portal parser configs
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu21-portal-configs.md.*
+
 Track 2's second unit. WU2.0 shipped the clause-tree parser earlier today
 with a `ParserConfig` data class that already exposed the override seam;
 WU2.1 turned that seam into a real file loader, a small curated set of

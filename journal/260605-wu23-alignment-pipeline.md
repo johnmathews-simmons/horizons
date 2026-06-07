@@ -1,5 +1,8 @@
 # WU2.3 — Alignment pipeline
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu23-alignment-pipeline.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu2.3-alignment` → ff-merged to `main`.*
 
 Fourth Track-2 unit. Composes everything that came before: WU2.0/WU2.1's clause-tree parser produces `Clause` trees from markdown, WU2.2's similarity primitives (`shingle` / `minhash` / `jaccard` / `lsh_candidates`) score content, and `TuningConfig` carries the four runtime knobs. WU2.3 wires them into the four-pass alignment pipeline documented in `docs/RFC-2 clause-alignment.md` and emits `ChangeEvent` rows — the schema the API will eventually surface to customers. This is the algorithm the demo's "which clause changed and how" headline turns on.

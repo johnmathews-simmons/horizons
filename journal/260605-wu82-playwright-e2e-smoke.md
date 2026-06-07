@@ -1,5 +1,8 @@
 # 2026-06-05 — WU8.2: Playwright end-to-end smoke test
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu82-playwright-e2e-smoke.md.*
+
 The demo's headline UX as a single Playwright test, gating merges to `main`
 before the 2026-06-08 demo. Worktree `wu8.2-playwright-e2e-smoke`.
 

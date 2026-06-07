@@ -1,5 +1,8 @@
 # 2026-06-06 — flip the API to `activeRevisionsMode: Single`
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-api-revisionmode-single.md.*
+
 Earlier today's [`260606-fix-revision-pileup.md`](./260606-fix-revision-pileup.md) walked the worker to Single and kept the API in Multiple, adding a `Deactivate stale API revisions` step to the end of `deploy-services` so the pile of zero-weight revisions stops growing. That decision was correct given the immediate goal: stop the reseed Job from running out of Postgres connection slots an hour before the demo.
 
 Re-reading the change-set after the deploy went green, the API-Multiple side of it doesn't pay for itself. This entry captures what we changed and why.

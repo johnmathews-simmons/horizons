@@ -1,5 +1,8 @@
 # 2026-06-07 — Document-pivot + colour-coded diff view
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-document-table-and-color-diff.md.*
+
 ## 1. What landed
 
 Two webapp UX changes prompted by demo prep:

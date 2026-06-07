@@ -1,5 +1,8 @@
 # 2026-06-06 — Fix ACA revision pileup that ate Postgres connection slots
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-fix-revision-pileup.md.*
+
 ## What broke
 
 An hour before the 2026-06-08 demo, the reseed-corpus ACA Job failed with:

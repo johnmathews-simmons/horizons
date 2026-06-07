@@ -1,5 +1,8 @@
 # WU6.2 — Dockerfiles + GHCR build-and-push workflow
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu62-dockerfiles-and-ghcr.md.*
+
 *Session 2026-06-05. Same branch as WU6.0 (`worktree-wu6.0-6.2-infra-and-build`).*
 
 Multi-stage uv Dockerfiles for the public API and the ingestion worker,

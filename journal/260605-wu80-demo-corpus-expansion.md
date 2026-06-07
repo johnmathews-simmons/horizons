@@ -1,5 +1,8 @@
 # 2026-06-05 — WU8.0: curated-set demo expansion + synthetic v2 staging
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu80-demo-corpus-expansion.md.*
+
 Closes Track 8 unit 8.0. Two ships:
 
 1. `data/curated_set.yaml` grown from 6 jurisdictions × 2 sectors to 10

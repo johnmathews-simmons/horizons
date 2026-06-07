@@ -1,5 +1,8 @@
 # 2026-06-07 — WU8.7 UK/EU cluster rework (genuine-origin pivot)
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-wu87-uk-eu-cluster-rework.md.*
+
 ## 1. Problem
 
 The UK demo subscription was populated by relabelling 9 foreign-origin

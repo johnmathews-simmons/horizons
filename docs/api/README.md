@@ -1,5 +1,8 @@
 # Horizons & Lawstronaut API references
 
+*Last revised: 2026-06-05.*
+*Path: docs/api/README.md.*
+
 Two distinct surfaces live in this directory:
 
 1. **Horizons public API** — the FastAPI service we ship (the

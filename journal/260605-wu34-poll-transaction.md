@@ -1,5 +1,8 @@
 # WU3.4 — Per-document poll transaction
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu34-poll-transaction.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu3.4-poll-transaction` → ff-merged to `main`.*
 
 The body the WU3.3 claim loop calls for every due document. Replaces

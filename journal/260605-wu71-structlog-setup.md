@@ -1,5 +1,8 @@
 # 2026-06-05 — WU7.1 structlog setup with OTEL + request context
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu71-structlog-setup.md.*
+
 Second half of the Track 7 observability spine, paired with WU7.0.
 Lands `setup_structlog()` plus the two contextvars that future
 middleware will populate. Like WU7.0, the wire-up into

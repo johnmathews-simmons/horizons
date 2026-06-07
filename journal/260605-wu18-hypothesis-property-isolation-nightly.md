@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.8: Hypothesis property test for isolation (nightly)
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu18-hypothesis-property-isolation-nightly.md.*
+
 Closes Track 1. The WU1.7 two-client gate is now generalised to a
 Hypothesis-driven property test that draws arbitrary clients ×
 subscription scopes × write interleavings, and asserts the universal

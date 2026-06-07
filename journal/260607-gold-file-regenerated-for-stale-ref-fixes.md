@@ -1,5 +1,8 @@
 # Gold file regenerated for c95911f stale-reference fixes
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-gold-file-regenerated-for-stale-ref-fixes.md.*
+
 **Date:** 2026-06-07
 **Scope:** gold file maintenance, not aligner tuning.
 

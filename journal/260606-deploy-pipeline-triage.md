@@ -1,5 +1,8 @@
 # 2026-06-06 — Deploy pipeline triage
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-deploy-pipeline-triage.md.*
+
 **Status:** all 8 bugs in the ledger are closed; the deploy pipeline lands a full stack against `horizons-nonprod`. Session retro + post-demo punch list live in `journal/260606-deploy-pipeline-end-to-end.md`. This doc is preserved as the bug-by-bug record but should not be edited further.
 
 ---

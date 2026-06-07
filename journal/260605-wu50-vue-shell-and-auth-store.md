@@ -1,5 +1,8 @@
 # 2026-06-05 — WU5.0: Vue app shell + auth store + routing
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu50-vue-shell-and-auth-store.md.*
+
 First Track-5 unit. Stands up the SPA shell against the auth surface that
 WU4.2 + the WU4.2 security hardening landed. Worktree
 `wu5.0-vue-shell-and-auth-store`.

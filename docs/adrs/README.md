@@ -1,5 +1,8 @@
 # Architecture Decision Records
 
+*Last revised: 2026-06-05.*
+*Path: docs/adrs/README.md.*
+
 This directory holds the project's **Architecture Decision Records**
 (ADRs) — short, numbered, immutable records of one decision each. ADRs
 are the *granular* counterpart to the chapter-grained design-doc chain

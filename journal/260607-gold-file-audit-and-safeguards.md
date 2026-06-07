@@ -1,5 +1,8 @@
 # Gold-file audit and reliability safeguards
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-gold-file-audit-and-safeguards.md.*
+
 **Date:** 2026-06-07
 **Scope:** verification of the gold authored earlier today + new
 safeguards against silent quality slides.

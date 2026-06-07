@@ -1,5 +1,8 @@
 # WU8.5 — Demo corpus expansion + document viewer
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-wu85-demo-corpus-and-doc-viewer.md.*
+
 **Branch:** `worktree-wu85-demo-corpus-and-doc-viewer`. Direct fast-forward
 into `main` per the WU8.4 cadence.
 

@@ -1,5 +1,8 @@
 # WU6.3 — deploy.yml with revision-based rollback + SPA deploy
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu63-deploy-pipeline.md.*
+
 *Session 2026-06-05. Branch `wu6.3-deploy-pipeline` (Session J).*
 
 The staging deploy pipeline. Triggers on `workflow_run` after

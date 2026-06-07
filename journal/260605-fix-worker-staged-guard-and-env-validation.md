@@ -1,5 +1,8 @@
 # 2026-06-05 — Session P: worker-staged guard + env-var validation
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-fix-worker-staged-guard-and-env-validation.md.*
+
 Two surgical fixes from Session M's post-merge follow-up report,
 bundled in one session because they are unrelated and small.
 

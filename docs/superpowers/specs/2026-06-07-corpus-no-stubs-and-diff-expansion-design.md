@@ -1,5 +1,8 @@
 # Corpus: no stubs, expanded clause-diff coverage
 
+*Last revised: 2026-06-07.*
+*Path: docs/superpowers/specs/2026-06-07-corpus-no-stubs-and-diff-expansion-design.md.*
+
 **Date:** 2026-06-07
 **Status:** approved (brainstorming), ready for implementation plan.
 **Successor of:** [`2026-06-06-wu85-demo-corpus-and-doc-viewer-design.md`](./2026-06-06-wu85-demo-corpus-and-doc-viewer-design.md).

@@ -1,5 +1,8 @@
 # Multi-tenant isolation: implementation risks and de-risking decisions
 
+*Last revised: 2026-06-06.*
+*Path: docs/plan/discussions/02-multi-tenant-isolation.md.*
+
 *Audit date: 2026-06-04. Pre-code; post-design (docs 1–4).*
 
 Findings numbered; `[VERIFIED]` = cited / well-known; `[SUSPECTED]` = judgement, confirm in Phase 2. Code sketches illustrative.

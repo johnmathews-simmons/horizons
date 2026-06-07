@@ -1,5 +1,8 @@
 # Document-pivot + colour-coded diff view — Implementation Plan
 
+*Last revised: 2026-06-07.*
+*Path: docs/superpowers/plans/2026-06-07-document-pivot-and-color-diff.md.*
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** (1) Jurisdiction / sector cards on the homepage land on a paginated document table; (2) the document split view colour-codes every clause-level change (added / removed / modified / moved) instead of highlighting only the path clicked through from.

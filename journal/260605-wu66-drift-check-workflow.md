@@ -1,5 +1,8 @@
 # WU6.6 — Drift check workflow
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu66-drift-check-workflow.md.*
+
 *Session 2026-06-05. Branch `worktree-wu6.4-6.5-6.6-migrations-docs-drift` (Session D).*
 
 A nightly GitHub Actions workflow that runs `az deployment group

@@ -1,5 +1,8 @@
 # WU2.2 — Similarity stack
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu22-similarity-stack.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu2.2-similarity` → ff-merged to `main`.*
 
 Third Track-2 unit. Builds the four similarity primitives the WU2.3 alignment pipeline will compose (`shingle`, `minhash`, `jaccard`, `lsh_candidates`) plus a `TuningConfig` Pydantic model and YAML loader for the four runtime knobs. No coupling to WU2.0/WU2.1 — the primitives take primitive ints and floats; the parser-side configs are unaffected.

@@ -1,5 +1,8 @@
 # Operational Notes for the Change-Watching Tool
 
+*Last revised: 2026-06-06.*
+*Path: docs/api/operational-notes.md.*
+
 Facts about how Lawstronaut runs that should shape how we build the watcher.
 
 ## Refresh cadence (from "List of Prices and Conditions" v2025.3)

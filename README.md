@@ -1,5 +1,8 @@
 # Horizons
 
+*Last revised: 2026-06-06.*
+*Path: README.md.*
+
 Horizons is a regulatory-change intelligence service that watches public legal sources and surfaces **upcoming** legal
 changes — laws, regulations, and official guidance that have been published but have not yet taken effect — so downstream
 compliance and legal teams have lead time to prepare. The "horizon" refers to the forward-looking framing: changes

@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.1: FastAPI app shell + auth middleware
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu41-fastapi-shell.md.*
+
 Second unit of this session. Sits on top of WU4.0's `TokenProvider`
 seam — the auth dependency calls `verify_token` and the
 session-per-request bracket inherits the WU1.5 transaction shape so

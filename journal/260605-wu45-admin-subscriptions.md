@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.5: admin subscription endpoints
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu45-admin-subscriptions.md.*
+
 Closes Track 4's admin write surface. Adds `/v1/admin/subscriptions`
 GET / POST / PATCH on top of the WU1.9 admin-bypass context manager
 plus a small migration (0011) that gives the subscription ledger a

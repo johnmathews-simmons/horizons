@@ -1,5 +1,8 @@
 # 2026-06-05 — WU7.4 admin audit log surface
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu74-admin-audit.md.*
+
 Exposes `GET /v1/admin/audit` — a filtered, paginated read view over
 the `admin_access_log` table that the WU1.9 / WU4.5 admin context
 managers write to. Read-only by construction; the table's

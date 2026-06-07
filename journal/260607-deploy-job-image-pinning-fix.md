@@ -1,5 +1,8 @@
 # 260607 — Deploy: ACA Jobs were silently stuck on old images
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-deploy-job-image-pinning-fix.md.*
+
 ## 1. What broke
 
 `/v1/documents/{id}/versions/{label}/clauses` started returning 500 in

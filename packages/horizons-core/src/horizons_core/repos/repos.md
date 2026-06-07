@@ -1,5 +1,8 @@
 # Repository layer
 
+*Last revised: 2026-06-05.*
+*Path: packages/horizons-core/src/horizons_core/repos/repos.md.*
+
 The repository layer is the third defence-in-depth layer on top of
 Postgres grants ([roles.md](../db/roles.md)) and RLS policies
 ([rls.md](../db/rls.md)). Application code talks to repos; repos talk to

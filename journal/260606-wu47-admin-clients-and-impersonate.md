@@ -1,5 +1,8 @@
 # 2026-06-06 — WU4.7: admin clients list + impersonation HTTP endpoints
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-wu47-admin-clients-and-impersonate.md.*
+
 A small follow-up unit added between WU4.6 (OpenAPI regenerator) and
 WU5.4 (admin webapp views). WU5.4 turned out to depend on two HTTP
 surfaces the original plan deferred to "WU4.5 will add the admin

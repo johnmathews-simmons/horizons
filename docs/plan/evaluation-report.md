@@ -1,5 +1,8 @@
 # Horizons — Architecture evaluation report
 
+*Last revised: 2026-06-06.*
+*Path: docs/plan/evaluation-report.md.*
+
 *Evaluation date: 2026-06-04. Project state: pre-code, post-design (docs 0–4).*
 *Lead: engineering-team skill, 5 parallel subagents. Originally produced under `.engineering-team/runs/manual-20260604T151127Z/`; relocated here on 2026-06-06.*
 

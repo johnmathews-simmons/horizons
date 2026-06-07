@@ -1,5 +1,8 @@
 # Row-Level Security architecture
 
+*Last revised: 2026-06-06.*
+*Path: packages/horizons-core/src/horizons_core/db/rls.md.*
+
 This is the spec the RLS spine executes against. As of WU1.5 the
 spine and its bracket are live: the `app_private` schema and
 `current_scope()` SECURITY DEFINER function from WU1.3, the

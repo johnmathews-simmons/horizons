@@ -1,5 +1,8 @@
 # WU3.0 — Worker shape spike
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu30-worker-shape-spike.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu3.0-worker-spike` → ff-merged to `main`.*
 
 Opening unit of Track 3 (Ingestion worker). First work unit in the repo whose deliverable is a *decision*, not a feature — `docs/adrs/0001-worker-shape.md` (MADR v4) picks between two Azure-Container-Apps-shaped substrates for the ingestion worker: a long-running asyncio container vs. a scheduled ACA Job. WU3.3 / WU3.4 / WU6.0 inherit the choice; getting it right here is cheaper than relitigating it later.

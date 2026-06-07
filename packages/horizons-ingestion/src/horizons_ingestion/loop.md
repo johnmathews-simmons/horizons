@@ -1,5 +1,8 @@
 # Claim loop
 
+*Last revised: 2026-06-05.*
+*Path: packages/horizons-ingestion/src/horizons_ingestion/loop.md.*
+
 The ingestion worker's top-level shape, implementing the long-running
 asyncio container substrate fixed by
 [ADR-0001](../../../../docs/adrs/0001-worker-shape.md).

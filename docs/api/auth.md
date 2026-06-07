@@ -1,5 +1,8 @@
 # Horizons API — Authentication
 
+*Last revised: 2026-06-06.*
+*Path: docs/api/auth.md.*
+
 > Note: the other files in `docs/api/` document the upstream **Lawstronaut**
 > API (the source we ingest from). This file documents the **Horizons** API
 > our customers and the SPA call. They are unrelated surfaces.

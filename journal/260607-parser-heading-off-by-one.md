@@ -1,5 +1,8 @@
 # 2026-06-07 — Parser heading off-by-one + invisible MOVED label
 
+*Last revised: 2026-06-07.*
+*Path: journal/260607-parser-heading-off-by-one.md.*
+
 ## Two bugs the user found while comparing v1/v2 panes for `ie-27732019`
 
 The synthetic v2 fixture renames clause `**11\.**` → `**11A\.**` (body

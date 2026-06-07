@@ -1,5 +1,8 @@
 # 2026-06-05 — WU0.6 lint:check + WU1.0 Postgres role model
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu06-lint-check-wu10-pg-roles.md.*
+
 Second session of the day. Closed the one known gap in Track 0 and opened
 Track 1.
 

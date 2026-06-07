@@ -1,5 +1,8 @@
 # 2026-06-05 — WU5.5: Large-doc rendering safety
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu55-large-doc-rendering-safety.md.*
+
 The two main-thread risks the demo carries: diff computation against
 clauses from the AL fixture's blank-line blocks (up to ~88 KB each),
 and rendering a /changes list once ingestion backlog catches up and

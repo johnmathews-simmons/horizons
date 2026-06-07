@@ -1,5 +1,8 @@
 # Alignment calibration
 
+*Last revised: 2026-06-07.*
+*Path: docs/runbooks/alignment-calibration.md.*
+
 How to read, run, and extend the two alignment-quality suites that
 score `horizons_core.core.alignment.align`. Background and design
 choices live in `docs/RFC-2 clause-alignment.md` — *Calibration*; this

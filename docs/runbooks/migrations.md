@@ -1,5 +1,8 @@
 # Migrations runbook — expand-contract policy
 
+*Last revised: 2026-06-05.*
+*Path: docs/runbooks/migrations.md.*
+
 *Audience: anyone writing or reviewing an Alembic migration in this repo.
 Source-of-truth for the deploy-safety rules.*
 

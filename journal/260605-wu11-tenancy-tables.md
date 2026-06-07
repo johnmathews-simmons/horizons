@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.1 tenancy tables
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu11-tenancy-tables.md.*
+
 Third session of the day. Shipped the tenancy spine — `users`,
 `subscriptions`, `subscription_scopes` — and turned `env.py` into an
 autogenerate-capable Alembic environment.

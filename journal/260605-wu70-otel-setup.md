@@ -1,5 +1,8 @@
 # 2026-06-05 — WU7.0 OpenTelemetry instrumentation
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu70-otel-setup.md.*
+
 First half of the Track 7 observability spine. Lands an importable,
 test-driven `setup_otel()` callable in `horizons-core`. The actual
 3-line wire-up into `horizons-api/app.py` is deferred to a follow-up

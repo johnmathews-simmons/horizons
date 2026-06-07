@@ -1,5 +1,8 @@
 # Cross-package integration tests
 
+*Last revised: 2026-06-05.*
+*Path: tests/README.md.*
+
 Tests in this directory exercise behaviour that spans more than one Python
 package — for example the WU1.7 multi-user isolation gate, which needs the
 API, the ingestion worker, and the shared `horizons-core` repository layer

@@ -1,5 +1,8 @@
 # Reseed runbook
 
+*Last revised: 2026-06-06.*
+*Path: docs/runbooks/reseed.md.*
+
 *Audience: operator wiping + re-seeding the staging corpus from a
 laptop. Built for the WU8.1 demo, kept around because the
 `documents` table's append-only trigger makes "edit YAML and re-seed"

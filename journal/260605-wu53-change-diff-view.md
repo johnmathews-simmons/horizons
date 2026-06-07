@@ -1,5 +1,8 @@
 # 2026-06-05 — WU5.3: Change-browsing view + clause diff render
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu53-change-diff-view.md.*
+
 The demo's headline UX. List of recent change events, click into a
 clause diff. Worktree `eng-wu5.3-change-diff-view`. Three commits on
 top of `23a238f`:

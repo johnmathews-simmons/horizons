@@ -1,5 +1,8 @@
 # Lawstronaut v2 — Endpoint Reference
 
+*Last revised: 2026-06-05.*
+*Path: docs/api/lawstronaut-endpoints.md.*
+
 All endpoints:
 - Base URL: `https://api.lawstronaut.com/v2`
 - Auth: `Authorization: Bearer <token>` (see `getting-started.md`)

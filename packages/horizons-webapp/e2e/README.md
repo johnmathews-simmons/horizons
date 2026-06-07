@@ -1,5 +1,8 @@
 # Horizons end-to-end smoke (WU8.2)
 
+*Last revised: 2026-06-07.*
+*Path: packages/horizons-webapp/e2e/README.md.*
+
 A single Playwright test that gates merges to main before the 2026-06-08 demo.
 The flow is the demo's headline UX:
 

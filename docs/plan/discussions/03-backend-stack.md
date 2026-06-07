@@ -1,5 +1,8 @@
 # Backend stack & ingestion: framework / library recommendations
 
+*Last revised: 2026-06-06.*
+*Path: docs/plan/discussions/03-backend-stack.md.*
+
 *Audit date: 2026-06-04. Pre-code, post-design. Reviewer: senior backend engineer.*
 
 Turns the design chain (docs 1–4) into concrete library choices for the Python service layer, calls out implementation gotchas, ranks top risks. **[VERIFIED]** = checked against current public docs/benchmarks; **[SUSPECTED]** = reasoned, not directly confirmed.

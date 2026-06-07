@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.0: Auth seam (TokenProvider + LocalJwtProvider)
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu40-auth-seam.md.*
+
 Opens Track 4. The HTTP surface is not landed yet (that's WU4.1 in the
 same session), but the seam between the API and whatever issues /
 verifies tokens lives in `horizons-core` so it's testable in isolation

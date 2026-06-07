@@ -1,5 +1,8 @@
 # 2026-06-06 — WU8.4: pre-demo wrap
 
+*Last revised: 2026-06-06.*
+*Path: journal/260606-wu84-pre-demo-wrap.md.*
+
 The final work unit. Two deliverables, both pure documentation: this
 entry summarising the build, and a refresh of CLAUDE.md's `Commands`
 section so the documented surface matches what actually ships.

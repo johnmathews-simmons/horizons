@@ -1,5 +1,8 @@
 # Frontend / SPA recommendations
 
+*Last revised: 2026-06-06.*
+*Path: docs/plan/discussions/05-frontend.md.*
+
 *Discussion 05 — manual run 2026-06-04T15:11:27Z.*
 
 SPA is architecturally a client of the public REST API (doc 4), static bundle from Azure Blob + CDN. Primary user is a senior data engineer stronger on backend — framework ergonomics outweigh raw bundle-size wins. Tags: `[VERIFIED]` (doc constraint or current external fact) / `[SUSPECTED]` (judgement).

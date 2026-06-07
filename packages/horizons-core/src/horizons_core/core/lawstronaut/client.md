@@ -1,5 +1,8 @@
 # Lawstronaut client
 
+*Last revised: 2026-06-05.*
+*Path: packages/horizons-core/src/horizons_core/core/lawstronaut/client.md.*
+
 The shared async HTTP client for Lawstronaut v2. Wraps the
 endpoints WU3.4's per-document poll body, the curated-set seed
 (WU3.5), and any future admin tooling need. Lives in `horizons-core`

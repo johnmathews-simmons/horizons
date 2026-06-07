@@ -1,5 +1,8 @@
 # Corpus: no stubs + clause-diff expansion — Implementation Plan
 
+*Last revised: 2026-06-07.*
+*Path: docs/superpowers/plans/2026-06-07-corpus-no-stubs-and-diff-expansion.md.*
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the 26 stub documents in the curated set with full v1 clauses staged from on-disk fixtures, and author 3 new English-language synthetic v2 pairs so each demo user sees realistic clause-level diffs covering all four change kinds (ADDED, REMOVED, MODIFIED, MOVED).

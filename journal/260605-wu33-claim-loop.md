@@ -1,5 +1,8 @@
 # WU3.3 — Schedule claim loop
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-wu33-claim-loop.md.*
+
 *Session 2026-06-05. Branch `worktree-eng-wu3.3-claim-loop` → ff-merged to `main`.*
 
 The ingestion worker's hot path. First real application code under

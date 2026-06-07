@@ -1,5 +1,8 @@
 # 2026-06-05 — WU4.5 secfix: scope-symmetry with current_scope()
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu45-secfix-scope-symmetry.md.*
+
 Post-push security review on the WU4.5 branch flagged a
 **parser/validator differential** in
 `SubscriptionsRepository.active_scope_documents`. Fixing it surfaced a

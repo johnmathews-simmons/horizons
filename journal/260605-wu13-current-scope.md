@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.3 `app_private.current_scope()`
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu13-current-scope.md.*
+
 Third unit landed today. `app_private` schema + the SECURITY DEFINER
 function the upcoming corpus RLS policies will invoke.
 

@@ -1,5 +1,8 @@
 # Document side-by-side viewer + change-in-context — design
 
+*Last revised: 2026-06-07.*
+*Path: docs/superpowers/specs/2026-06-07-document-side-by-side-and-change-context-design.md.*
+
 **Status:** draft, pending implementation.
 **Author:** John (via Claude).
 **Date:** 2026-06-07.

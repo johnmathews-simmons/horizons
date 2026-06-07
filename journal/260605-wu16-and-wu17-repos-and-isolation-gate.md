@@ -1,5 +1,8 @@
 # 2026-06-05 — WU1.6 (repository layer) + WU1.7 (two-client isolation gate)
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu16-and-wu17-repos-and-isolation-gate.md.*
+
 Closes Track 1. The RLS spine and bracket from WU1.4 / WU1.5 now have an
 application-level surface (`horizons_core.repos`) and a two-client
 integration gate that asserts both isolation axes hold end-to-end through

@@ -1,5 +1,8 @@
 # Retrospective — secfix commit pattern during the 2026-06-05 build sprint
 
+*Last revised: 2026-06-06.*
+*Path: journal/260605-secfix-pattern-retrospective.md.*
+
 *Session 2026-06-05 (late evening). Not a work-unit entry — a meta-observation
 captured for review after the 2026-06-08 demo.*
 

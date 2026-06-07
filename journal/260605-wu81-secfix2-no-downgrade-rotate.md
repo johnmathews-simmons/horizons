@@ -1,5 +1,8 @@
 # 2026-06-05 — WU8.1 secfix #2: no-downgrade rotate guard
 
+*Last revised: 2026-06-05.*
+*Path: journal/260605-wu81-secfix2-no-downgrade-rotate.md.*
+
 Closes the MEDIUM finding raised by the post-commit review of
 `260605-wu81-secfix-demo-password-handling.md`. The first secfix
 replaced the silent "skip if exists" idempotency with an unconditional

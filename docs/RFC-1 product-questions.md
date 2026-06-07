@@ -1,6 +1,7 @@
 # Product questions Horizons should be able to answer
 
 *Last revised: 2026-06-04.*
+*Path: docs/RFC-1 product-questions.md.*
 
 The tool — through its API — should be able to answer the following questions about legal documents. These questions are the reference point for API shape and feature scope.
 
