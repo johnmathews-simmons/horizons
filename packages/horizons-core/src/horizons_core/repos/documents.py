@@ -14,9 +14,13 @@ from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import func, select, text
+from sqlalchemy import case, func, select
+from sqlalchemy.orm import aliased
 
+from horizons_core.db.models.change_events import ChangeEvent
+from horizons_core.db.models.clauses import Clause
 from horizons_core.db.models.documents import Document
+from horizons_core.db.models.versions import DocumentVersion
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -195,62 +199,76 @@ class DocumentsRepository:
         caller has already filtered via ``list_filtered`` / ``get_by_id``,
         so referenced rows are already in scope.
         """
-        stmt = text(
-            """
-            WITH ranked_versions AS (
-                SELECT
-                    v.id,
-                    v.document_id,
-                    COALESCE(v.effective_date, v.created_at) AS sort_at,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY v.document_id
-                        ORDER BY v.effective_date DESC NULLS LAST,
-                                 v.created_at DESC
-                    ) AS rn
-                FROM document_versions v
-                WHERE v.document_id = ANY(CAST(:doc_ids AS uuid[]))
-            ),
-            v_curr AS (
-                SELECT * FROM ranked_versions WHERE rn = 1
-            ),
-            v_prev AS (
-                SELECT * FROM ranked_versions WHERE rn = 2
-            ),
-            clause_counts AS (
-                SELECT c.document_version_id, COUNT(*) AS clause_count
-                FROM clauses c
-                WHERE c.document_version_id IN (SELECT id FROM v_curr)
-                GROUP BY c.document_version_id
-            ),
-            change_counts AS (
-                SELECT
-                    ce.document_version_id,
-                    SUM(CASE WHEN ce.change_type = 'ADDED'    THEN 1 ELSE 0 END) AS added,
-                    SUM(CASE WHEN ce.change_type = 'REMOVED'  THEN 1 ELSE 0 END) AS removed,
-                    SUM(CASE WHEN ce.change_type = 'MODIFIED' THEN 1 ELSE 0 END) AS modified,
-                    SUM(CASE WHEN ce.change_type = 'MOVED'    THEN 1 ELSE 0 END) AS moved
-                FROM change_events ce
-                WHERE ce.document_version_id IN (SELECT id FROM v_curr)
-                GROUP BY ce.document_version_id
+        sort_at = func.coalesce(DocumentVersion.effective_date, DocumentVersion.created_at).label(
+            "sort_at"
+        )
+        rn = (
+            func.row_number()
+            .over(
+                partition_by=DocumentVersion.document_id,
+                order_by=[
+                    DocumentVersion.effective_date.desc().nulls_last(),
+                    DocumentVersion.created_at.desc(),
+                ],
             )
-            SELECT
-                d.id AS document_id,
-                COALESCE(cc.clause_count, 0) AS clause_count,
-                COALESCE(ch.added, 0) AS added,
-                COALESCE(ch.removed, 0) AS removed,
-                COALESCE(ch.modified, 0) AS modified,
-                COALESCE(ch.moved, 0) AS moved,
-                v_prev.sort_at AS previous_version_at,
-                v_curr.sort_at AS current_version_at
-            FROM unnest(CAST(:doc_ids AS uuid[])) AS d(id)
-            LEFT JOIN v_curr        ON v_curr.document_id = d.id
-            LEFT JOIN v_prev        ON v_prev.document_id = d.id
-            LEFT JOIN clause_counts cc ON cc.document_version_id = v_curr.id
-            LEFT JOIN change_counts ch ON ch.document_version_id = v_curr.id
-            """
+            .label("rn")
+        )
+        ranked_cte = (
+            select(
+                DocumentVersion.id.label("id"),
+                DocumentVersion.document_id.label("document_id"),
+                sort_at,
+                rn,
+            )
+            .where(DocumentVersion.document_id.in_(doc_ids))
+            .cte("ranked_versions")
         )
 
-        result = await self._session.execute(stmt, {"doc_ids": doc_ids})
+        v_curr = aliased(ranked_cte, name="v_curr")
+        v_prev = aliased(ranked_cte, name="v_prev")
+
+        clause_count_subq = (
+            select(func.count())
+            .select_from(Clause)
+            .where(Clause.document_version_id == v_curr.c.id)
+            .correlate(v_curr)
+            .scalar_subquery()
+        )
+
+        stmt = (
+            select(
+                Document.id.label("document_id"),
+                func.coalesce(clause_count_subq, 0).label("clause_count"),
+                func.coalesce(
+                    func.sum(case((ChangeEvent.change_type == "ADDED", 1), else_=0)), 0
+                ).label("added"),
+                func.coalesce(
+                    func.sum(case((ChangeEvent.change_type == "REMOVED", 1), else_=0)), 0
+                ).label("removed"),
+                func.coalesce(
+                    func.sum(case((ChangeEvent.change_type == "MODIFIED", 1), else_=0)), 0
+                ).label("modified"),
+                func.coalesce(
+                    func.sum(case((ChangeEvent.change_type == "MOVED", 1), else_=0)), 0
+                ).label("moved"),
+                v_prev.c.sort_at.label("previous_version_at"),
+                v_curr.c.sort_at.label("current_version_at"),
+            )
+            .select_from(Document)
+            .outerjoin(
+                v_curr,
+                (v_curr.c.document_id == Document.id) & (v_curr.c.rn == 1),
+            )
+            .outerjoin(
+                v_prev,
+                (v_prev.c.document_id == Document.id) & (v_prev.c.rn == 2),
+            )
+            .outerjoin(ChangeEvent, ChangeEvent.document_version_id == v_curr.c.id)
+            .where(Document.id.in_(doc_ids))
+            .group_by(Document.id, v_curr.c.id, v_curr.c.sort_at, v_prev.c.sort_at)
+        )
+
+        result = await self._session.execute(stmt)
         out: dict[uuid.UUID, dict[str, object]] = {}
         for row in result.mappings():
             out[row["document_id"]] = {
