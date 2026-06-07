@@ -1,0 +1,62 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:07Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=EU&portal=www.bankingsupervision.europa.eu&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=EU&portal=www.bankingsupervision.europa.eu&limit=10",
+    "portal_name": "European Central Bank | Banking Supervision"
+  },
+  "document_id": 37071316,
+  "title": "Navigating risk, cutting complexity: financial conglomerates in the current environment",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "European Union",
+    "state": ""
+  },
+  "publication_date": "2026-06-05T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "European Central Bank",
+  "type_of_authority": "Speech",
+  "language": "English",
+  "legal_link": "https://www.bankingsupervision.europa.eu/press/speeches/date/2026/html/ssm.sp260605~d9376a730f.en.html",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "supranational",
+      "regulatory authority",
+      "regional",
+      "financial institutions",
+      "regulators",
+      "compliance officers",
+      "policy makers",
+      "auditors",
+      "legal professionals",
+      "press release",
+      "news and updates",
+      "announcement",
+      "policy documents",
+      "guidelines",
+      "regulation",
+      "official source",
+      "update notice"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-06-07T02:44:59.787Z",
+  "portal": "www.bankingsupervision.europa.eu",
+  "portal_name": "European Central Bank | Banking Supervision",
+  "last_updated": "2026-06-07T02:44:59.787Z",
+  "file_data": {}
+}

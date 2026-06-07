@@ -1,0 +1,58 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:51Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GB&portal=www.bailii.org&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GB&portal=www.bailii.org&limit=10",
+    "portal_name": "UK Case Precedents"
+  },
+  "document_id": 9787341,
+  "title": "Affirmative Finance Limited v (1) Philip Michael Pearson (2) Julie Denise Pearson (Contracts and options)",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "United Kingdom",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "First-tier Tribunal (Property Chamber)",
+  "type_of_authority": "Decisions",
+  "language": "English",
+  "legal_link": "https://www.bailii.org/uk/cases/UKFTT/PC/2013/991.html",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Caselaw",
+      "General Legislation",
+      "national",
+      "court and judiciary",
+      "legal professionals",
+      "researchers",
+      "academics",
+      "students",
+      "the general public",
+      "judges",
+      "judgment and case law",
+      "decision",
+      "secondary source",
+      "reference document"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "[2014] UKFTT 991 (PC)",
+  "source_secondary_identifier": "[2014] UKFTT 991 (PC)",
+  "date_of_repealed": "",
+  "date_of_decision": "2013-09-16T00:00:000Z",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-19T20:17:17.905Z",
+  "portal": "www.bailii.org",
+  "portal_name": "UK Case Precedents",
+  "last_updated": "2026-05-19T20:17:17.905Z",
+  "file_data": {}
+}

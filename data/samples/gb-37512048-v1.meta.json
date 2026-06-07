@@ -1,0 +1,61 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:04Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GB&portal=www.parliament.uk&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GB&portal=www.parliament.uk&limit=10",
+    "portal_name": "UK Parliament"
+  },
+  "document_id": 37512048,
+  "title": "What's on in the Lords 8-11 June",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "United Kingdom",
+    "state": ""
+  },
+  "publication_date": "2026-06-05T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "UK Parliament",
+  "type_of_authority": "News",
+  "language": "English",
+  "legal_link": "https://www.parliament.uk/business/news/2026/june-2026/whats-on-in-the-lords-8-june-11-june/",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "parliament",
+      "national",
+      "legislative body",
+      "legal professionals",
+      "citizens",
+      "public sector entities",
+      "businesses",
+      "regulators",
+      "policy makers",
+      "compliance officers",
+      "binding law",
+      "regulation",
+      "implementation measure",
+      "official source",
+      "index entry",
+      "reference document"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-06-07T07:34:19.679Z",
+  "portal": "www.parliament.uk",
+  "portal_name": "UK Parliament",
+  "last_updated": "2026-06-07T07:34:19.679Z",
+  "file_data": {}
+}

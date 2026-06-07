@@ -1,7 +1,8 @@
 {
   "_provenance": {
     "fetched_at": "2026-06-04T12:38:40Z",
-    "target_count": 30
+    "target_count": 30,
+    "last_appended_at": "2026-06-07T15:06:51Z"
   },
   "fixtures": [
     {
@@ -230,6 +231,96 @@
       }
     },
     {
+      "iso": "EU",
+      "portal_url": "eba.europa.eu",
+      "portal_name": "European Banking Authority",
+      "document_id": "28943439",
+      "version": 1,
+      "title": "Report on benchmarking of diversity practices in the EU banking sector (2024 data)",
+      "type_of_authority": "Reports",
+      "language": "English",
+      "markdown_kb": 107.4,
+      "files": {
+        "markdown": "eu-28943439-v1.md",
+        "meta": "eu-28943439-v1.meta.json"
+      }
+    },
+    {
+      "iso": "EU",
+      "portal_url": "www.bankingsupervision.europa.eu",
+      "portal_name": "European Central Bank | Banking Supervision",
+      "document_id": "37071316",
+      "version": 1,
+      "title": "Navigating risk, cutting complexity: financial conglomerates in the current environment",
+      "type_of_authority": "Speech",
+      "language": "English",
+      "markdown_kb": 39.2,
+      "files": {
+        "markdown": "eu-37071316-v1.md",
+        "meta": "eu-37071316-v1.meta.json"
+      }
+    },
+    {
+      "iso": "EU",
+      "portal_url": "www.ecb.europa.eu",
+      "portal_name": "European Central Bank",
+      "document_id": "34656519",
+      "version": 1,
+      "title": "Fiscal policy transmission through production networks with heterogeneous households",
+      "type_of_authority": "Working Paper Series - Issue No. 3244",
+      "language": "English",
+      "markdown_kb": 198.7,
+      "files": {
+        "markdown": "eu-34656519-v1.md",
+        "meta": "eu-34656519-v1.meta.json"
+      }
+    },
+    {
+      "iso": "EU",
+      "portal_url": "www.eiopa.europa.eu",
+      "portal_name": "European Insurance and Occupational Pensions Authority",
+      "document_id": "28263756",
+      "version": 1,
+      "title": "Final Report on revised Guidelines on the exchange of information on a systematic basis within colleges",
+      "type_of_authority": "General publications",
+      "language": "English",
+      "markdown_kb": 84.6,
+      "files": {
+        "markdown": "eu-28263756-v1.md",
+        "meta": "eu-28263756-v1.meta.json"
+      }
+    },
+    {
+      "iso": "EU",
+      "portal_url": "www.esma.europa.eu",
+      "portal_name": "European Securities and Markets Authority",
+      "document_id": "31915825",
+      "version": 1,
+      "title": "Report on quality and use of data 2025",
+      "type_of_authority": "Report",
+      "language": "English",
+      "markdown_kb": 189.5,
+      "files": {
+        "markdown": "eu-31915825-v1.md",
+        "meta": "eu-31915825-v1.meta.json"
+      }
+    },
+    {
+      "iso": "EU",
+      "portal_url": "www.srb.europa.eu",
+      "portal_name": "Single Resolution Board",
+      "document_id": "21435108",
+      "version": 1,
+      "title": "Speech by SRB Board Member Slavka Eley - \"From resolution planning to operational crisis readiness in the Banking Union\"",
+      "type_of_authority": "Speeches Date range: to",
+      "language": "English",
+      "markdown_kb": 11.6,
+      "files": {
+        "markdown": "eu-21435108-v1.md",
+        "meta": "eu-21435108-v1.meta.json"
+      }
+    },
+    {
       "iso": "FI",
       "portal_url": "www.finanssiala.fi",
       "portal_name": "Finanssialary (English)",
@@ -287,6 +378,111 @@
       "files": {
         "markdown": "gb-28914588-v1.md",
         "meta": "gb-28914588-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "www.bailii.org",
+      "portal_name": "UK Case Precedents",
+      "document_id": "9787341",
+      "version": 1,
+      "title": "Affirmative Finance Limited v (1) Philip Michael Pearson (2) Julie Denise Pearson (Contracts and options)",
+      "type_of_authority": "Decisions",
+      "language": "English",
+      "markdown_kb": 38.0,
+      "files": {
+        "markdown": "gb-9787341-v1.md",
+        "meta": "gb-9787341-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "www.bankofengland.co.uk",
+      "portal_name": "The Bank of England",
+      "document_id": "37048477",
+      "version": 1,
+      "title": "External business of Monetary Financial Institutions operating in the UK - 2026 Q1",
+      "type_of_authority": "Statistics // External business of Monetary Financial Institutions (MFIs) operating in the UK",
+      "language": "English",
+      "markdown_kb": 485.2,
+      "files": {
+        "markdown": "gb-37048477-v1.md",
+        "meta": "gb-37048477-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "www.catribunal.org.uk",
+      "portal_name": "Competition Appeals Tribunal",
+      "document_id": "36992553",
+      "version": 1,
+      "title": "Roadget Business Pte. Ltd. and Shein Distribution UK Limited v Whaleco UK Limited",
+      "type_of_authority": "Judgements",
+      "language": "English",
+      "markdown_kb": 161.8,
+      "files": {
+        "markdown": "gb-36992553-v1.md",
+        "meta": "gb-36992553-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "www.fca.org.uk",
+      "portal_name": "Financial Conduct Authority",
+      "document_id": "32416312",
+      "version": 1,
+      "title": "List of non-legal corrections and clarifications in the FCA Handbook",
+      "type_of_authority": "Legal Instrument",
+      "language": "English",
+      "markdown_kb": 74.3,
+      "files": {
+        "markdown": "gb-32416312-v1.md",
+        "meta": "gb-32416312-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "www.legislation.gov.uk",
+      "portal_name": "Legislation UK",
+      "document_id": "35840254",
+      "version": 1,
+      "title": "Tobacco and Vapes Act 2026",
+      "type_of_authority": "UK Public General Acts",
+      "language": "English",
+      "markdown_kb": 551.2,
+      "files": {
+        "markdown": "gb-35840254-v1.md",
+        "meta": "gb-35840254-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "www.parliament.uk",
+      "portal_name": "UK Parliament",
+      "document_id": "37512048",
+      "version": 1,
+      "title": "What's on in the Lords 8-11 June",
+      "type_of_authority": "News",
+      "language": "English",
+      "markdown_kb": 11.6,
+      "files": {
+        "markdown": "gb-37512048-v1.md",
+        "meta": "gb-37512048-v1.meta.json"
+      }
+    },
+    {
+      "iso": "GB",
+      "portal_url": "www.psr.org.uk",
+      "portal_name": "UK Payment Systems Regulator",
+      "document_id": "2136076",
+      "version": 1,
+      "title": "A new regulator for a new world",
+      "type_of_authority": "Speeches",
+      "language": "English",
+      "markdown_kb": 15.9,
+      "files": {
+        "markdown": "gb-2136076-v1.md",
+        "meta": "gb-2136076-v1.meta.json"
       }
     },
     {

@@ -1,0 +1,43 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:05:59Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GB&portal=www.psr.org.uk&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GB&portal=www.psr.org.uk&limit=10",
+    "portal_name": "UK Payment Systems Regulator"
+  },
+  "document_id": 2136076,
+  "title": "A new regulator for a new world",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "United Kingdom",
+    "state": ""
+  },
+  "publication_date": "2015-04-16T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Payment Systems Regulator",
+  "type_of_authority": "Speeches",
+  "language": "English",
+  "legal_link": "https://www.psr.org.uk/news-and-updates/speeches/speeches/a-new-regulator-for-a-new-world/",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": null
+  },
+  "status": null,
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "From shekels to smartphones Why the PSR was created The next twelve months An ambitious programme of work for the next 12 months Stepping up to the mark What it all adds up to Closing remarks",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-05-04T21:10:12.200Z",
+  "portal": "www.psr.org.uk",
+  "portal_name": "UK Payment Systems Regulator",
+  "last_updated": "2026-05-04T21:10:12.200Z",
+  "file_data": {}
+}

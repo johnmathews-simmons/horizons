@@ -1,0 +1,62 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:48Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GB&portal=www.catribunal.org.uk&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GB&portal=www.catribunal.org.uk&limit=10",
+    "portal_name": "Competition Appeals Tribunal"
+  },
+  "document_id": 36992553,
+  "title": "Roadget Business Pte. Ltd. and Shein Distribution UK Limited v Whaleco UK Limited",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "United Kingdom",
+    "state": ""
+  },
+  "publication_date": "2025-08-07T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "UK Competition Appeal Tribunal",
+  "type_of_authority": "Judgements",
+  "language": "English",
+  "legal_link": "https://www.catribunal.org.uk/sites/cat/files/2026-05/17455725%20%28T%29%20Roadget%20Business%20Pte.%20Ltd.%20and%20Shein%20Distribution%20UK%20Limited%20v%20Whaleco%20UK%20Limited%20-%20Transcript%20of%20CMC%20%20%2023%20Apr%202026%20-%20corrected.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Competition and Antitrust Law",
+      "court and judiciary",
+      "national",
+      "legal professionals",
+      "businesses",
+      "regulators",
+      "judgment and case law",
+      "decision",
+      "binding law",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "1745/5/7/25 (T)",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "2026-04-23T00:00:000Z",
+  "summary": "A counterclaim for damages brought by Whaleco UK Limited against (1) Roadget Business Pte. Ltd and Shein Distribution UK limited in respect of alleged infringements of prohibitions imposed by Chapters I and/or II of the Competition Act 1998. The competition issues were transferred from the High Court to the Tribunal by order of Mrs Justice Bacon dated 29 July 2025. Case management conferences took place on 23 September and 17 December 2025. A trial to determine competition liability, causation and declarative and injunctive relief in the proceedings was listed for a period of three and a half weeks including three days of pre-reading commencing on 25 November 2026. A case management conference took place on 9 January 2026 in respect of these proceedings and the concurrent High Court intellectual property proceedings. The trial was relisted to commence on 3 March 2027. A case management conference took place on 23 April 2026",
+  "tags": "",
+  "source_keywords": [
+    "Andrew Lykiardopoulos KC",
+    "The Honourable Mrs Justice Bacon",
+    "John Davies"
+  ],
+  "crawling_date": "2026-06-05T15:20:43.445Z",
+  "portal": "www.catribunal.org.uk",
+  "portal_name": "Competition Appeals Tribunal",
+  "last_updated": "2026-06-05T15:20:43.445Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 671021,
+    "timestamp": "2026-06-05T03:27:06.335973"
+  }
+}

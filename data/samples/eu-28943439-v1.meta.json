@@ -1,0 +1,70 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:05Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=EU&portal=eba.europa.eu&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=EU&portal=eba.europa.eu&limit=10",
+    "portal_name": "European Banking Authority"
+  },
+  "document_id": 28943439,
+  "title": "Report on benchmarking of diversity practices in the EU banking sector (2024 data)",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "European Union",
+    "state": ""
+  },
+  "publication_date": "2026-04-23T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "European Banking Authority",
+  "type_of_authority": "Reports",
+  "language": "English",
+  "legal_link": "https://www.eba.europa.eu/sites/default/files/2026-04/fed06ca4-ee36-4bdb-b150-723faa7830af/Report%20on%20diversity%20benchmarking.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "Public Finance and Budget Law",
+      "Consumer Protection Law",
+      "supranational",
+      "regulatory authority",
+      "financial institutions",
+      "regulators",
+      "compliance officers",
+      "legal professionals",
+      "policy makers",
+      "guidelines",
+      "implementation measure",
+      "consultation",
+      "policy documents",
+      "advisory opinions",
+      "impact assessment",
+      "annual reports",
+      "statistical reports",
+      "press release",
+      "news and updates",
+      "official source",
+      "reference document"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-06-07T05:20:51.286Z",
+  "portal": "eba.europa.eu",
+  "portal_name": "European Banking Authority",
+  "last_updated": "2026-06-07T05:20:51.286Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 1351943,
+    "timestamp": "2026-04-24T05:56:20.453127"
+  }
+}

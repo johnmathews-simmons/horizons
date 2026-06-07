@@ -1,0 +1,54 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:02Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GB&portal=www.legislation.gov.uk&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GB&portal=www.legislation.gov.uk&limit=10",
+    "portal_name": "Legislation UK"
+  },
+  "document_id": 35840254,
+  "title": "Tobacco and Vapes Act 2026",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "United Kingdom",
+    "state": ""
+  },
+  "publication_date": "",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "2026-04-29T00:00:000Z",
+  "date_of_last_amendment": "",
+  "issuing_authority": "UK National Archives",
+  "type_of_authority": "UK Public General Acts",
+  "language": "English",
+  "legal_link": "https://www.legislation.gov.uk/ukpga/2026/18/data.xht",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "General Legislation",
+      "regulatory authority",
+      "reporting entities",
+      "license holders",
+      "the general public",
+      "regulation",
+      "directive",
+      "advisory opinions",
+      "circulars",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "2026 c. 18",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-06-07T04:14:04.417Z",
+  "portal": "www.legislation.gov.uk",
+  "portal_name": "Legislation UK",
+  "last_updated": "2026-06-07T04:14:04.417Z",
+  "file_data": {}
+}

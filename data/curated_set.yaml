@@ -21,6 +21,10 @@
 # so admin can still see the taxonomy mix.
 
 jurisdictions: [IE, GB, UK, EU, BE, AT, DE, FR, IT, ES, DK, FI, GR, AU, FJ, AD, AE, CY, GE, BR, CN, CH, CZ, HR, HU, JP, KR, LU, LV, MC, AL]
+# Note: BE/AT/ES/DK/FI/GR/FJ/AD/AE/CY/GE/BR/CN are listed for the still-on-disk
+# fixtures referenced in journal/docs, but after WU8.7 none of them are seeded
+# (no demo account subscribes to them and the relabel cluster moved to native
+# GB/EU sources). The fixture files stay on disk for historical reference.
 sectors:
   - BANKING
   - employment
@@ -41,9 +45,14 @@ documents:
 
   # =====================================================================
   # UK relabels (10) — visible to demo-uk@demo.example.com
-  # (subscription = UK / BANKING). Picked from English-language /
-  # common-law / accessible-content fixtures; sector forced to BANKING
-  # so the demo subscription matches.
+  # (subscription = UK / BANKING). WU8.7 pivot: every entry below is now
+  # natively GB-sourced from a banking-/finance-/legal-relevant UK
+  # portal. The 3 v2-attached docs (28914588, 27732019, 2145602) still
+  # carry their synthetic v2 demo signals; 27732019 (IE) and 2145602
+  # (AU) keep the UK relabel because their v2 edits exercise MOVED +
+  # ADD/REMOVE change-event types. Every other UK entry is a fresh
+  # capture from a UK regulator / court / parliament portal — no more
+  # Chinese / Catalan / Brazilian fillers.
   # =====================================================================
 
   # GB Foat v DWP — work-and-pensions tribunal judgment. Already the
@@ -63,45 +72,63 @@ documents:
     jurisdiction: UK
     sector: BANKING
 
-  # Synthetic v2 staged with ADDED (new Schedule 1 closing sentence
-  # pinning the LGA boundary reference date) + REMOVED (sewage-
+  # AU — Synthetic v2 staged with ADDED (new Schedule 1 closing
+  # sentence pinning the LGA boundary reference date) + REMOVED (sewage-
   # contamination limb of the major damage definition) edits.
-  - id: "2145602"           # AU
+  - id: "2145602"
     jurisdiction: UK
     sector: BANKING
 
-  - id: "3534070"           # FJ
+  # GB FCA — Handbook corrections (74 KB). Banking-rulebook flavour.
+  - id: "32416312"
     jurisdiction: UK
     sector: BANKING
 
-  - id: "8936928"           # AD
+  # GB Bank of England — External business of Monetary Financial
+  # Institutions report (485 KB). Banking-supervision flavour.
+  - id: "37048477"
     jurisdiction: UK
     sector: BANKING
 
-  - id: "26813422"          # AE
+  # GB Payment Systems Regulator — early speech "A new regulator for a
+  # new world". Payments-policy flavour.
+  - id: "2136076"
     jurisdiction: UK
     sector: BANKING
 
-  - id: "31683899"          # CY
+  # GB Legislation — Tobacco and Vapes Act 2026 (551 KB). Primary
+  # legislation; numbered Parts/sections; good clause-overlay fixture.
+  - id: "35840254"
     jurisdiction: UK
     sector: BANKING
 
-  - id: "4446542"           # GE
+  # GB Parliament — "What's on in the Lords 8-11 June" briefing.
+  # Lighter content, kept for jurisdictional spread.
+  - id: "37512048"
     jurisdiction: UK
     sector: BANKING
 
-  - id: "32455517"          # BR
+  # GB Competition Appeals Tribunal — Roadget v Shein (162 KB). Markets/
+  # competition case.
+  - id: "36992553"
     jurisdiction: UK
     sector: BANKING
 
-  - id: "1353327"           # CN
+  # GB Bailii — Affirmative Finance Limited v Pearson (38 KB). Consumer-
+  # credit-adjacent case-law fixture.
+  - id: "9787341"
     jurisdiction: UK
     sector: BANKING
 
   # =====================================================================
   # EU relabels (10) — visible to demo-eu@demo.example.com
-  # (subscription = EU / BANKING). Mix of native-EU + continental
-  # fixtures forced to BANKING to populate the EU subscription view.
+  # (subscription = EU / BANKING). WU8.7 pivot: the 4 v2-attached docs
+  # (31366184 BEREC, 31702142 FR ACPR, 20951816 DE BA, 26863 IT MEF)
+  # carry the demo's diff signals and keep their existing labels; FR/
+  # DE/IT are EU-member-state regulators relabelled to EU. The other 6
+  # entries are fresh captures from native EU banking institutions
+  # (EBA, ECB, ECB Banking Supervision, SRB, ESMA, EIOPA) — no more
+  # national-only fillers.
   # =====================================================================
 
   # EU — BEREC press item, native EU jurisdiction.
@@ -117,36 +144,47 @@ documents:
     jurisdiction: EU
     sector: BANKING
 
-  - id: "20951816"          # DE — labour-market report
+  # DE — Bundesagentur für Arbeit labour-market report. Synthetic v2
+  # staged with ADD/REMOVE/MODIFIED edits.
+  - id: "20951816"
     jurisdiction: EU
     sector: BANKING
 
-  - id: "19194112"          # BE — FPS Labour questionnaire
+  # IT — MEF economic/financial document. Synthetic v2 staged with
+  # ADD/REMOVE/MODIFIED edits (the headline 2017 net-borrowing target
+  # revision).
+  - id: "26863"
     jurisdiction: EU
     sector: BANKING
 
-  - id: "32061749"          # AT — BVwG administrative decision
-    jurisdiction: EU
+  # EU European Banking Authority — Report on benchmarking of
+  # diversity practices in the EU banking sector (107 KB).
+  - id: "28943439"
     sector: BANKING
 
-  - id: "26863"             # IT — MEF economic/financial document
-    jurisdiction: EU
+  # EU European Central Bank — Fiscal policy transmission research
+  # paper (199 KB).
+  - id: "34656519"
     sector: BANKING
 
-  - id: "28885109"          # ES — IVA manual
-    jurisdiction: EU
+  # EU ECB Banking Supervision — "Navigating risk, cutting complexity"
+  # speech on financial conglomerates (39 KB).
+  - id: "37071316"
     sector: BANKING
 
-  - id: "18087738"          # DK — central-government financing
-    jurisdiction: EU
+  # EU Single Resolution Board — Speech "From resolution planning to
+  # operational readiness".
+  - id: "21435108"
     sector: BANKING
 
-  - id: "28628500"          # FI
-    jurisdiction: EU
+  # EU European Securities and Markets Authority — Report on quality
+  # and use of data 2025 (190 KB).
+  - id: "31915825"
     sector: BANKING
 
-  - id: "3539403"           # GR
-    jurisdiction: EU
+  # EU European Insurance and Occupational Pensions Authority — Final
+  # Report on revised Guidelines (85 KB).
+  - id: "28263756"
     sector: BANKING
 
   # =====================================================================

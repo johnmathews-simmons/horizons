@@ -1,0 +1,67 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:09Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=EU&portal=www.srb.europa.eu&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=EU&portal=www.srb.europa.eu&limit=10",
+    "portal_name": "Single Resolution Board"
+  },
+  "document_id": 21435108,
+  "title": "Speech by SRB Board Member Slavka Eley - \"From resolution planning to operational crisis readiness in the Banking Union\"",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "European Union",
+    "state": ""
+  },
+  "publication_date": "2026-03-19T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Single Resolution Board",
+  "type_of_authority": "Speeches Date range: to",
+  "language": "English",
+  "legal_link": "https://www.srb.europa.eu/en/content/speech-srb-board-member-slavka-eley-resolution-planning-operational-crisis-readiness",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "Public Finance and Budget Law",
+      "Corporate Law",
+      "supranational",
+      "regulatory authority",
+      "independent agency",
+      "financial institutions",
+      "regulators",
+      "policy makers",
+      "legal professionals",
+      "investors",
+      "the general public",
+      "policy documents",
+      "news and updates",
+      "press release",
+      "guidelines",
+      "annual reports",
+      "analysis",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": [],
+  "source_keywords": [],
+  "crawling_date": "2026-06-07T02:30:46.443Z",
+  "portal": "www.srb.europa.eu",
+  "portal_name": "Single Resolution Board",
+  "last_updated": "2026-06-07T02:30:46.443Z",
+  "file_data": {
+    "content_type": "",
+    "file_size": 0,
+    "timestamp": ""
+  }
+}

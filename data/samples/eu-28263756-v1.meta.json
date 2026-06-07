@@ -1,0 +1,80 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:12Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=EU&portal=www.eiopa.europa.eu&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=EU&portal=www.eiopa.europa.eu&limit=10",
+    "portal_name": "European Insurance and Occupational Pensions Authority"
+  },
+  "document_id": 28263756,
+  "title": "Final Report on revised Guidelines on the exchange of information on a systematic basis within colleges",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "European Union",
+    "state": ""
+  },
+  "publication_date": "2026-04-20T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "European Insurance and Occupational Pensions Authority",
+  "type_of_authority": "General publications",
+  "language": "English",
+  "legal_link": "https://www.eiopa.europa.eu/document/download/f733d08d-a117-4c1a-be90-d7c740a29b5a_en?filename=EIOPA-BoS-26-071%20-%20Final%20report%20on%20revised%20GLs%20on%20info%20exchange%20in%20colleges_0.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "Social Security and Welfare Law",
+      "Consumer Protection Law",
+      "Employment Law",
+      "supranational",
+      "regulatory authority",
+      "independent agency",
+      "regulators",
+      "financial institutions",
+      "compliance officers",
+      "policy makers",
+      "businesses",
+      "consumers",
+      "legal professionals",
+      "guidelines",
+      "policy documents",
+      "consultation",
+      "response to consultation",
+      "analysis",
+      "statistical reports",
+      "annual reports",
+      "advisory opinions",
+      "press release",
+      "news and updates",
+      "official commentary",
+      "official source",
+      "reference document"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "The revised Guidelines aim to strengthen supervisory cooperation by establishing a consistent and systematic approach to the exchange of information among National Competent Authorities (NCAs) that are involved in the supervision of cross-border insurance groups in the European Economic Area (EEA). They improve upon the framework introduced in 2015 by streamlining annexes and updating legal references to reflect the latest regulatory developments. The guidelines also introduce new provisions on the sharing of group Own Risk and Solvency Assessment (ORSA) reports within colleges to facilitate and improve supervisors\u2019 collective understanding of a group\u2019s risks, while maintaining strict confidentiality safeguards.",
+  "tags": [],
+  "source_keywords": [
+    "Guidelines",
+    "Report",
+    "Colleges of Supervisors",
+    "Supervision"
+  ],
+  "crawling_date": "2026-06-07T04:41:57.952Z",
+  "portal": "www.eiopa.europa.eu",
+  "portal_name": "European Insurance and Occupational Pensions Authority",
+  "last_updated": "2026-06-07T04:41:57.952Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 561961,
+    "timestamp": "2026-04-21T09:13:17.527947"
+  }
+}

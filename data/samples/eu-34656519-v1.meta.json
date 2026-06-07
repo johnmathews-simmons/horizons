@@ -1,0 +1,73 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:06:06Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=EU&portal=www.ecb.europa.eu&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=EU&portal=www.ecb.europa.eu&limit=10",
+    "portal_name": "European Central Bank"
+  },
+  "document_id": 34656519,
+  "title": "Fiscal policy transmission through production networks with heterogeneous households",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "European Union",
+    "state": ""
+  },
+  "publication_date": "2026-06-03T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "European Central Bank",
+  "type_of_authority": "Working Paper Series - Issue No. 3244",
+  "language": "English",
+  "legal_link": "https://www.ecb.europa.eu/pub/pdf/scpwps/ecb.wp3244~0e92afef7d.en.pdf",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "supranational",
+      "regulatory authority",
+      "independent agency",
+      "government agency",
+      "financial institutions",
+      "businesses",
+      "regulators",
+      "compliance officers",
+      "policy makers",
+      "the general public",
+      "regulation",
+      "guidelines",
+      "decision",
+      "policy documents",
+      "press release",
+      "statistical reports",
+      "annual reports",
+      "announcement",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "",
+  "tags": "",
+  "source_keywords": [
+    "E21",
+    "D57",
+    "E32",
+    "E62"
+  ],
+  "crawling_date": "2026-06-06T02:03:53.125Z",
+  "portal": "www.ecb.europa.eu",
+  "portal_name": "European Central Bank",
+  "last_updated": "2026-06-06T02:03:53.125Z",
+  "file_data": {
+    "content_type": "application/pdf",
+    "file_size": 4921310,
+    "timestamp": "2026-06-04T02:11:55.708652"
+  }
+}

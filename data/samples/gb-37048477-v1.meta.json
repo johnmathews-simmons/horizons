@@ -1,0 +1,60 @@
+{
+  "_provenance": {
+    "fetched_at": "2026-06-07T15:05:57Z",
+    "endpoint_metadata": "GET https://api.lawstronaut.com/v2/contents?iso=GB&portal=www.bankofengland.co.uk&limit=10",
+    "endpoint_markdown": "GET https://api.lawstronaut.com/v2/contents/markdown?iso=GB&portal=www.bankofengland.co.uk&limit=10",
+    "portal_name": "The Bank of England"
+  },
+  "document_id": 37048477,
+  "title": "External business of Monetary Financial Institutions operating in the UK - 2026 Q1",
+  "section_title": "",
+  "jurisdiction": {
+    "country": "United Kingdom",
+    "state": ""
+  },
+  "publication_date": "2026-06-05T00:00:000Z",
+  "effective_date": "",
+  "expiration_date": "",
+  "date_of_enactment": "",
+  "date_of_last_amendment": "",
+  "issuing_authority": "Bank of England",
+  "type_of_authority": "Statistics // External business of Monetary Financial Institutions (MFIs) operating in the UK",
+  "language": "English",
+  "legal_link": "https://www.bankofengland.co.uk/statistics/external-business-uk-mfi/2026/2026-q1",
+  "repealed": false,
+  "metadata": {
+    "keywords": [],
+    "portal_tags": [
+      "Financial Services",
+      "national",
+      "regulatory authority",
+      "independent agency",
+      "businesses",
+      "financial institutions",
+      "regulators",
+      "compliance officers",
+      "policy makers",
+      "regulation",
+      "policy documents",
+      "announcement",
+      "press release",
+      "statistical reports",
+      "datasets",
+      "official source"
+    ]
+  },
+  "status": "new",
+  "version": 1,
+  "source_identifier": "",
+  "source_secondary_identifier": "",
+  "date_of_repealed": "",
+  "date_of_decision": "",
+  "summary": "This statistical release covers claims on and liabilities to other countries by UK-resident banks and building societies (monetary financial institutions",
+  "tags": "",
+  "source_keywords": "",
+  "crawling_date": "2026-06-07T02:12:01.277Z",
+  "portal": "www.bankofengland.co.uk",
+  "portal_name": "The Bank of England",
+  "last_updated": "2026-06-07T02:12:01.277Z",
+  "file_data": {}
+}
