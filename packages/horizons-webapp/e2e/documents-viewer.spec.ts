@@ -63,3 +63,33 @@ test('UK client browses documents, opens one, toggles the clause structure', asy
   await page.getByTestId('toggle-structure').click()
   await expect(page.getByTestId('clause-card')).toHaveCount(0)
 })
+
+test('UK demo: every visible document renders parsed clauses', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByTestId('email-input').fill(UK_EMAIL)
+  await page.getByTestId('password-input').fill(UK_PASSWORD)
+  await page.getByTestId('login-submit').click()
+  await page.waitForURL('**/')
+
+  await page.goto('/documents')
+  const rows = page.getByTestId('document-row')
+  const count = await rows.count()
+  expect(count).toBeGreaterThanOrEqual(1)
+
+  for (let i = 0; i < count; i++) {
+    const title = await rows.nth(i).textContent()
+    await rows.nth(i).click()
+    await page.waitForURL('**/documents/*')
+
+    // Toggle structure on to count clauses.
+    await page.getByTestId('toggle-structure').click()
+    const cards = page.getByTestId('clause-card')
+    await expect(
+      cards.first(),
+      `expected at least one clause card for ${title}`,
+    ).toBeVisible({ timeout: 10_000 })
+
+    await page.goBack()
+    await page.waitForURL('**/documents')
+  }
+})
