@@ -52,7 +52,7 @@ def _insert_version(
     *,
     document_id: uuid.UUID,
     label: str,
-    effective_date: datetime,
+    effective_date: datetime | None,
     clause_count: int,
 ) -> uuid.UUID:
     version_id = conn.execute(
@@ -249,3 +249,99 @@ async def test_get_by_id_with_stats_returns_same_shape(
     assert row.change_counts.added == 1
     assert row.previous_version_at == v1_eff
     assert row.current_version_at == v2_eff
+
+
+async def test_synthetic_v2_with_null_effective_date_is_ranked_current(
+    migrated_engine: Engine, admin_session: AsyncSession
+) -> None:
+    """Regression: a NULL-effective_date v2 inserted after a v1 with NO
+    effective_date either must rank as the current version, so its
+    change_events still join. Mirrors the ``stage_synthetic_v2`` shape
+    (both versions have ``effective_date = NULL``; v2 is the later
+    insert). Before the COALESCE-based ranking, ``effective_date DESC
+    NULLS LAST`` left the choice up to a tiebreaker on ``created_at``,
+    which is the transaction-start timestamp in Postgres — so two
+    inserts in the same transaction tied, ROW_NUMBER fell back to an
+    arbitrary order, and v1 sometimes won. The fix is to rank by
+    COALESCE(effective_date, created_at) DESC with ``id DESC`` (uuidv7)
+    as a strictly-monotonic tiebreaker.
+    """
+    jurisdiction = _rand_jurisdiction("IE")
+    with migrated_engine.begin() as conn:
+        doc_id = _insert_document(
+            conn, jurisdiction=jurisdiction, sector="corporate-governance", title="Sync v2 Act"
+        )
+        # Same transaction → same ``created_at`` for both rows. v2 is
+        # only distinguishable from v1 by its uuidv7 id tiebreaker.
+        _ = _insert_version(
+            conn, document_id=doc_id, label="v1", effective_date=None, clause_count=10
+        )
+        v2 = _insert_version(
+            conn, document_id=doc_id, label="v2-synthetic", effective_date=None, clause_count=12
+        )
+        for ct in ("ADDED", "ADDED", "REMOVED", "MODIFIED", "MOVED"):
+            _insert_change_event(
+                conn,
+                document_id=doc_id,
+                document_version_id=v2,
+                jurisdiction=jurisdiction,
+                sector="corporate-governance",
+                change_type=ct,
+            )
+
+    rows, _total = await DocumentsRepository(admin_session).list_filtered_with_stats(
+        jurisdiction=jurisdiction
+    )
+
+    row = next(r for r in rows if r.id == doc_id)
+    assert row.clause_count == 12, "clause_count should reflect v2 (12), not v1 (10)"
+    assert row.change_counts.added == 2
+    assert row.change_counts.removed == 1
+    assert row.change_counts.modified == 1
+    assert row.change_counts.moved == 1
+    # Both versions share an effective_date of NULL and a transaction
+    # ``created_at``; the columns simply carry that timestamp through
+    # the COALESCE.
+    assert row.previous_version_at is not None
+    assert row.current_version_at is not None
+    assert row.previous_version_at == row.current_version_at
+
+
+async def test_v1_with_real_effective_date_does_not_outrank_later_null_v2(
+    migrated_engine: Engine, admin_session: AsyncSession
+) -> None:
+    """Regression: v1 with a real effective_date (e.g. publication date
+    from 2018) must NOT beat a later-ingested NULL-effective_date v2.
+    Plain ``DESC NULLS LAST`` ranked the real-dated v1 first; the fix
+    treats NULL effective_date as the ingest time, so v2 still wins.
+    """
+    jurisdiction = _rand_jurisdiction("UK")
+    v1_eff = datetime(2018, 12, 1, tzinfo=UTC)
+    with migrated_engine.begin() as conn:
+        doc_id = _insert_document(
+            conn, jurisdiction=jurisdiction, sector="banking", title="Mixed-effdate Act"
+        )
+        _ = _insert_version(
+            conn, document_id=doc_id, label="v1", effective_date=v1_eff, clause_count=3
+        )
+        v2 = _insert_version(
+            conn, document_id=doc_id, label="v2-synthetic", effective_date=None, clause_count=5
+        )
+        _insert_change_event(
+            conn,
+            document_id=doc_id,
+            document_version_id=v2,
+            jurisdiction=jurisdiction,
+            sector="banking",
+            change_type="ADDED",
+        )
+
+    rows, _total = await DocumentsRepository(admin_session).list_filtered_with_stats(
+        jurisdiction=jurisdiction
+    )
+
+    row = next(r for r in rows if r.id == doc_id)
+    assert row.clause_count == 5, "v2 (the later ingest) should be current"
+    assert row.change_counts.added == 1
+    # v_prev resolves to v1, so previous_version_at == v1's effective_date.
+    assert row.previous_version_at == v1_eff

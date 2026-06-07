@@ -199,16 +199,25 @@ class DocumentsRepository:
         caller has already filtered via ``list_filtered`` / ``get_by_id``,
         so referenced rows are already in scope.
         """
-        sort_at = func.coalesce(DocumentVersion.effective_date, DocumentVersion.created_at).label(
-            "sort_at"
-        )
+        # Rank by COALESCE(effective_date, created_at) DESC so that a version
+        # missing an effective_date (synthetic-v2 fixtures, ingested-but-not-yet-
+        # graded versions) is still placed correctly by its ingest time. Plain
+        # ``effective_date DESC NULLS LAST`` ranked any real-dated v1 ahead of a
+        # NULL-dated synthetic v2 even when v2 was ingested later, so the
+        # change_events join (filtered to v_curr.id = the latest version) found
+        # zero matches and the table showed zero counts. ``id.desc()`` is a
+        # stable tiebreaker because the id column uses ``uuidv7()`` — strictly
+        # monotonic within a transaction, so versions inserted in the same
+        # ``stage_synthetic_v2`` transaction still rank deterministically.
+        sort_at_expr = func.coalesce(DocumentVersion.effective_date, DocumentVersion.created_at)
+        sort_at = sort_at_expr.label("sort_at")
         rn = (
             func.row_number()
             .over(
                 partition_by=DocumentVersion.document_id,
                 order_by=[
-                    DocumentVersion.effective_date.desc().nulls_last(),
-                    DocumentVersion.created_at.desc(),
+                    sort_at_expr.desc(),
+                    DocumentVersion.id.desc(),
                 ],
             )
             .label("rn")
