@@ -73,6 +73,10 @@ test('UK demo: every visible document renders parsed clauses', async ({ page }) 
 
   await page.goto('/documents')
   const rows = page.getByTestId('document-row')
+  // Wait for the list to render before counting — `rows.count()` is a
+  // snapshot, not an auto-waiting matcher, so the previous form raced
+  // the API call and observed an empty list.
+  await expect(rows.first()).toBeVisible({ timeout: 10_000 })
   const count = await rows.count()
   expect(count).toBeGreaterThanOrEqual(1)
 
