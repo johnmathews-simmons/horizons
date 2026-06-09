@@ -25,7 +25,15 @@ A decision matrix that takes **Databricks as the baseline platform** — the def
 
 This section makes the document self-contained: it states what the system does and defines the two non-negotiable constraints (**C1** and **C2**) that the rest of the document treats as fixed. Read it before the scoring sections.
 
-**The product.** This is a regulatory-change intelligence service for large multinational banks. It watches public legal sources, ingests legal documents (laws, regulations, official guidance), and alerts customers to *upcoming* changes — text that has been published but has not yet taken effect — so customers have lead time to prepare. Each document is parsed into a tree of **clauses** (Part / Section / sub-section structure); successive **versions** of a document are **aligned** clause-by-clause so the system can show *which clause changed and how*. Customers reach the system through a single **public REST API** that answers three query shapes ("the three primitives"): **discovery** (what exists in my scope), **temporal** (what changed, and when), and **differential** (how did this clause change between two versions). A separate **ingestion worker** polls an upstream legal-data API ("Lawstronaut"), parses each document into clauses, aligns it against the prior version, and writes the result. The API and the worker share one database but run as separate services.
+**The product.** This is a regulatory-change intelligence service for large multinational banks. It watches public legal sources, ingests legal documents (laws, regulations, official guidance), and alerts customers to *upcoming* changes — text that has been published but has not yet taken effect — so customers have lead time to prepare. Each document is parsed into a tree of **clauses** (Part / Section / sub-section structure); successive **versions** of a document are **aligned** clause-by-clause so the system can show *which clause changed and how*. 
+
+Our customers reach the system through a single **public (secured) REST API** that answers three query shapes ("the three primitives"): 
+
+- **discovery** (what exists in my scope), 
+- **temporal** (what changed, and when), 
+- **differential** (how did this clause change between two versions). 
+
+A separate **ingestion worker** polls an upstream legal-data API ("Lawstronaut"), parses each document into clauses, aligns it against the prior version, and writes the result. The API and the worker share one database but run as separate services.
 
 Two of the product's requirements are **hard constraints** — not tuning knobs, and any candidate platform must satisfy both. They recur throughout as **C1** and **C2**, so they are defined here, once, before they are used.
 
@@ -45,11 +53,11 @@ Every customer ("tenant") is isolated along **two independent axes**, and a brea
 1. **Cross-client privacy** — a client's private state (watchlists, alerts, saved queries, dashboards, subscriptions) must be invisible to every other client.
 2. **Subscription scoping** — each client buys a **subscription**: a set of (jurisdiction × sector) pairs. A client may read only the **corpus** rows inside that subscription. A UK-only client must not see EU change events, even though both live in the same shared corpus.
 
-The enforcement model is **per-end-user**, not per-application: thousands of customer end-users sit behind one API service, so isolation must key off the *individual caller*, not a coarse shared service identity. The chosen mechanism is database **Row-Level Security (RLS)** — policies inside the database that filter every row against the current user's identity and subscription, set per connection from the request's bearer token — backed by a repository layer, a lint ban on raw SQL, and multi-user integration tests (defence-in-depth). **"Two-axis per-tenant RLS"** throughout this document refers to this whole arrangement. It maps cleanly onto a row-secured SQL engine (such as Postgres) but *not* onto a warehouse whose access control keys off a governance principal rather than an end-user — the distinction that drives the C2 verdict in §5.
+The enforcement model is **per-end-user**, not per-application: customer end-users sit behind one API service, so isolation must key off the *individual caller*, not a coarse shared service identity. The chosen mechanism is database **Row-Level Security (RLS)** — policies inside the database that filter every row against the current user's identity and subscription, set per connection from the request's bearer token — backed by a repository layer, a lint ban on raw SQL, and multi-user integration tests (defence-in-depth). **"Two-axis per-tenant RLS"** throughout this document refers to this whole arrangement. It maps cleanly onto a row-secured SQL engine (such as Postgres) but *not* onto a warehouse whose access control keys off a governance principal rather than an end-user — the distinction that drives the C2 verdict in §5.
 
 ## 1. Status and framing
 
-This is the **first structured, team-wide comparison** of the platform options, written from a **Databricks-default posture**: the data-engineering team who will own this in production are fluent in Databricks and most productive on it, and one-vendor consolidation on a Databricks-centric data platform is the presumptive organisational direction. The burden of proof in this doc therefore runs the other way — an alternative has to *earn* its place against the Databricks default, not the reverse.
+This is a **structured, team-wide comparison** of the platform options, written from a **Databricks-default posture**: the data-engineering team who will own this in production are fluent in Databricks and most productive on it, and one-vendor consolidation on a Databricks-centric data platform is the presumptive organisational direction. The burden of proof in this doc therefore runs the other way — an alternative has to *earn* its place against the Databricks default, not the reverse.
 
 One honest caveat up front: **a non-Databricks stack already exists.** A working ACA + Postgres implementation is built, deployed to a non-production environment, and gated by an end-to-end test suite. That establishes one viable alternative — it does not establish the platform direction. Two earlier design decisions touched the choice only in passing:
 
@@ -60,7 +68,7 @@ This RFC re-opens both with Databricks as the thing to beat.
 
 **Two things this RFC is *not* about:**
 
-1. **It is not an immediate re-platforming.** The current ACA + Postgres stack stays in place as-is for now; nothing here calls for switching it out overnight. This RFC concerns the **production direction**, to be decided deliberately and acted on when the team is ready.
+1. **It is not an immediate re-platforming.** This RFC concerns the **production direction**, to be decided deliberately and acted on when the team is ready.
 2. **It is not a single decision.** Two genuinely separable axes are in play, and they can be decided independently:
    - **Axis A — the serving database** (what the public API reads from under a 3 s p95 budget).
    - **Axis B — the ETL/ingestion compute** (what polls Lawstronaut, parses, aligns, and writes).
@@ -74,7 +82,7 @@ For Axis B (ETL) the Databricks default is unambiguous — Jobs / Delta Live Tab
 - **(a) Delta tables via SQL warehouse** — columnar Delta Lake tables queried by a Databricks SQL (serverless) warehouse; the classic lakehouse serving path.
   - _Effect:_ this is the substantive contest below. Delta is analytical (OLAP) storage; the open question is whether the Databricks default can serve OLTP-shaped API reads under the latency + isolation constraints, or whether Axis A is the one place a Postgres alternative is warranted.
 - **(b) Lakebase** — Databricks' managed transactional **Postgres** (built on the Neon engine Databricks acquired in 2025), positioned as the OLTP companion to the lakehouse.
-  - _Effect:_ it stays **inside the Databricks platform while being Postgres under the hood** — so RLS, OLTP latency, SQLAlchemy, and the existing schema/migrations mostly carry over. This is the strongest form of the all-Databricks story: one vendor, no OLTP/RLS sacrifice. See §9.
+  - _Effect:_ it stays **inside the Databricks platform while being Postgres under the hood** — so RLS, OLTP latency, SQLAlchemy carry over. This is the strongest form of the all-Databricks story: one vendor, no OLTP/RLS sacrifice. See §9.
 - **(c) External Postgres (the alternative)** — Azure Database for PostgreSQL Flexible Server, outside the Databricks platform.
   - _Effect:_ the alternative scored against the default in §5. Wins on engine fit; costs a second vendor and a second control plane.
 
@@ -96,11 +104,9 @@ Drawn from the project's stated design priorities (**flexibility > visibility > 
 | C8  | **Cost** — idle and under load                                                             | Budget                                                  | A+B  |
 | C9  | **Scale headroom** — low-millions of docs, bursty batch writes                             | Scale assumptions                                       | A+B  |
 | C10 | **Future analytics** — cross-corpus near-duplicate clause search over MinHash signatures   | Possible future capability (currently out of scope)     | A+B  |
-| C11 | **Team familiarity** — who maintains it, and what they already know                        | Data-eng team input (the new criterion)                 | A+B  |
+| C11 | **Team familiarity** — who maintains it, and what they already know                        | Data-eng team input                                     | A+B  |
 | C12 | **Migration cost** — sunk investment in the already-built stack                            | Current state of the build                              | A+B  |
 | C13 | **Config-over-code** — runtime-tunable params surfaced in the UI, no redeploy              | Flexibility priority                                    | A+B  |
-
-Note that **C11 (team familiarity) is the criterion that motivates the Databricks-default posture** and was not weighted in the earlier design decisions. It is a real and possibly decisive factor; surfacing it explicitly is one of this RFC's contributions. The team must decide where it ranks against the hard constraints (C1, C2).
 
 ## 4. Baseline: the all-Databricks default
 
@@ -130,7 +136,7 @@ The default this RFC measures everything against:
 
 **C2 isolation — Favours Postgres (load-bearing C2).**
 
-- _Databricks SQL + Delta (default):_ Unity Catalog row filters / column masks exist, but key off the _Databricks principal_ (a governance identity), not thousands of API end-users behind one service identity. The per-tenant model defined in C2 does not map cleanly; isolation would move entirely into the app layer, losing the database-side belt-and-braces.
+- _Databricks SQL + Delta (default):_ Unity Catalog row filters / column masks exist, but key off the _Databricks principal_ (a governance identity), not API end-users behind one service identity. The per-tenant model defined in C2 does not map cleanly; isolation would move entirely into the app layer, losing the database-side belt-and-braces.
 - _Postgres Flexible Server (alternative):_ Postgres **RLS** keyed off `current_setting('app.user_id')` set per connection from the bearer token — exactly the two-axis, per-end-user model defined in C2. Plus repository layer + lint-ban + multi-user tests.
 
 **C6 testability — Favours Postgres.**
@@ -174,7 +180,7 @@ The default this RFC measures everything against:
 **C3 transactional poll — Favours ACA worker.**
 
 - _Databricks Jobs / DLT / Spark (default):_ Spark/Delta is not transactional across a multi-step per-row workflow in the same sense; idempotency + Delta MERGE patterns can approximate it but the all-or-nothing per-document guarantee is harder to express.
-- _ACA asyncio worker (alternative):_ one Postgres transaction wraps the whole per-document poll (hash, version row, clauses, change_events) — all-or-nothing.
+- _ACA asyncio worker (alternative):_ one Postgres transaction wraps the whole per-document poll — the new version row, its parsed `clauses`, and the `change_events` that record what moved since the prior version all commit together, or none of them do. This atomicity (the **A** in ACID) is load-bearing for a change-tracking product, not a nicety. Each poll is a multi-row write across linked tables, and the corpus's entire value is an accurate, gap-free history of *what changed and when*. Without an all-or-nothing guarantee, a crash, timeout, or mid-write retry can leave the corpus in a partial state that is silently wrong and expensive to detect: a version row with no clauses (a phantom version), clauses with no `change_events` (a change that happened but was never recorded), or `change_events` referencing a version that never fully landed (a change attributed to nothing). A retry that re-runs a half-applied poll is worse still — it can write the same `change_events` twice, double-counting a single change. Any of these corrupts the temporal and differential answers the product exists to give; and because each new version is aligned against the *prior stored state*, one corrupt poll propagates forward into every future diff of that document, so the error compounds rather than washing out. Transactional **isolation** (the **I** in ACID) adds the second guarantee: concurrent polls of different documents cannot interleave into a half-updated read. Postgres provides both per transaction with no extra code; approximating them on Spark/Delta via idempotency keys + MERGE is possible, but it is hand-built correctness the database would otherwise enforce for free.
 
 **C4 reaction latency — Favours ACA worker.**
 
@@ -182,6 +188,8 @@ The default this RFC measures everything against:
 - _ACA asyncio worker (alternative):_ claim loop ticks ~50 ms; a newly-due row is polled almost immediately.
 
 **C5 local-dev — Favours ACA worker.**
+
+> *Bus-factor* is the number of people who would have to be lost ("hit by a bus") before no one is left who can run or maintain the system — the standard measure of single-person dependency. **Bus-factor-zero** is the target state used here: the setup needs *no particular person's* knowledge to run, so losing any individual costs nothing. Concretely, any engineer can clone the repo cold and have the service running in ~30 s, with no tribal knowledge, no shared cloud workspace, and no scheduler to provision.
 
 - _Databricks Jobs / DLT / Spark (default):_ databricks-connect / asset bundles / notebooks; heavier local loop; harder to hit bus-factor-zero in 30 s.
 - _ACA asyncio worker (alternative):_ `python -m horizons_ingestion` + ctrl-C; no scheduler, ~30 s to running.
@@ -204,7 +212,7 @@ The default this RFC measures everything against:
 **C9 scale (batch) — Favours Databricks (default).**
 
 - _Databricks Jobs / DLT / Spark (default):_ Spark parallelism is built for large bursty batch ingestion at low-millions-of-docs scale — genuinely its strength if ingestion volume grows far beyond the curated set.
-- _ACA asyncio worker (alternative):_ single-container claim loop; horizontally scalable via SKIP-LOCKED but bounded by what one Python process does.
+- _ACA asyncio worker (alternative):_ single-container claim loop; horizontally scalable via SKIP-LOCKED but bounded by what one Python process does. That bound costs little at the current cadence, though: ingestion runs on a slack schedule (e.g. a daily sweep), not a tight throughput SLA, and the product sells *lead time* on changes that are months from taking effect — so the wall-clock length of a run is not on any hot path. If the loop runs once a day, a process that takes an hour instead of ten minutes does not materially change what the customer sees. The C9 win is real but low-*value* until ingestion volume or cadence shifts the picture — which is exactly the open question the Axis B summary turns on.
 
 **C11 familiarity — Favours Databricks (default).**
 
