@@ -15,7 +15,7 @@ A decision matrix that takes **Databricks as the baseline platform** — the def
 
 This RFC considers 11 constraints (C1 - C11). It evaluates the platform direction in the context of each constraint individually and then summarizes.
 
-**Balance.**
+**Balance:**
 
 - **Axis A** is where the Databricks default runs hardest into the product's non-negotiables. The two hard constraints — **C1 OLTP latency** and **C2 per-tenant RLS** — both favour Postgres, and neither is a tuning question; Delta-as-serving-DB is the weakest application of the default. To stay all-Databricks here without a product-strategy change, **Lakebase** (Databricks' managed Postgres) honours C1/C2 while keeping one vendor (§9).
 - **Axis B** is the genuinely close contest. The *current* workload — a curated set, real-time, per-document-transactional, in-process Python alignment — suits the ACA worker (C3/C4/C5/C6). The default's wins (**C7** managed ops, **C11** team familiarity, **C9** batch scale) grow if ingestion volume grows orders of magnitude.
