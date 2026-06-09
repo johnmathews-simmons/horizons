@@ -51,7 +51,7 @@ Drawn from the existing design priorities (`project-horizons-design-priorities`:
 | C5  | **Local-dev ergonomics** — bus-factor-zero, runnable in ~30 s, no external scheduler       | ADR-0001; design priorities                        | B    |
 | C6  | **Code robustness/testability** — type-checked, unit + integration tested, code-reviewable | CLAUDE.md (pyright strict, pytest, testcontainers) | A+B  |
 | C7  | **Operational complexity** — moving parts, failure modes at 3am                            | ADR-0001 decision drivers                          | A+B  |
-| C8  | **Cost** — idle and under load                                               | ADR-0001 §Cost shape                               | A+B  |
+| C8  | **Cost** — idle and under load                                                             | ADR-0001 §Cost shape                               | A+B  |
 | C9  | **Scale headroom** — low-millions of docs, bursty batch writes                             | RFC-3 §Scale assumptions                           | A+B  |
 | C10 | **Future analytics** — cross-corpus near-duplicate clause search over MinHash signatures   | RFC-4 §Out of scope (future)                       | A+B  |
 | C11 | **Team familiarity** — who maintains it, and what they already know                        | data-eng team input (new criterion)                | A+B  |
@@ -168,7 +168,7 @@ The default this RFC measures everything against:
 - _Databricks Jobs / DLT / Spark (default):_ the data-eng team is already fluent — they would ship and maintain Databricks pipelines faster and more confidently.
 - _ACA asyncio worker (deviation):_ generalist Python; the data-eng team would be learning the worker idioms.
 
-**Axis B summary.** This is the axis where the Databricks default earns its keep — and the contest is genuinely close. The *current* workload (a curated set polled on a cadence, latency-sensitive, per-document ACID, in-process Python alignment) is small and transactional, which is exactly where the ACA deviation's strengths (C3/C4/C5/C6) bite and Spark's (C7/C9) don't yet pay off. **But** the two criteria that motivate the Databricks-default posture both land here: **C11 (the people who maintain it know Databricks)** and **C7 (a managed control plane is less to operate)**. If ingestion volume grows by orders of magnitude post-demo (C9), the balance tilts further to the default. The crux: is the demo-scale, real-time, transactional shape the *enduring* shape of ingestion, or a temporary one that production volume will outgrow? If enduring, the ACA deviation is justified here; if transient, stay on the default.
+**Axis B summary.** This is the axis where the Databricks default earns its keep — and the contest is genuinely close. The *current* workload (a curated set polled on a cadence, latency-sensitive, per-document ACID, in-process Python alignment) is small and transactional, which is exactly where the ACA deviation's strengths (C3/C4/C5/C6) bite and Spark's (C7/C9) don't yet pay off. **But** the two criteria that motivate the Databricks-default posture both land here: **C11 (the people who maintain it know Databricks)** and **C7 (a managed control plane is less to operate)**. If ingestion volume grows by orders of magnitude (C9), the balance tilts further to the default. The crux: is the current-scale, real-time, transactional shape the *enduring* shape of ingestion, or a temporary one that production volume will outgrow? If enduring, the ACA deviation is justified here; if transient, stay on the default.
 
 ---
 
@@ -179,7 +179,7 @@ The concern that originally favoured the deviation — *"hard to ship robust mai
 - **For the Databricks default:** "maintainable" is relative to *who maintains it*. If the long-term owners are a **data-engineering team who live in Databricks**, then Databricks pipelines are the *more* maintainable choice **for them**. The bus-factor-zero argument in ADR-0001 assumed a generalist reader who is not the actual owner — so the original docs priced the learning-curve tax against the wrong person.
 - **For the deviation:** plain typed Python + SQLAlchemy + pytest/testcontainers is boring, hermetically testable, and code-reviewable with `pyright` strict. "Boring is good" (RFC-3). Maintainable *by a generalist engineer* — which matters if ownership is not, in fact, the data-eng team.
 
-So C11 and C6 pull in opposite directions, and which dominates depends on a fact this RFC cannot settle: **who owns ingestion after the demo?** Under the Databricks-default posture the presumption is the data-eng team — but that presumption is exactly what the first open question below must confirm.
+So C11 and C6 pull in opposite directions, and which dominates depends on a fact this RFC cannot settle: **who owns ingestion in production?** Under the Databricks-default posture the presumption is the data-eng team — but that presumption is exactly what the first open question below must confirm.
 
 ## 8. Migration cost (C12)
 
@@ -209,7 +209,7 @@ Record the outcome as an ADR (`ADR-0002`) once weighted, and align RFC-3 §"Data
 
 ## 11. Open questions
 
-- **Who owns ingestion after the demo?** The data-eng team (the Databricks-default presumption) or generalist engineers? This is the hinge for C11 vs C6 and may decide Axis B on its own.
+- **Who owns ingestion in production?** The data-eng team (the Databricks-default presumption) or generalist engineers? This is the hinge for C11 vs C6 and may decide Axis B on its own.
 - **Does the Databricks serving default mean Delta-via-SQL-warehouse or Lakebase?** Settles whether Axis A is a real engine contest (§5) or already a Postgres story inside the platform (§9).
 - **What is the *enduring* ingestion volume?** If it stays near the curated-set scale, C9 never pays off for Spark and the ACA deviation stays defensible. If it grows orders of magnitude, C9 reinforces the default on Axis B.
 - **Is cross-corpus analytics (C10) still "out of scope," or is it becoming a product priority?** This is the main lever that would justify the Databricks default even on the OLTP-shaped Axis A.
