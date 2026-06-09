@@ -1,0 +1,21 @@
+{
+  "document_id": 3925273,
+  "version": 1,
+  "title": "Uitvoeringswet Algemene verordening gegevensbescherming",
+  "jurisdiction": {
+    "country": "Netherlands",
+    "state": ""
+  },
+  "type_of_authority": "Wetten",
+  "effective_date": "2021-07-01T00:00:000Z",
+  "repealed": false,
+  "portal": "wetten.overheid.nl",
+  "legal_link": "https://wetten.overheid.nl/id/BWBR0040940/2021-07-01/0",
+  "language": "Dutch",
+  "_provenance": {
+    "source": "Lawstronaut /v2/contents + /v2/contents/markdown",
+    "fetched_via": "iso=NL&portal=wetten.overheid.nl&title=Uitvoeringswet Algemene verordening gegevensbescherming",
+    "fetched_on": "2026-06-09",
+    "bwbr": "BWBR0040940"
+  }
+}

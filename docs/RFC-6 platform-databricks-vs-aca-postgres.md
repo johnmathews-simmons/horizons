@@ -9,9 +9,7 @@ A decision matrix that takes **Databricks as the baseline platform** — the def
 
 **Context.** Two production choices are in play: the database the public API serves from, and the compute that ingests, parses, and aligns legal documents. Whoever owns this owns the **full lifecycle** — build, test, ship, deploy, operate. The presumptive owner is a **data-engineering team**: fluent in Databricks. So **Databricks is the assumed default**, one-vendor consolidation on it is the presumptive org direction, and any non-Databricks choice has to earn its place against it.
 
-**Scope.** This is the *production direction*, not an immediate re-platform. The decision splits into two separable axes, scored independently: **Axis A** — the serving database (3 s p95 reads, two-axis per-tenant RLS); **Axis B** — the ETL/ingestion compute. Conflating them is the most likely route to a wrong answer.
-
-> **"Two-axis per-tenant RLS"** — Postgres Row-Level Security enforcing tenant isolation along *two* independent dimensions, keyed to the individual end-user (not a coarse service identity): (1) **cross-client privacy** — one client's private state (watchlists, alerts, saved queries, dashboards) is invisible to every other client; (2) **subscription scoping** — corpus reads are confined to each client's purchased subscription (jurisdictions × sectors), so a UK-only client cannot see EU change events. Enforced at the database layer as defence-in-depth, beneath the repository layer and multi-user tests. This is criterion **C2** below, and the part that maps cleanly onto Postgres but not onto Delta's governance-principal model.
+**Scope.** This is the *production direction*, not an immediate re-platform. The decision splits into two separable axes, scored independently: **Axis A** — the serving database (high-concurrency, latency-bound reads with strict per-tenant isolation); **Axis B** — the ETL/ingestion compute. Conflating them is the most likely route to a wrong answer. Everything below is judged against two **hard constraints** — *C1, OLTP-shaped serving latency*, and *C2, two-axis per-tenant isolation* — which the **Background** section defines in full before any later section relies on them.
 
 **What the alternative actually runs on — containers, not Kubernetes.** The alternative to Databricks here is **containerised services**: a Docker image run on the Azure Container Apps' managed runtime — **not a self-run Kubernetes cluster.** The operational ladder runs: Databricks managed control plane → containerised service (Docker / ACA) → self-run cluster (AKS / full K8s). The alternative sits on the **middle rung**; it does not ask the team to run a cluster, control plane, networking, or operators — that K8s tier is explicitly out of scope. Pricing the alternative as if it were Kubernetes overstates its operational cost; pricing it as if it were as hands-off as Databricks understates it. The honest framing is: one rung more ops than Databricks, one rung less than AKS.
 
@@ -21,16 +19,42 @@ A decision matrix that takes **Databricks as the baseline platform** — the def
 - **Axis B** is the genuinely close contest. The *current* workload — a curated set, real-time, per-document-transactional, in-process Python alignment — suits the ACA worker (C3/C4/C5/C6). The default's wins (**C7** managed ops, **C11** team familiarity, **C9** batch scale) grow if ingestion volume grows orders of magnitude.
 - **The decisive inputs are not technical scores but facts the team must supply:** who owns ingestion in production, whether the serving default means Delta or Lakebase, the enduring ingestion volume, and whether cross-corpus analytics (C10) becomes a product priority (§11).
 
-**What this RFC does and doesn't do.** It fixes the criteria (C1–C13), scores each alternative honestly against the Databricks default, and surfaces the open questions. It deliberately **does not weight the criteria or pick a winner** — the weighting is the decision, and it belongs to the team in review, recorded afterward as `ADR-0002` (§10).
+**What this RFC does and doesn't do.** It fixes the criteria (C1–C13), scores each alternative honestly against the Databricks default, and surfaces the open questions. It deliberately **does not weight the criteria or pick a winner** — the weighting is the decision, and it belongs to the team in review, recorded afterward as a dated decision record (§10).
+
+## Background: the product and its two hard constraints
+
+This section makes the document self-contained: it states what the system does and defines the two non-negotiable constraints (**C1** and **C2**) that the rest of the document treats as fixed. Read it before the scoring sections.
+
+**The product.** This is a regulatory-change intelligence service for large multinational banks. It watches public legal sources, ingests legal documents (laws, regulations, official guidance), and alerts customers to *upcoming* changes — text that has been published but has not yet taken effect — so customers have lead time to prepare. Each document is parsed into a tree of **clauses** (Part / Section / sub-section structure); successive **versions** of a document are **aligned** clause-by-clause so the system can show *which clause changed and how*. Customers reach the system through a single **public REST API** that answers three query shapes ("the three primitives"): **discovery** (what exists in my scope), **temporal** (what changed, and when), and **differential** (how did this clause change between two versions). A separate **ingestion worker** polls an upstream legal-data API ("Lawstronaut"), parses each document into clauses, aligns it against the prior version, and writes the result. The API and the worker share one database but run as separate services.
+
+Two of the product's requirements are **hard constraints** — not tuning knobs, and any candidate platform must satisfy both. They recur throughout as **C1** and **C2**, so they are defined here, once, before they are used.
+
+### Constraint C1 — OLTP-shaped, latency-bound serving
+
+The public API serves **interactive** reads, and two database access patterns matter. The industry shorthand is worth pinning down because the platform choice turns on it:
+
+- **OLTP (online transactional processing)** — many small, indexed, low-latency operations at high concurrency: "fetch this document", "list the changes in my scope this week", single-row and small-range lookups. This is the API's hot path.
+- **OLAP (online analytical processing)** — a few large scans or aggregations over the whole corpus: "what changed across every jurisdiction in the last six months". Rarer, and latency-tolerant.
+
+The serving budget is **3 s p95 for every API query, with per-document point lookups under ~100 ms**, sustained across many concurrent tenants. That is an **OLTP** profile. A store optimised for OLAP scans can still *answer* these queries — the open question (referred to as **C1** throughout) is whether it can do so *within this latency budget at this concurrency*. "OLTP latency" in this document means exactly this constraint.
+
+### Constraint C2 — two-axis, per-tenant isolation (enforced via RLS)
+
+Every customer ("tenant") is isolated along **two independent axes**, and a breach on either is treated as severe a failure as a data leak:
+
+1. **Cross-client privacy** — a client's private state (watchlists, alerts, saved queries, dashboards, subscriptions) must be invisible to every other client.
+2. **Subscription scoping** — each client buys a **subscription**: a set of (jurisdiction × sector) pairs. A client may read only the **corpus** rows inside that subscription. A UK-only client must not see EU change events, even though both live in the same shared corpus.
+
+The enforcement model is **per-end-user**, not per-application: thousands of customer end-users sit behind one API service, so isolation must key off the *individual caller*, not a coarse shared service identity. The chosen mechanism is database **Row-Level Security (RLS)** — policies inside the database that filter every row against the current user's identity and subscription, set per connection from the request's bearer token — backed by a repository layer, a lint ban on raw SQL, and multi-user integration tests (defence-in-depth). **"Two-axis per-tenant RLS"** throughout this document refers to this whole arrangement. It maps cleanly onto a row-secured SQL engine (such as Postgres) but *not* onto a warehouse whose access control keys off a governance principal rather than an end-user — the distinction that drives the C2 verdict in §5.
 
 ## 1. Status and framing
 
 This is the **first structured, team-wide comparison** of the platform options, written from a **Databricks-default posture**: the data-engineering team who will own this in production are fluent in Databricks and most productive on it, and one-vendor consolidation on a Databricks-centric data platform is the presumptive organisational direction. The burden of proof in this doc therefore runs the other way — an alternative has to *earn* its place against the Databricks default, not the reverse.
 
-One honest caveat up front: **a non-Databricks stack already exists.** A working ACA + Postgres implementation is built, deployed to `horizons-nonprod`, and e2e-gated. That establishes one viable alternative — it does not establish the platform direction. The earlier design docs only touch the choice in passing:
+One honest caveat up front: **a non-Databricks stack already exists.** A working ACA + Postgres implementation is built, deployed to a non-production environment, and gated by an end-to-end test suite. That establishes one viable alternative — it does not establish the platform direction. Two earlier design decisions touched the choice only in passing:
 
-- `RFC-3 database-design.md` §"Database choice direction" names PostgreSQL as a default and lists lakehouse under "Not chosen" with a one-line rationale — a direction taken before the data-eng team's input, not a scored comparison.
-- `ADR-0001` chose a long-running asyncio container for the worker, with reaction latency and local-dev ergonomics as the deciding drivers — again, scored against a generalist owner, not the data-eng team.
+- An earlier **database-design** decision named PostgreSQL as the default and set the lakehouse aside with a one-line rationale — taken before the data-eng team's input, not a scored comparison.
+- An earlier **worker-architecture** decision chose a long-running asyncio container for ingestion, with reaction latency and local-dev ergonomics as the deciding drivers — again scored against a generalist owner, not the data-eng team.
 
 This RFC re-opens both with Databricks as the thing to beat.
 
@@ -58,25 +82,25 @@ The Axis A matrix in §5 scores the Databricks default as reading **(a) Delta-vi
 
 ## 3. Decision criteria
 
-Drawn from the existing design priorities (`project-horizons-design-priorities`: flexibility > visibility > easy-to-understand), the hard constraints in RFC-3/RFC-4, and the org realities the data-eng team has raised. Each criterion notes where it is sourced and which axis it bears on.
+Drawn from the project's stated design priorities (**flexibility > visibility > ease-of-understanding**), the two hard constraints defined above (C1, C2), and the organisational realities the data-eng team has raised. Each criterion notes its origin and which axis it bears on.
 
-| #   | Criterion                                                                                  | Source                                             | Axis |
-| --- | ------------------------------------------------------------------------------------------ | -------------------------------------------------- | ---- |
-| C1  | **API read latency** — 3 s p95 for every primitive; per-document lookups sub-100 ms        | RFC-3 §Performance target                          | A    |
-| C2  | **Multi-tenant isolation** — two-axis, per-end-user, RLS as a load-bearing layer           | RFC-4 §Multi-tenant; RFC-3 §8                      | A    |
-| C3  | **Transactional ingestion** — per-document all-or-nothing poll transaction                 | RFC-4 §Ingestion/How                               | B    |
-| C4  | **Reaction latency** — "watch this change land in real time"                               | ADR-0001                                           | B    |
-| C5  | **Local-dev ergonomics** — bus-factor-zero, runnable in ~30 s, no external scheduler       | ADR-0001; design priorities                        | B    |
-| C6  | **Code robustness/testability** — type-checked, unit + integration tested, code-reviewable | CLAUDE.md (pyright strict, pytest, testcontainers) | A+B  |
-| C7  | **Operational complexity** — moving parts, failure modes at 3am                            | ADR-0001 decision drivers                          | A+B  |
-| C8  | **Cost** — idle and under load                                                             | ADR-0001 §Cost shape                               | A+B  |
-| C9  | **Scale headroom** — low-millions of docs, bursty batch writes                             | RFC-3 §Scale assumptions                           | A+B  |
-| C10 | **Future analytics** — cross-corpus near-duplicate clause search over MinHash signatures   | RFC-4 §Out of scope (future)                       | A+B  |
-| C11 | **Team familiarity** — who maintains it, and what they already know                        | data-eng team input (new criterion)                | A+B  |
-| C12 | **Migration cost** — sunk investment in the shipped stack                                  | current repo state                                 | A+B  |
-| C13 | **Config-over-code** — runtime-tunable params surfaced in the UI, no redeploy              | CLAUDE.md; RFC-3 §6; RFC-4                         | A+B  |
+| #   | Criterion                                                                                  | Origin                                                  | Axis |
+| --- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------- | ---- |
+| C1  | **API read latency** — 3 s p95 for every query; per-document point lookups sub-100 ms       | Hard constraint C1 (defined above)                      | A    |
+| C2  | **Multi-tenant isolation** — two-axis, per-end-user, RLS as a load-bearing layer           | Hard constraint C2 (defined above)                      | A    |
+| C3  | **Transactional ingestion** — per-document all-or-nothing poll transaction                 | Ingestion correctness requirement                       | B    |
+| C4  | **Reaction latency** — "watch this change land in near-real-time"                          | Product / demo expectation                              | B    |
+| C5  | **Local-dev ergonomics** — low bus-factor, runnable in ~30 s, no external scheduler        | Developer-experience priority                           | B    |
+| C6  | **Code robustness/testability** — type-checked, unit + integration tested, code-reviewable | Engineering standard (strict typing, containerised tests) | A+B  |
+| C7  | **Operational complexity** — moving parts, failure modes at 3am                            | Operability priority                                    | A+B  |
+| C8  | **Cost** — idle and under load                                                             | Budget                                                  | A+B  |
+| C9  | **Scale headroom** — low-millions of docs, bursty batch writes                             | Scale assumptions                                       | A+B  |
+| C10 | **Future analytics** — cross-corpus near-duplicate clause search over MinHash signatures   | Possible future capability (currently out of scope)     | A+B  |
+| C11 | **Team familiarity** — who maintains it, and what they already know                        | Data-eng team input (the new criterion)                 | A+B  |
+| C12 | **Migration cost** — sunk investment in the already-built stack                            | Current state of the build                              | A+B  |
+| C13 | **Config-over-code** — runtime-tunable params surfaced in the UI, no redeploy              | Flexibility priority                                    | A+B  |
 
-Note that **C11 (team familiarity) is the criterion that motivates the Databricks-default posture** and was not weighted in RFC-3/ADR-0001. It is a real and possibly decisive factor; surfacing it explicitly is one of this RFC's contributions. The team must decide where it ranks against the hard constraints (C1, C2).
+Note that **C11 (team familiarity) is the criterion that motivates the Databricks-default posture** and was not weighted in the earlier design decisions. It is a real and possibly decisive factor; surfacing it explicitly is one of this RFC's contributions. The team must decide where it ranks against the hard constraints (C1, C2).
 
 ## 4. Baseline: the all-Databricks default
 
@@ -88,10 +112,10 @@ The default this RFC measures everything against:
 
 **The alternative that already exists** (what we are comparing against the default), for reference:
 
-- **Serving DB:** Azure Database for PostgreSQL **Flexible Server**, currently `Standard_B1ms` Burstable, 32 GB, PG 18 (`infra/modules/postgres-flex.bicep`; prod cuts over to General Purpose + HA). A **managed PaaS on burstable compute**, *not* serverless/scale-to-zero — see C8.
-- **ETL:** a long-running asyncio worker (`packages/horizons-ingestion`), one ACA container, `SELECT … FOR UPDATE SKIP LOCKED` claim loop, in-process alignment (shingling/MinHash/DP), per-document Postgres transaction with the blob write kept outside it (RFC-4 §Ingestion/How).
-- **Stack properties:** plain Python 3.13 + SQLAlchemy + FastAPI + Alembic, `pyright` strict, `pytest` + testcontainers integration suite, Bicep IaC, OTel + structlog.
-- **Operational tier:** **containerised services, not Kubernetes.** The same Docker image runs locally under `docker`/Compose and in the cloud on Azure Container Apps' managed runtime — there is no cluster, control plane, networking, or operators to run. ACA is one rung below a self-run AKS/K8s cluster (explicitly out of scope — "overkill at demo scale", per CLAUDE.md) and one rung above Databricks' fully-managed control plane. This is the tier the C7 (ops complexity) and C11 (familiarity) scores below are about: more hands-on than Databricks, far less than Kubernetes.
+- **Serving DB:** Azure Database for PostgreSQL **Flexible Server**, currently a `Standard_B1ms` Burstable instance, 32 GB, PG 18 (production would cut over to General Purpose + HA). A **managed PaaS on burstable compute**, *not* serverless/scale-to-zero — see C8.
+- **ETL:** a long-running asyncio worker in one ACA container, a `SELECT … FOR UPDATE SKIP LOCKED` claim loop, in-process alignment (shingling / MinHash / dynamic-programming), and a per-document Postgres transaction with the blob write kept outside it.
+- **Stack properties:** plain Python 3.13 + SQLAlchemy + FastAPI + Alembic, strict static type-checking, a unit + containerised-integration test suite, Bicep IaC, OpenTelemetry + structured logging.
+- **Operational tier:** **containerised services, not Kubernetes.** The same Docker image runs locally under `docker` / Compose and in the cloud on Azure Container Apps' managed runtime — there is no cluster, control plane, networking, or operators to run. ACA is one rung below a self-run AKS / Kubernetes cluster (explicitly out of scope — a full cluster is overkill at this scale) and one rung above Databricks' fully-managed control plane. This is the tier the C7 (ops complexity) and C11 (familiarity) scores below are about: more hands-on than Databricks, far less than Kubernetes.
 
 ---
 
@@ -106,8 +130,8 @@ The default this RFC measures everything against:
 
 **C2 isolation — Favours Postgres (load-bearing C2).**
 
-- _Databricks SQL + Delta (default):_ Unity Catalog row filters / column masks exist, but key off the _Databricks principal_ (a governance identity), not thousands of API end-users behind one service identity. The RFC-4 per-tenant model does not map cleanly; isolation would move entirely into the app layer, losing the database-side belt-and-braces.
-- _Postgres Flexible Server (alternative):_ Postgres **RLS** keyed off `current_setting('app.user_id')` set per connection from the bearer token — exactly the two-axis, per-end-user model in RFC-4. Plus repository layer + lint-ban + multi-user tests.
+- _Databricks SQL + Delta (default):_ Unity Catalog row filters / column masks exist, but key off the _Databricks principal_ (a governance identity), not thousands of API end-users behind one service identity. The per-tenant model defined in C2 does not map cleanly; isolation would move entirely into the app layer, losing the database-side belt-and-braces.
+- _Postgres Flexible Server (alternative):_ Postgres **RLS** keyed off `current_setting('app.user_id')` set per connection from the bearer token — exactly the two-axis, per-end-user model defined in C2. Plus repository layer + lint-ban + multi-user tests.
 
 **C6 testability — Favours Postgres.**
 
@@ -126,12 +150,12 @@ The default this RFC measures everything against:
 
 **C9 scale — Favours Databricks (default), at extreme scale only.**
 
-- _Databricks SQL + Delta (default):_ Delta excels at petabyte scans and large aggregations; the "what changed across the whole corpus in 6 months" query (RFC-3's tight case) is its home turf at extreme scale.
+- _Databricks SQL + Delta (default):_ Delta excels at petabyte scans and large aggregations; the "what changed across the whole corpus in 6 months" query (the corpus-wide analytical case) is its home turf at extreme scale.
 - _Postgres Flexible Server (alternative):_ vertical + read replicas; low-millions of rows is comfortable for PG. Very large analytical scans are not its strength.
 
 **C10 future analytics — Favours Databricks (default).**
 
-- _Databricks SQL + Delta (default):_ lakehouse is the natural home for corpus-wide similarity analytics over persisted MinHash signatures (RFC-4 out-of-scope future).
+- _Databricks SQL + Delta (default):_ lakehouse is the natural home for corpus-wide similarity analytics over persisted MinHash signatures (currently out of scope; see C10).
 - _Postgres Flexible Server (alternative):_ cross-corpus MinHash near-duplicate search is awkward in PG at scale.
 
 **C13 config-over-code — Neutral.**
@@ -139,7 +163,7 @@ The default this RFC measures everything against:
 - _Databricks SQL + Delta (default):_ equally achievable; no inherent advantage either way.
 - _Postgres Flexible Server (alternative):_ tuning params already live as runtime config surfaced in the UI; no redeploy.
 
-**Axis A summary.** This is the one axis where the Databricks default runs hardest into the product's non-negotiables. The two hard constraints RFC-3/RFC-4 declared load-bearing — **C1 OLTP latency** and **C2 per-tenant RLS** — both favour the Postgres alternative, and neither is a tuning question. The Databricks default's genuine wins (C8 idle cost, C9/C10 analytical scale) are about *analytical* workloads and *future* capabilities, not the product's hot path. The honest read: **Delta-as-serving-DB is the weakest application of the Databricks default**, because the read path is OLTP-shaped, per-tenant, and latency-bound — *unless* future cross-corpus analytics (C10) is reweighted from "out of scope" to "primary," which would be a product-strategy change. If the team wants to stay all-Databricks on Axis A without that reweight, **Lakebase (§9) is the way to do it** — it keeps the platform while honouring C1/C2.
+**Axis A summary.** This is the one axis where the Databricks default runs hardest into the product's non-negotiables. The two hard constraints defined up front — **C1 OLTP latency** and **C2 per-tenant RLS** — both favour the Postgres alternative, and neither is a tuning question. The Databricks default's genuine wins (C8 idle cost, C9/C10 analytical scale) are about *analytical* workloads and *future* capabilities, not the product's hot path. The honest read: **Delta-as-serving-DB is the weakest application of the Databricks default**, because the read path is OLTP-shaped, per-tenant, and latency-bound — *unless* future cross-corpus analytics (C10) is reweighted from "out of scope" to "primary," which would be a product-strategy change. If the team wants to stay all-Databricks on Axis A without that reweight, **Lakebase (§9) is the way to do it** — it keeps the platform while honouring C1/C2.
 
 ---
 
@@ -150,12 +174,12 @@ The default this RFC measures everything against:
 **C3 transactional poll — Favours ACA worker.**
 
 - _Databricks Jobs / DLT / Spark (default):_ Spark/Delta is not transactional across a multi-step per-row workflow in the same sense; idempotency + Delta MERGE patterns can approximate it but the all-or-nothing per-document guarantee is harder to express.
-- _ACA asyncio worker (alternative):_ one Postgres transaction wraps the whole per-document poll (hash, version row, clauses, change_events) — all-or-nothing (RFC-4).
+- _ACA asyncio worker (alternative):_ one Postgres transaction wraps the whole per-document poll (hash, version row, clauses, change_events) — all-or-nothing.
 
 **C4 reaction latency — Favours ACA worker.**
 
-- _Databricks Jobs / DLT / Spark (default):_ Jobs/DLT minimum scheduling granularity is coarse (minutes); the "watch it land in real time" framing weakens — the same argument that rejected the ACA-Job shape in ADR-0001 applies more strongly to Spark.
-- _ACA asyncio worker (alternative):_ claim loop ticks ~50 ms; a newly-due row is polled almost immediately (ADR-0001).
+- _Databricks Jobs / DLT / Spark (default):_ Jobs/DLT minimum scheduling granularity is coarse (minutes); the "watch it land in real time" framing weakens — the same argument that earlier rejected a scheduled-job shape for the worker applies more strongly to Spark.
+- _ACA asyncio worker (alternative):_ claim loop ticks ~50 ms; a newly-due row is polled almost immediately.
 
 **C5 local-dev — Favours ACA worker.**
 
@@ -170,7 +194,7 @@ The default this RFC measures everything against:
 **C7 ops complexity — Favours Databricks (default).**
 
 - _Databricks Jobs / DLT / Spark (default):_ Databricks owns scheduling, retries, lineage, alerting, observability **for free** — a managed control plane is fewer things we build and babysit.
-- _ACA asyncio worker (alternative):_ worker owns SIGTERM drain, liveness probe, reconnect (ADR-0001 consequences) — real but small (~16 LOC).
+- _ACA asyncio worker (alternative):_ worker owns SIGTERM drain, liveness probe, reconnect — real but small (~16 LOC).
 
 **C8 cost (idle) — Favours Databricks (default).**
 
@@ -195,8 +219,8 @@ The default this RFC measures everything against:
 
 The concern that originally favoured the alternative — *"hard to ship robust maintainable code quickly on Databricks"* — is real **and** double-edged, and a neutral doc must record both edges:
 
-- **For the Databricks default:** "maintainable" is relative to *who maintains it*. If the long-term owners are a **data-engineering team who live in Databricks**, then Databricks pipelines are the *more* maintainable choice **for them**. The bus-factor-zero argument in ADR-0001 assumed a generalist reader who is not the actual owner — so the original docs priced the learning-curve tax against the wrong person.
-- **For the alternative:** plain typed Python + SQLAlchemy + pytest/testcontainers is boring, hermetically testable, and code-reviewable with `pyright` strict. "Boring is good" (RFC-3). Maintainable *by a generalist engineer* — which matters if ownership is not, in fact, the data-eng team.
+- **For the Databricks default:** "maintainable" is relative to *who maintains it*. If the long-term owners are a **data-engineering team who live in Databricks**, then Databricks pipelines are the *more* maintainable choice **for them**. The bus-factor-zero argument behind the original worker decision assumed a generalist reader who is not the actual owner — so it priced the learning-curve tax against the wrong person.
+- **For the alternative:** plain typed Python + SQLAlchemy + a containerised integration suite is boring, hermetically testable, and code-reviewable under strict static typing. Boring is good. Maintainable *by a generalist engineer* — which matters if ownership is not, in fact, the data-eng team.
 
 So C11 and C6 pull in opposite directions, and which dominates depends on a fact this RFC cannot settle: **who owns ingestion in production?** Under the Databricks-default posture the presumption is the data-eng team — but that presumption is exactly what the first open question below must confirm.
 
@@ -224,7 +248,7 @@ If Lakebase is on the table, it is the recommended way to honour the Databricks 
 2. Assign weights to C1–C13 — in particular, rank C11 (team familiarity, the criterion behind the Databricks-default posture) against the hard constraints (C1, C2) and the existing priority order (flexibility > visibility > simplicity).
 3. Decide each axis independently. The plausible outcomes are: **all-Databricks via Lakebase** (default honoured on both axes), **Databricks ETL + external Postgres serving** (change only on Axis A, where C1/C2 are decisive), or **retain the shipped alternative on both** (if ownership turns out not to be the data-eng team).
 
-Record the outcome as an ADR (`ADR-0002`) once weighted, and align RFC-3 §"Database choice direction" and RFC-4 §Ingestion with the scored rationale, whichever way it lands.
+Record the outcome as a dated architecture decision record once weighted, and reconcile the earlier database-design and worker-architecture decisions with the scored rationale, whichever way it lands.
 
 ## 11. Open questions
 
@@ -233,4 +257,4 @@ Record the outcome as an ADR (`ADR-0002`) once weighted, and align RFC-3 §"Data
 - **What is the *enduring* ingestion volume?** If it stays near the curated-set scale, C9 never pays off for Spark and the ACA alternative stays defensible. If it grows orders of magnitude, C9 reinforces the default on Axis B.
 - **Is cross-corpus analytics (C10) still "out of scope," or is it becoming a product priority?** This is the main lever that would justify the Databricks default even on the OLTP-shaped Axis A.
 - **Is one-vendor consolidation an explicit goal?** The Databricks-default posture assumes yes. If the org genuinely wants a single Databricks-centric data platform, that is itself a high-weight criterion and should be stated as one — it is the strongest argument for Lakebase over external Postgres on Axis A.
-- **What latency does Databricks SQL actually deliver on this query mix?** The C1 verdict for Delta is reasoned, not measured. A spike (the three primitives against a Delta-backed warehouse at target concurrency, measured against the 3 s p95) would replace assertion with data — the same discipline ADR-0001 used to pick the worker shape. This is the measurement that could rescue the Delta-serving default and remove the need to change on Axis A.
+- **What latency does Databricks SQL actually deliver on this query mix?** The C1 verdict for Delta is reasoned, not measured. A spike (the three primitives against a Delta-backed warehouse at target concurrency, measured against the 3 s p95) would replace assertion with data — the same measure-don't-assert discipline used to pick the worker shape originally. This is the measurement that could rescue the Delta-serving default and remove the need to change on Axis A.
