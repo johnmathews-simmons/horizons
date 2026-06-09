@@ -1,17 +1,19 @@
-# Platform direction: Databricks as the default, and where to deviate
+# Platform direction: Databricks as the default, and where to change
 
 *Last revised: 2026-06-09.*
 *Path: docs/RFC-6 platform-databricks-vs-aca-postgres.md.*
 
-A decision matrix that takes **Databricks as the baseline platform** — the default "go-to" for both the ingestion (ETL) pipeline and the serving database — and asks, criterion by criterion, **where (if anywhere) a non-Databricks alternative is strong enough to justify deviating.** This RFC does **not** pick a winner. It fixes the criteria, scores the alternatives honestly against the Databricks default, and surfaces the open questions the team must answer before weighting the criteria and deciding. The weighting *is* the decision; this doc supplies the inputs to it.
+A decision matrix that takes **Databricks as the baseline platform** — the default "go-to" for both the ingestion (ETL) pipeline and the serving database — and asks, criterion by criterion, **where (if anywhere) a non-Databricks alternative is strong enough to justify a change.** This RFC does **not** pick a winner. It fixes the criteria, scores the alternatives honestly against the Databricks default, and surfaces the open questions the team must answer before weighting the criteria and deciding. The weighting *is* the decision; this doc supplies the inputs to it.
 
 ## Executive summary
 
-**Context.** Two production choices are in play: the database the public API serves from, and the compute that ingests, parses, and aligns legal documents. Whoever owns this owns the **full lifecycle** — build, test, ship, deploy, operate. The presumptive owner is a **data-engineering team inside a legal firm**: fluent in Databricks, not (yet) staffed with full-stack or cloud-native engineers. So **Databricks is the assumed default**, one-vendor consolidation on it is the presumptive org direction, and any non-Databricks choice has to earn its place against it.
+**Context.** Two production choices are in play: the database the public API serves from, and the compute that ingests, parses, and aligns legal documents. Whoever owns this owns the **full lifecycle** — build, test, ship, deploy, operate. The presumptive owner is a **data-engineering team**: fluent in Databricks. So **Databricks is the assumed default**, one-vendor consolidation on it is the presumptive org direction, and any non-Databricks choice has to earn its place against it.
 
-**Scope.** This is the *production direction*, not an immediate re-platform — the shipped, e2e-gated ACA + Postgres stack stays as-is for now. The decision splits into two separable axes, scored independently: **Axis A** — the serving database (3 s p95 reads, two-axis per-tenant RLS); **Axis B** — the ETL/ingestion compute. Conflating them is the most likely route to a wrong answer.
+**Scope.** This is the *production direction*, not an immediate re-platform. The decision splits into two separable axes, scored independently: **Axis A** — the serving database (3 s p95 reads, two-axis per-tenant RLS); **Axis B** — the ETL/ingestion compute. Conflating them is the most likely route to a wrong answer.
 
-**What "deviate" actually runs on — containers, not Kubernetes.** The alternative to Databricks here is **containerised services**: a Docker image run locally or scheduled by Azure Container Apps' managed runtime — **not a self-run Kubernetes cluster.** The operational ladder runs: Databricks managed control plane → containerised service (Docker / ACA) → self-run cluster (AKS / full K8s). The deviation sits on the **middle rung**; it does not ask the team to run a cluster, control plane, networking, or operators — that K8s tier is explicitly out of scope. Pricing the deviation as if it were Kubernetes overstates its operational cost; pricing it as if it were as hands-off as Databricks understates it. The honest framing is: one rung more ops than Databricks, one rung less than AKS.
+> **"Two-axis per-tenant RLS"** — Postgres Row-Level Security enforcing tenant isolation along *two* independent dimensions, keyed to the individual end-user (not a coarse service identity): (1) **cross-client privacy** — one client's private state (watchlists, alerts, saved queries, dashboards) is invisible to every other client; (2) **subscription scoping** — corpus reads are confined to each client's purchased subscription (jurisdictions × sectors), so a UK-only client cannot see EU change events. Enforced at the database layer as defence-in-depth, beneath the repository layer and multi-user tests. This is criterion **C2** below, and the part that maps cleanly onto Postgres but not onto Delta's governance-principal model.
+
+**What the alternative actually runs on — containers, not Kubernetes.** The alternative to Databricks here is **containerised services**: a Docker image run on the Azure Container Apps' managed runtime — **not a self-run Kubernetes cluster.** The operational ladder runs: Databricks managed control plane → containerised service (Docker / ACA) → self-run cluster (AKS / full K8s). The alternative sits on the **middle rung**; it does not ask the team to run a cluster, control plane, networking, or operators — that K8s tier is explicitly out of scope. Pricing the alternative as if it were Kubernetes overstates its operational cost; pricing it as if it were as hands-off as Databricks understates it. The honest framing is: one rung more ops than Databricks, one rung less than AKS.
 
 **Balance (no decision).**
 
@@ -25,7 +27,7 @@ A decision matrix that takes **Databricks as the baseline platform** — the def
 
 This is the **first structured, team-wide comparison** of the platform options, written from a **Databricks-default posture**: the data-engineering team who will own this in production are fluent in Databricks and most productive on it, and one-vendor consolidation on a Databricks-centric data platform is the presumptive organisational direction. The burden of proof in this doc therefore runs the other way — an alternative has to *earn* its place against the Databricks default, not the reverse.
 
-One honest caveat up front: **a non-Databricks stack already exists.** A working ACA + Postgres implementation is built, deployed to `horizons-nonprod`, and e2e-gated. That establishes one viable deviation — it does not establish the platform direction. The earlier design docs only touch the choice in passing:
+One honest caveat up front: **a non-Databricks stack already exists.** A working ACA + Postgres implementation is built, deployed to `horizons-nonprod`, and e2e-gated. That establishes one viable alternative — it does not establish the platform direction. The earlier design docs only touch the choice in passing:
 
 - `RFC-3 database-design.md` §"Database choice direction" names PostgreSQL as a default and lists lakehouse under "Not chosen" with a one-line rationale — a direction taken before the data-eng team's input, not a scored comparison.
 - `ADR-0001` chose a long-running asyncio container for the worker, with reaction latency and local-dev ergonomics as the deciding drivers — again, scored against a generalist owner, not the data-eng team.
@@ -39,20 +41,20 @@ This RFC re-opens both with Databricks as the thing to beat.
    - **Axis A — the serving database** (what the public API reads from under a 3 s p95 budget).
    - **Axis B — the ETL/ingestion compute** (what polls Lawstronaut, parses, aligns, and writes).
 
-   The all-Databricks default is **Databricks for both axes.** The most likely coherent deviation is to keep the Databricks ETL but serve Axis A from Postgres — so the two are scored separately below. Conflating them is the most likely way to reach a wrong answer.
+   The all-Databricks default is **Databricks for both axes.** The most likely coherent alternative is to keep the Databricks ETL but serve Axis A from Postgres — so the two are scored separately below. Conflating them is the most likely way to reach a wrong answer.
 
 ## 2. Terminology: what "Databricks for serving" means
 
 For Axis B (ETL) the Databricks default is unambiguous — Jobs / Delta Live Tables / Spark. For Axis A (serving) "Databricks" splits into three readings, and which one we mean changes the comparison materially. Pin this down before weighting:
 
 - **(a) Delta tables via SQL warehouse** — columnar Delta Lake tables queried by a Databricks SQL (serverless) warehouse; the classic lakehouse serving path.
-  - _Effect:_ this is the substantive contest below. Delta is analytical (OLAP) storage; the open question is whether the Databricks default can serve OLTP-shaped API reads under the latency + isolation constraints, or whether Axis A is the one place a Postgres deviation is warranted.
+  - _Effect:_ this is the substantive contest below. Delta is analytical (OLAP) storage; the open question is whether the Databricks default can serve OLTP-shaped API reads under the latency + isolation constraints, or whether Axis A is the one place a Postgres alternative is warranted.
 - **(b) Lakebase** — Databricks' managed transactional **Postgres** (built on the Neon engine Databricks acquired in 2025), positioned as the OLTP companion to the lakehouse.
   - _Effect:_ it stays **inside the Databricks platform while being Postgres under the hood** — so RLS, OLTP latency, SQLAlchemy, and the existing schema/migrations mostly carry over. This is the strongest form of the all-Databricks story: one vendor, no OLTP/RLS sacrifice. See §9.
-- **(c) External Postgres (the deviation)** — Azure Database for PostgreSQL Flexible Server, outside the Databricks platform.
+- **(c) External Postgres (the alternative)** — Azure Database for PostgreSQL Flexible Server, outside the Databricks platform.
   - _Effect:_ the alternative scored against the default in §5. Wins on engine fit; costs a second vendor and a second control plane.
 
-The Axis A matrix in §5 scores the Databricks default as reading **(a) Delta-via-SQL-warehouse** against the **(c) external-Postgres** deviation, because that is the genuinely different architecture. If the team's Databricks-serving default is **(b) Lakebase**, jump to §9 — most of the §5 contest dissolves because the default *is already* Postgres.
+The Axis A matrix in §5 scores the Databricks default as reading **(a) Delta-via-SQL-warehouse** against the **(c) external-Postgres** alternative, because that is the genuinely different architecture. If the team's Databricks-serving default is **(b) Lakebase**, jump to §9 — most of the §5 contest dissolves because the default *is already* Postgres.
 
 ## 3. Decision criteria
 
@@ -84,7 +86,7 @@ The default this RFC measures everything against:
 - **ETL (Axis B):** Databricks Jobs / Delta Live Tables / Spark — scheduled pipelines polling Lawstronaut, parsing, aligning, writing Delta, with lineage / retries / alerting from the managed control plane.
 - **Stack properties:** one vendor, one governance model (Unity Catalog), DBU-metered scale-to-zero compute, notebooks / asset bundles / databricks-connect as the dev surface, owned by the data-eng team who already live in it.
 
-**The deviation that already exists** (what we are comparing against the default), for reference:
+**The alternative that already exists** (what we are comparing against the default), for reference:
 
 - **Serving DB:** Azure Database for PostgreSQL **Flexible Server**, currently `Standard_B1ms` Burstable, 32 GB, PG 18 (`infra/modules/postgres-flex.bicep`; prod cuts over to General Purpose + HA). A **managed PaaS on burstable compute**, *not* serverless/scale-to-zero — see C8.
 - **ETL:** a long-running asyncio worker (`packages/horizons-ingestion`), one ACA container, `SELECT … FOR UPDATE SKIP LOCKED` claim loop, in-process alignment (shingling/MinHash/DP), per-document Postgres transaction with the blob write kept outside it (RFC-4 §Ingestion/How).
@@ -95,114 +97,114 @@ The default this RFC measures everything against:
 
 ## 5. Axis A — serving database
 
-**Databricks SQL + Delta tables** (default, reading (a)) vs the **Postgres Flexible Server** deviation. Each criterion lists the default first, then the deviation, then the verdict — the deviation has to win decisively on a high-weight criterion to justify leaving the platform.
+**Databricks SQL + Delta tables** (default, reading (a)) vs the **Postgres Flexible Server** alternative. Each criterion lists the default first, then the alternative, then the verdict — the alternative has to win decisively on a high-weight criterion to justify leaving the platform.
 
 **C1 latency — Favours Postgres (hard constraint C1).**
 
 - _Databricks SQL + Delta (default):_ columnar Delta optimised for analytical scans, not point lookups. Photon + caching help; serverless warehouse auto-resume adds seconds of cold-start; per-query overhead is higher. Meeting sub-100 ms point reads at API concurrency is unproven for this workload.
-- _Postgres Flexible Server (deviation):_ OLTP engine; B-tree/GIN indexes; single-row and small-range lookups in single-digit ms; built for high-concurrency point reads.
+- _Postgres Flexible Server (alternative):_ OLTP engine; B-tree/GIN indexes; single-row and small-range lookups in single-digit ms; built for high-concurrency point reads.
 
 **C2 isolation — Favours Postgres (load-bearing C2).**
 
 - _Databricks SQL + Delta (default):_ Unity Catalog row filters / column masks exist, but key off the _Databricks principal_ (a governance identity), not thousands of API end-users behind one service identity. The RFC-4 per-tenant model does not map cleanly; isolation would move entirely into the app layer, losing the database-side belt-and-braces.
-- _Postgres Flexible Server (deviation):_ Postgres **RLS** keyed off `current_setting('app.user_id')` set per connection from the bearer token — exactly the two-axis, per-end-user model in RFC-4. Plus repository layer + lint-ban + multi-user tests.
+- _Postgres Flexible Server (alternative):_ Postgres **RLS** keyed off `current_setting('app.user_id')` set per connection from the bearer token — exactly the two-axis, per-end-user model in RFC-4. Plus repository layer + lint-ban + multi-user tests.
 
 **C6 testability — Favours Postgres.**
 
 - _Databricks SQL + Delta (default):_ Spark/Delta and Databricks SQL are harder to test hermetically; no testcontainers equivalent; integration tests need a workspace. Type-checking SQL/notebook code is weaker than `pyright` over typed Python.
-- _Postgres Flexible Server (deviation):_ testcontainers spins a real PG 18 per test; RLS policies and repo helpers are integration-tested in CI.
+- _Postgres Flexible Server (alternative):_ testcontainers spins a real PG 18 per test; RLS policies and repo helpers are integration-tested in CI.
 
 **C8 cost (idle) — Favours Databricks (default).**
 
 - _Databricks SQL + Delta (default):_ serverless SQL warehouse **auto-suspends** — genuinely cheaper when the warehouse sits idle for much of the day.
-- _Postgres Flexible Server (deviation):_ Burstable B1ms is sub-dollar/day but **always on** (no scale-to-zero).
+- _Postgres Flexible Server (alternative):_ Burstable B1ms is sub-dollar/day but **always on** (no scale-to-zero).
 
 **C8 cost (load) — Neutral (depends on query mix).**
 
 - _Databricks SQL + Delta (default):_ DBU-metered; can be cheaper or pricier depending on query mix and warehouse sizing; harder to predict.
-- _Postgres Flexible Server (deviation):_ predictable instance cost; scale up the SKU.
+- _Postgres Flexible Server (alternative):_ predictable instance cost; scale up the SKU.
 
 **C9 scale — Favours Databricks (default), at extreme scale only.**
 
 - _Databricks SQL + Delta (default):_ Delta excels at petabyte scans and large aggregations; the "what changed across the whole corpus in 6 months" query (RFC-3's tight case) is its home turf at extreme scale.
-- _Postgres Flexible Server (deviation):_ vertical + read replicas; low-millions of rows is comfortable for PG. Very large analytical scans are not its strength.
+- _Postgres Flexible Server (alternative):_ vertical + read replicas; low-millions of rows is comfortable for PG. Very large analytical scans are not its strength.
 
 **C10 future analytics — Favours Databricks (default).**
 
 - _Databricks SQL + Delta (default):_ lakehouse is the natural home for corpus-wide similarity analytics over persisted MinHash signatures (RFC-4 out-of-scope future).
-- _Postgres Flexible Server (deviation):_ cross-corpus MinHash near-duplicate search is awkward in PG at scale.
+- _Postgres Flexible Server (alternative):_ cross-corpus MinHash near-duplicate search is awkward in PG at scale.
 
 **C13 config-over-code — Neutral.**
 
 - _Databricks SQL + Delta (default):_ equally achievable; no inherent advantage either way.
-- _Postgres Flexible Server (deviation):_ tuning params already live as runtime config surfaced in the UI; no redeploy.
+- _Postgres Flexible Server (alternative):_ tuning params already live as runtime config surfaced in the UI; no redeploy.
 
-**Axis A summary.** This is the one axis where the Databricks default runs hardest into the product's non-negotiables. The two hard constraints RFC-3/RFC-4 declared load-bearing — **C1 OLTP latency** and **C2 per-tenant RLS** — both favour the Postgres deviation, and neither is a tuning question. The Databricks default's genuine wins (C8 idle cost, C9/C10 analytical scale) are about *analytical* workloads and *future* capabilities, not the product's hot path. The honest read: **Delta-as-serving-DB is the weakest application of the Databricks default**, because the read path is OLTP-shaped, per-tenant, and latency-bound — *unless* future cross-corpus analytics (C10) is reweighted from "out of scope" to "primary," which would be a product-strategy change. If the team wants to stay all-Databricks on Axis A without that reweight, **Lakebase (§9) is the way to do it** — it keeps the platform while honouring C1/C2.
+**Axis A summary.** This is the one axis where the Databricks default runs hardest into the product's non-negotiables. The two hard constraints RFC-3/RFC-4 declared load-bearing — **C1 OLTP latency** and **C2 per-tenant RLS** — both favour the Postgres alternative, and neither is a tuning question. The Databricks default's genuine wins (C8 idle cost, C9/C10 analytical scale) are about *analytical* workloads and *future* capabilities, not the product's hot path. The honest read: **Delta-as-serving-DB is the weakest application of the Databricks default**, because the read path is OLTP-shaped, per-tenant, and latency-bound — *unless* future cross-corpus analytics (C10) is reweighted from "out of scope" to "primary," which would be a product-strategy change. If the team wants to stay all-Databricks on Axis A without that reweight, **Lakebase (§9) is the way to do it** — it keeps the platform while honouring C1/C2.
 
 ---
 
 ## 6. Axis B — ETL / ingestion compute
 
-**Databricks Jobs / Delta Live Tables / Spark** (default) vs the **ACA asyncio worker** deviation.
+**Databricks Jobs / Delta Live Tables / Spark** (default) vs the **ACA asyncio worker** alternative.
 
 **C3 transactional poll — Favours ACA worker.**
 
 - _Databricks Jobs / DLT / Spark (default):_ Spark/Delta is not transactional across a multi-step per-row workflow in the same sense; idempotency + Delta MERGE patterns can approximate it but the all-or-nothing per-document guarantee is harder to express.
-- _ACA asyncio worker (deviation):_ one Postgres transaction wraps the whole per-document poll (hash, version row, clauses, change_events) — all-or-nothing (RFC-4).
+- _ACA asyncio worker (alternative):_ one Postgres transaction wraps the whole per-document poll (hash, version row, clauses, change_events) — all-or-nothing (RFC-4).
 
 **C4 reaction latency — Favours ACA worker.**
 
 - _Databricks Jobs / DLT / Spark (default):_ Jobs/DLT minimum scheduling granularity is coarse (minutes); the "watch it land in real time" framing weakens — the same argument that rejected the ACA-Job shape in ADR-0001 applies more strongly to Spark.
-- _ACA asyncio worker (deviation):_ claim loop ticks ~50 ms; a newly-due row is polled almost immediately (ADR-0001).
+- _ACA asyncio worker (alternative):_ claim loop ticks ~50 ms; a newly-due row is polled almost immediately (ADR-0001).
 
 **C5 local-dev — Favours ACA worker.**
 
 - _Databricks Jobs / DLT / Spark (default):_ databricks-connect / asset bundles / notebooks; heavier local loop; harder to hit bus-factor-zero in 30 s.
-- _ACA asyncio worker (deviation):_ `python -m horizons_ingestion` + ctrl-C; no scheduler, ~30 s to running.
+- _ACA asyncio worker (alternative):_ `python -m horizons_ingestion` + ctrl-C; no scheduler, ~30 s to running.
 
 **C6 testability — Favours ACA worker.**
 
 - _Databricks Jobs / DLT / Spark (default):_ Spark jobs are harder to unit-test and type-check; CI needs a workspace or local Spark.
-- _ACA asyncio worker (deviation):_ plain async Python; unit-tested + testcontainers integration.
+- _ACA asyncio worker (alternative):_ plain async Python; unit-tested + testcontainers integration.
 
 **C7 ops complexity — Favours Databricks (default).**
 
 - _Databricks Jobs / DLT / Spark (default):_ Databricks owns scheduling, retries, lineage, alerting, observability **for free** — a managed control plane is fewer things we build and babysit.
-- _ACA asyncio worker (deviation):_ worker owns SIGTERM drain, liveness probe, reconnect (ADR-0001 consequences) — real but small (~16 LOC).
+- _ACA asyncio worker (alternative):_ worker owns SIGTERM drain, liveness probe, reconnect (ADR-0001 consequences) — real but small (~16 LOC).
 
 **C8 cost (idle) — Favours Databricks (default).**
 
 - _Databricks Jobs / DLT / Spark (default):_ Jobs scale to zero between runs.
-- _ACA asyncio worker (deviation):_ one always-on replica (non-zero idle CPU).
+- _ACA asyncio worker (alternative):_ one always-on replica (non-zero idle CPU).
 
 **C9 scale (batch) — Favours Databricks (default).**
 
 - _Databricks Jobs / DLT / Spark (default):_ Spark parallelism is built for large bursty batch ingestion at low-millions-of-docs scale — genuinely its strength if ingestion volume grows far beyond the curated set.
-- _ACA asyncio worker (deviation):_ single-container claim loop; horizontally scalable via SKIP-LOCKED but bounded by what one Python process does.
+- _ACA asyncio worker (alternative):_ single-container claim loop; horizontally scalable via SKIP-LOCKED but bounded by what one Python process does.
 
 **C11 familiarity — Favours Databricks (default).**
 
 - _Databricks Jobs / DLT / Spark (default):_ the data-eng team is already fluent — they would ship and maintain Databricks pipelines faster and more confidently.
-- _ACA asyncio worker (deviation):_ generalist Python; the data-eng team would be learning the worker idioms.
+- _ACA asyncio worker (alternative):_ generalist Python; the data-eng team would be learning the worker idioms.
 
-**Axis B summary.** This is the axis where the Databricks default earns its keep — and the contest is genuinely close. The *current* workload (a curated set polled on a cadence, latency-sensitive, per-document ACID, in-process Python alignment) is small and transactional, which is exactly where the ACA deviation's strengths (C3/C4/C5/C6) bite and Spark's (C7/C9) don't yet pay off. **But** the two criteria that motivate the Databricks-default posture both land here: **C11 (the people who maintain it know Databricks)** and **C7 (a managed control plane is less to operate)**. If ingestion volume grows by orders of magnitude (C9), the balance tilts further to the default. The crux: is the current-scale, real-time, transactional shape the *enduring* shape of ingestion, or a temporary one that production volume will outgrow? If enduring, the ACA deviation is justified here; if transient, stay on the default.
+**Axis B summary.** This is the axis where the Databricks default earns its keep — and the contest is genuinely close. The *current* workload (a curated set polled on a cadence, latency-sensitive, per-document ACID, in-process Python alignment) is small and transactional, which is exactly where the ACA alternative's strengths (C3/C4/C5/C6) bite and Spark's (C7/C9) don't yet pay off. **But** the two criteria that motivate the Databricks-default posture both land here: **C11 (the people who maintain it know Databricks)** and **C7 (a managed control plane is less to operate)**. If ingestion volume grows by orders of magnitude (C9), the balance tilts further to the default. The crux: is the current-scale, real-time, transactional shape the *enduring* shape of ingestion, or a temporary one that production volume will outgrow? If enduring, the ACA alternative is justified here; if transient, stay on the default.
 
 ---
 
 ## 7. Cross-cutting: maintainability and the bus-factor argument
 
-The concern that originally favoured the deviation — *"hard to ship robust maintainable code quickly on Databricks"* — is real **and** double-edged, and a neutral doc must record both edges:
+The concern that originally favoured the alternative — *"hard to ship robust maintainable code quickly on Databricks"* — is real **and** double-edged, and a neutral doc must record both edges:
 
 - **For the Databricks default:** "maintainable" is relative to *who maintains it*. If the long-term owners are a **data-engineering team who live in Databricks**, then Databricks pipelines are the *more* maintainable choice **for them**. The bus-factor-zero argument in ADR-0001 assumed a generalist reader who is not the actual owner — so the original docs priced the learning-curve tax against the wrong person.
-- **For the deviation:** plain typed Python + SQLAlchemy + pytest/testcontainers is boring, hermetically testable, and code-reviewable with `pyright` strict. "Boring is good" (RFC-3). Maintainable *by a generalist engineer* — which matters if ownership is not, in fact, the data-eng team.
+- **For the alternative:** plain typed Python + SQLAlchemy + pytest/testcontainers is boring, hermetically testable, and code-reviewable with `pyright` strict. "Boring is good" (RFC-3). Maintainable *by a generalist engineer* — which matters if ownership is not, in fact, the data-eng team.
 
 So C11 and C6 pull in opposite directions, and which dominates depends on a fact this RFC cannot settle: **who owns ingestion in production?** Under the Databricks-default posture the presumption is the data-eng team — but that presumption is exactly what the first open question below must confirm.
 
 ## 8. Migration cost (C12)
 
-The current deviation (ACA + Postgres) is built, deployed, and e2e-gated. Adopting the Databricks default means net-new work: re-platforming the schema onto Delta (or re-pointing serving at Lakebase), reimplementing the claim loop and alignment in the Databricks idiom, rebuilding the RLS isolation model in the app layer (if Delta) or re-homing it on Lakebase, re-doing the IaC and CI. None of this is captured in the matrices above and all of it is real.
+The current alternative (ACA + Postgres) is built, deployed, and e2e-gated. Adopting the Databricks default means net-new work: re-platforming the schema onto Delta (or re-pointing serving at Lakebase), reimplementing the claim loop and alignment in the Databricks idiom, rebuilding the RLS isolation model in the app layer (if Delta) or re-homing it on Lakebase, re-doing the IaC and CI. None of this is captured in the matrices above and all of it is real.
 
-Read the other way: the sunk investment is in the *deviation*, not the default. Sunk cost is not a reason to keep a worse-fit architecture — but it *is* a real one-time cost to debit against the Databricks default's advantages, and it is the single biggest argument for treating the shipped ACA + Postgres stack as a sanctioned deviation rather than something to migrate on principle.
+Read the other way: the sunk investment is in the *alternative*, not the default. Sunk cost is not a reason to keep a worse-fit architecture — but it *is* a real one-time cost to debit against the Databricks default's advantages, and it is the single biggest argument for treating the shipped ACA + Postgres stack as a sanctioned alternative rather than something to migrate on principle.
 
 ## 9. The all-Databricks serving story: Lakebase
 
@@ -220,7 +222,7 @@ If Lakebase is on the table, it is the recommended way to honour the Databricks 
 
 1. Resolve the open questions below (especially ownership and the Delta-vs-Lakebase reading of the serving default).
 2. Assign weights to C1–C13 — in particular, rank C11 (team familiarity, the criterion behind the Databricks-default posture) against the hard constraints (C1, C2) and the existing priority order (flexibility > visibility > simplicity).
-3. Decide each axis independently. The plausible outcomes are: **all-Databricks via Lakebase** (default honoured on both axes), **Databricks ETL + external Postgres serving** (deviate only on Axis A, where C1/C2 are decisive), or **retain the shipped deviation on both** (if ownership turns out not to be the data-eng team).
+3. Decide each axis independently. The plausible outcomes are: **all-Databricks via Lakebase** (default honoured on both axes), **Databricks ETL + external Postgres serving** (change only on Axis A, where C1/C2 are decisive), or **retain the shipped alternative on both** (if ownership turns out not to be the data-eng team).
 
 Record the outcome as an ADR (`ADR-0002`) once weighted, and align RFC-3 §"Database choice direction" and RFC-4 §Ingestion with the scored rationale, whichever way it lands.
 
@@ -228,7 +230,7 @@ Record the outcome as an ADR (`ADR-0002`) once weighted, and align RFC-3 §"Data
 
 - **Who owns ingestion in production?** The data-eng team (the Databricks-default presumption) or generalist engineers? This is the hinge for C11 vs C6 and may decide Axis B on its own.
 - **Does the Databricks serving default mean Delta-via-SQL-warehouse or Lakebase?** Settles whether Axis A is a real engine contest (§5) or already a Postgres story inside the platform (§9).
-- **What is the *enduring* ingestion volume?** If it stays near the curated-set scale, C9 never pays off for Spark and the ACA deviation stays defensible. If it grows orders of magnitude, C9 reinforces the default on Axis B.
+- **What is the *enduring* ingestion volume?** If it stays near the curated-set scale, C9 never pays off for Spark and the ACA alternative stays defensible. If it grows orders of magnitude, C9 reinforces the default on Axis B.
 - **Is cross-corpus analytics (C10) still "out of scope," or is it becoming a product priority?** This is the main lever that would justify the Databricks default even on the OLTP-shaped Axis A.
 - **Is one-vendor consolidation an explicit goal?** The Databricks-default posture assumes yes. If the org genuinely wants a single Databricks-centric data platform, that is itself a high-weight criterion and should be stated as one — it is the strongest argument for Lakebase over external Postgres on Axis A.
-- **What latency does Databricks SQL actually deliver on this query mix?** The C1 verdict for Delta is reasoned, not measured. A spike (the three primitives against a Delta-backed warehouse at target concurrency, measured against the 3 s p95) would replace assertion with data — the same discipline ADR-0001 used to pick the worker shape. This is the measurement that could rescue the Delta-serving default and remove the need to deviate on Axis A.
+- **What latency does Databricks SQL actually deliver on this query mix?** The C1 verdict for Delta is reasoned, not measured. A spike (the three primitives against a Delta-backed warehouse at target concurrency, measured against the 3 s p95) would replace assertion with data — the same discipline ADR-0001 used to pick the worker shape. This is the measurement that could rescue the Delta-serving default and remove the need to change on Axis A.
