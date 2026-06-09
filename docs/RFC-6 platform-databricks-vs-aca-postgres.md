@@ -5,6 +5,22 @@
 
 A decision matrix that takes **Databricks as the baseline platform** — the default "go-to" for both the ingestion (ETL) pipeline and the serving database — and asks, criterion by criterion, **where (if anywhere) a non-Databricks alternative is strong enough to justify deviating.** This RFC does **not** pick a winner. It fixes the criteria, scores the alternatives honestly against the Databricks default, and surfaces the open questions the team must answer before weighting the criteria and deciding. The weighting *is* the decision; this doc supplies the inputs to it.
 
+## Executive summary
+
+**Context.** Two production choices are in play: the database the public API serves from, and the compute that ingests, parses, and aligns legal documents. Whoever owns this owns the **full lifecycle** — build, test, ship, deploy, operate. The presumptive owner is a **data-engineering team inside a legal firm**: fluent in Databricks, not (yet) staffed with full-stack or cloud-native engineers. So **Databricks is the assumed default**, one-vendor consolidation on it is the presumptive org direction, and any non-Databricks choice has to earn its place against it.
+
+**Scope.** This is the *production direction*, not an immediate re-platform — the shipped, e2e-gated ACA + Postgres stack stays as-is for now. The decision splits into two separable axes, scored independently: **Axis A** — the serving database (3 s p95 reads, two-axis per-tenant RLS); **Axis B** — the ETL/ingestion compute. Conflating them is the most likely route to a wrong answer.
+
+**What "deviate" actually runs on — containers, not Kubernetes.** The alternative to Databricks here is **containerised services**: a Docker image run locally or scheduled by Azure Container Apps' managed runtime — **not a self-run Kubernetes cluster.** The operational ladder runs: Databricks managed control plane → containerised service (Docker / ACA) → self-run cluster (AKS / full K8s). The deviation sits on the **middle rung**; it does not ask the team to run a cluster, control plane, networking, or operators — that K8s tier is explicitly out of scope. Pricing the deviation as if it were Kubernetes overstates its operational cost; pricing it as if it were as hands-off as Databricks understates it. The honest framing is: one rung more ops than Databricks, one rung less than AKS.
+
+**Balance (no decision).**
+
+- **Axis A** is where the Databricks default runs hardest into the product's non-negotiables. The two hard constraints — **C1 OLTP latency** and **C2 per-tenant RLS** — both favour Postgres, and neither is a tuning question; Delta-as-serving-DB is the weakest application of the default. To stay all-Databricks here without a product-strategy change, **Lakebase** (Databricks' managed Postgres) honours C1/C2 while keeping one vendor (§9).
+- **Axis B** is the genuinely close contest. The *current* workload — a curated set, real-time, per-document-transactional, in-process Python alignment — suits the ACA worker (C3/C4/C5/C6). The default's wins (**C7** managed ops, **C11** team familiarity, **C9** batch scale) grow if ingestion volume grows orders of magnitude.
+- **The decisive inputs are not technical scores but facts the team must supply:** who owns ingestion in production, whether the serving default means Delta or Lakebase, the enduring ingestion volume, and whether cross-corpus analytics (C10) becomes a product priority (§11).
+
+**What this RFC does and doesn't do.** It fixes the criteria (C1–C13), scores each alternative honestly against the Databricks default, and surfaces the open questions. It deliberately **does not weight the criteria or pick a winner** — the weighting is the decision, and it belongs to the team in review, recorded afterward as `ADR-0002` (§10).
+
 ## 1. Status and framing
 
 This is the **first structured, team-wide comparison** of the platform options, written from a **Databricks-default posture**: the data-engineering team who will own this in production are fluent in Databricks and most productive on it, and one-vendor consolidation on a Databricks-centric data platform is the presumptive organisational direction. The burden of proof in this doc therefore runs the other way — an alternative has to *earn* its place against the Databricks default, not the reverse.
@@ -73,6 +89,7 @@ The default this RFC measures everything against:
 - **Serving DB:** Azure Database for PostgreSQL **Flexible Server**, currently `Standard_B1ms` Burstable, 32 GB, PG 18 (`infra/modules/postgres-flex.bicep`; prod cuts over to General Purpose + HA). A **managed PaaS on burstable compute**, *not* serverless/scale-to-zero — see C8.
 - **ETL:** a long-running asyncio worker (`packages/horizons-ingestion`), one ACA container, `SELECT … FOR UPDATE SKIP LOCKED` claim loop, in-process alignment (shingling/MinHash/DP), per-document Postgres transaction with the blob write kept outside it (RFC-4 §Ingestion/How).
 - **Stack properties:** plain Python 3.13 + SQLAlchemy + FastAPI + Alembic, `pyright` strict, `pytest` + testcontainers integration suite, Bicep IaC, OTel + structlog.
+- **Operational tier:** **containerised services, not Kubernetes.** The same Docker image runs locally under `docker`/Compose and in the cloud on Azure Container Apps' managed runtime — there is no cluster, control plane, networking, or operators to run. ACA is one rung below a self-run AKS/K8s cluster (explicitly out of scope — "overkill at demo scale", per CLAUDE.md) and one rung above Databricks' fully-managed control plane. This is the tier the C7 (ops complexity) and C11 (familiarity) scores below are about: more hands-on than Databricks, far less than Kubernetes.
 
 ---
 
