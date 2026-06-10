@@ -1,0 +1,5 @@
+{
+  "name": "horizons dev",
+  "postCreateCommand": "bash .devcontainer/bootstrap.sh",
+  "postStartCommand": "bash .devcontainer/bootstrap.sh"
+}
